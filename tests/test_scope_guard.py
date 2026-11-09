@@ -12,6 +12,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 GUARD = ROOT / "hooks" / "scope_guard.py"
+SCRIPTS = (ROOT / "skills" / "setup-project" / "scripts").as_posix()
+TG, CAP = f"{SCRIPTS}/taskgit.sh", f"{SCRIPTS}/capture.py"
 
 
 def hook(agent: str | None, tool: str, tool_input: dict, cwd: str) -> str | None:
@@ -105,13 +107,14 @@ class GuardTest(unittest.TestCase):
     # ---- git-pr allowlist --------------------------------------------------------
     def test_git_pr_allowed(self):
         for cmd in [
-            'bash /p/skills/setup-project/scripts/taskgit.sh approve /r T-1 "feat: x && y; z"',
-            "/p/scripts/taskgit.sh reject /r T-2",
+            f'bash {TG} approve /r T-1 "feat: x && y; z"',
+            f"{TG} reject /r T-2",
+            f"cd {SCRIPTS} && bash ./taskgit.sh list /r",
             "git status && git log --oneline -5",
             "git -C /r status -sb",
             "git log --oneline | head -5",
             "cd /r && git diff --stat",
-            'python3 /p/scripts/capture.py term /r/.results/T-1/git.png --cmd "git log --oneline -5"',
+            f'python3 {CAP} term /r/.results/T-1/git.png --cmd "git log --oneline -5"',
             "git branch --show-current",
             "git remote -v",
             "git status 2>&1",
@@ -132,7 +135,7 @@ class GuardTest(unittest.TestCase):
             "git status && `git push`",
             "(git push -f)",
             "git push -f &",
-            "bash /p/taskgit.sh list && git reset --hard HEAD~3",
+            f"bash {TG} list && git reset --hard HEAD~3",
             "git -C /r push origin main",
             "git -c user.name=x commit -m y",
             "git branch -D wip/T-1",
@@ -171,7 +174,7 @@ class GuardTest(unittest.TestCase):
 
     def test_capture_cmd_is_checked(self):
         # S2: capture.py term --cmd runs its argument with shell=True
-        cap = "python3 /p/skills/setup-project/scripts/capture.py term /r/.results/T-1/o.png"
+        cap = f"python3 {CAP} term /r/.results/T-1/o.png"
         for agent, cmd in [
             ("git-pr", f'{cap} --cmd "git push --force origin main"'),
             ("git-pr", f'{cap} --cmd="git push --force origin main"'),
@@ -252,6 +255,25 @@ class GuardTest(unittest.TestCase):
                     "git ls-files | xargs wc -l", "watch -n 5 git status"]:
             with self.subTest(cmd=cmd, expect="allow"):
                 self.assertIsNone(self.bash("backend-coder", cmd))
+
+    def test_git_pr_allowlist_holes(self):
+        # S5: options that run programs or write files, and look-alike scripts
+        for cmd in [
+            "git -c core.pager='sh -c \"touch /tmp/x\"' log",
+            "git -ccore.pager=evil log",
+            "git --config-env=core.pager=EVIL log",
+            "git diff --output=TASKS.md",
+            "git log --output TASKS.md",
+            "git fetch --upload-pack='sh -c evil' origin",
+            "git ls-remote -u 'sh -c evil' origin",
+            "git diff --ext-diff",
+            "bash /tmp/evil/taskgit.sh approve /r T-1 x",
+            "/tmp/evil/taskgit.sh list /r",
+            "python3 /tmp/evil/capture.py term o.png",
+            "cd /tmp/evil && bash ./taskgit.sh list /r",
+        ]:
+            with self.subTest(cmd=cmd):
+                self.assertIsNotNone(self.bash("git-pr", cmd))
 
     def test_no_shell_roles(self):
         for agent in ("reviewer", "researcher", "planner", "architect", "docs", "insights-reporter"):

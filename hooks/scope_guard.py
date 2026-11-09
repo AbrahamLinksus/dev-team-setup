@@ -321,14 +321,30 @@ def git_write_in(command: str, depth: int = 0) -> bool:
     return False
 
 
-def git_mode_violation(command: str, depth: int = 0) -> str | None:
+SCRIPTS = ROOT / "skills" / "setup-project" / "scripts"
+# git options that run a program or write a file, even on read-only subcommands
+GIT_GLOBAL_UNSAFE = re.compile(r"^(-c.*|--config-env.*|--exec-path.*)$")
+GIT_ARG_UNSAFE = re.compile(r"^(--output|--upload-pack|--receive-pack|--exec|--ext-diff|--textconv|-O|--open-files-in-pager)(=.*)?$")
+
+
+def is_plugin_script(arg: str, name: str, cwd: str | None) -> bool:
+    """True only for this plugin's own copy of `name` (not a look-alike such as /tmp/evil/taskgit.sh)."""
+    if os.path.basename(arg) != name:
+        return False
+    p = Path(arg) if os.path.isabs(arg) else Path(cwd or os.getcwd()) / arg
+    try:
+        return os.path.normcase(str(p.resolve())) == os.path.normcase(str((SCRIPTS / name).resolve()))
+    except OSError:
+        return False
+
+
+def git_mode_violation(command: str, depth: int = 0, cwd: str | None = None) -> str | None:
     """git-pr: every simple command must be on the allowlist."""
     if "$(" in command or "`" in command:
         return "git-pr may not use command substitution ($(...) or backticks)"
     segs = segments(command)
     if segs is None:
         return "git-pr commands must be plain commands joined by && ; || or | (no subshells, background jobs or unbalanced quotes)"
-    prev_pipe_ok = False
     for seg in segs:
         tok = seg
         if any(t in (">", ">>", "<") for t in tok):
@@ -336,18 +352,29 @@ def git_mode_violation(command: str, depth: int = 0) -> str | None:
         name = os.path.basename(tok[0]) if tok else ""
         ok = False
         if name == "cd" and len(tok) <= 2:
+            if len(tok) == 2:  # later relative script paths resolve from here
+                cwd = tok[1] if os.path.isabs(tok[1]) else os.path.join(cwd or os.getcwd(), tok[1])
             ok = True
-        elif name == "taskgit.sh" or (name in ("bash", "sh") and len(tok) > 1 and os.path.basename(tok[1]) == "taskgit.sh"):
+        elif is_plugin_script(tok[0], "taskgit.sh", cwd) or (
+                name in ("bash", "sh") and len(tok) > 1 and is_plugin_script(tok[1], "taskgit.sh", cwd)):
             ok = True
-        elif name in ("python3", "python") and len(tok) > 1 and os.path.basename(tok[1]) == "capture.py":
+        elif name in ("python3", "python") and len(tok) > 1 and is_plugin_script(tok[1], "capture.py", cwd):
             # capture.py term --cmd runs its argument through a shell: it must pass the same allowlist
             for inner in capture_cmds(tok):
-                why = git_mode_violation(inner, depth + 1) if depth < 3 else "nested too deep"
+                why = git_mode_violation(inner, depth + 1, cwd) if depth < 3 else "nested too deep"
                 if why:
                     return f"capture.py --cmd would run a blocked command: {why}"
             ok = True
+        elif name in ("taskgit.sh", "capture.py") or (len(tok) > 1 and os.path.basename(tok[1]) in ("taskgit.sh", "capture.py")):
+            return f"git-pr may only run the plugin's own scripts in {SCRIPTS}. Blocked: {' '.join(tok)[:80]}"
         elif name == "git":
             sub, rest = git_sub(tok)
+            gopts = tok[1:len(tok) - len(rest) - 1]
+            bad = [a for a in gopts if GIT_GLOBAL_UNSAFE.match(a)] + [a for a in rest if GIT_ARG_UNSAFE.match(a)]
+            if sub in ("fetch", "ls-remote") and "-u" in rest:
+                bad.append("-u")
+            if bad:
+                return f"git-pr may not use git options that run programs or write files ({', '.join(bad)})"
             if sub in GIT_READ_SUBS:
                 ok = True
             elif sub == "branch" and all(a in ("--list", "-a", "-v", "-vv", "-r", "--show-current", "--all") for a in rest):
@@ -361,7 +388,7 @@ def git_mode_violation(command: str, depth: int = 0) -> str | None:
     return None
 
 
-def bash_violation(name: str, command: str, scopes: dict, depth: int = 0) -> str | None:
+def bash_violation(name: str, command: str, scopes: dict, depth: int = 0, cwd: str | None = None) -> str | None:
     mode = scopes["agents"][name].get("bash", "none")
     scratch = scopes.get("scratch", [])
     if mode == "none":
@@ -369,10 +396,10 @@ def bash_violation(name: str, command: str, scopes: dict, depth: int = 0) -> str
     if DESTRUCTIVE.search(command):
         return "destructive rm on a root/home path blocked"
     if mode == "git":
-        return git_mode_violation(command)
+        return git_mode_violation(command, cwd=cwd)
     # commands nested in bash -c / eval / capture.py --cmd get the same checks as top-level ones
     for inner in embedded_commands(command):
-        why = bash_violation(name, inner, scopes, depth + 1) if depth < 3 else "commands nested too deep"
+        why = bash_violation(name, inner, scopes, depth + 1, cwd) if depth < 3 else "commands nested too deep"
         if why:
             return f"nested command blocked: {why}"
     if git_write_in(command):
@@ -433,7 +460,7 @@ def evaluate(name: str, event: dict, scopes: dict) -> str | None:
         cmd = inp.get("command", "")
         if not isinstance(cmd, str):
             raise ValueError("non-string command")
-        return bash_violation(name, cmd, load_scopes(find_root(Path(cwd).resolve())))
+        return bash_violation(name, cmd, load_scopes(find_root(Path(cwd).resolve())), cwd=cwd)
     return None
 
 
