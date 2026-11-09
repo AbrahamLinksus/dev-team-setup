@@ -5,9 +5,13 @@
 #   - main (the main checkout at <repo>) changes only through `approve` and `record`.
 #   - each task / planning stage lives on branch wip/<id> in worktree <repo>-wt/<id>;
 #     every step is committed + pushed there (`checkpoint`), so work survives the session ending.
-#   - Shared files (TASKS.md, STATE.md, DECISIONS.md) belong to main: tasks never change
+#   - Shared files (TASKS.md, STATE.md, DECISIONS.md) belong to main: branches never change
 #     them (checkpoint reverts any change); the Orchestrator updates them on main with
-#     `record` after `approve`. Exceptions: `plan` and `CR-<n>` branches (approve with --keep-shared).
+#     `record` after `approve`. Exceptions: `plan` owns all three (nothing runs in parallel
+#     with planning); `CR-<n>` owns only TASKS.md (its re-plan). If TASKS.md changed on main
+#     since the CR branched, sync/approve abort (exit 4) so the planner re-plans on current main.
+#   - While a CR branch is open, task approvals are held (exit 8) so nothing is recorded
+#     on main underneath the re-plan.
 #   - Before a result card is shown, `sync` merges the latest main into the task branch
 #     and re-runs scripts/check.sh, so a task is always tested against current main.
 #
@@ -18,12 +22,13 @@
 #   taskgit.sh sync       <repo> <id>                    merge origin/main into wip/<id>, run check.sh, push
 #   taskgit.sh diff       <repo> <id>                    full diff vs main (for the reviewer)
 #   taskgit.sh diffstat   <repo> <id>                    diff --stat vs main (for the result card)
-#   taskgit.sh approve    <repo> <id> "<msg>" [--keep-shared]   sync, squash into main, push, clean up
+#   taskgit.sh approve    <repo> <id> "<msg>"            sync, squash into main, push, clean up
 #   taskgit.sh record     <repo> "<msg>"                 commit + push shared-file updates on main
 #   taskgit.sh reject     <repo> <id>                    drop wip/<id> (local + remote) and its worktree
 #   taskgit.sh list       <repo>                         open wip/* branches on origin + last step
 # Exit codes: 0 ok · 1 usage · 2 blocked files · 3 main not clean/diverged · 4 merge conflict
 #             5 check.sh failed after sync · 6 squash failed · 7 committed locally but not pushed
+#             8 approval held: a change request is open
 set -uo pipefail
 
 SHARED=(TASKS.md STATE.md DECISIONS.md)
@@ -60,15 +65,24 @@ blocked_files() {
   return 0
 }
 
-owns_shared() { [[ "$id" == plan || "$id" == CR-* ]]; }  # planning / change-request branches may edit shared files
+owned_shared() {  # shared files this branch may change
+  case "$id" in plan) echo "${SHARED[@]}" ;; CR-*) echo TASKS.md ;; *) echo "" ;; esac
+}
+is_owned() { [[ " $(owned_shared) " == *" $1 "* ]]; }
+is_shared() { [[ " ${SHARED[*]} " == *" $1 "* ]]; }
+open_crs() {  # open change-request branches (local or on origin)
+  { g for-each-ref --format='%(refname:short)' 'refs/heads/wip/CR-*'
+    g ls-remote --heads origin 'wip/CR-*' 2>/dev/null | sed 's#.*refs/heads/##'; } | sort -u
+}
 
 ensure_wt() {  # sets wt; fails if the worktree doesn't exist
   wt="$wtroot/$id"; [[ -d "$wt" ]] || die 1 "no worktree for $id; run: taskgit.sh start $repo $id"
 }
 
-revert_shared_in_wt() {  # tasks may not change main-owned files
+revert_shared_in_wt() {  # branches may not change main-owned files they don't own
   local f changed=""
   for f in "${SHARED[@]}"; do
+    is_owned "$f" && continue
     if ! gw diff --quiet "origin/$main" -- "$f" 2>/dev/null; then
       gw checkout -q "origin/$main" -- "$f" 2>/dev/null || gw rm -q --cached --ignore-unmatch "$f" >/dev/null
       changed+="$f "
@@ -92,7 +106,13 @@ do_sync() {  # merge origin/main into wip/<id>, run check.sh; uses $id $wt
         die 4 "wip/$id conflicts with main in: $(echo $other). Merge aborted; the task branch is unchanged. Send it to the owner agent/debugger to rebase onto main."
       fi
       for f in $conflicts; do
-        if [[ "$f" == "$PROGRESS" ]] || owns_shared; then gw checkout -q --ours -- "$f"; else gw checkout -q --theirs -- "$f"; fi
+        if [[ "$f" == "$PROGRESS" ]]; then gw checkout -q --ours -- "$f"
+        elif is_shared "$f" && ! is_owned "$f"; then gw checkout -q --theirs -- "$f"   # main's records win
+        elif [[ "$id" == plan ]]; then gw checkout -q --ours -- "$f"
+        else
+          gw merge --abort 2>/dev/null
+          die 4 "$f changed on main while $id was open (e.g. a task was recorded). Merge aborted; nothing on main was touched. Have the planner redo the re-plan of $f on top of current main, then checkpoint and approve again."
+        fi
         gw add -- "$f"
       done
       gw commit -q --no-edit || { gw merge --abort; die 4 "could not complete merge of main into wip/$id"; }
@@ -139,7 +159,7 @@ case "$cmd" in
 
   checkpoint)
     id=${3:?id}; msg=${4:?step message}; ensure_wt
-    owns_shared || revert_shared_in_wt
+    revert_shared_in_wt
     gw add -A
     blocked_files "$wt"
     gw commit -q --allow-empty -m "wip($id): $msg" || die 1 "commit failed"
@@ -173,7 +193,11 @@ case "$cmd" in
     g diff --stat "origin/$main...wip/$id" -- . ":(exclude)$PROGRESS" ;;
 
   approve)
-    id=${3:?id}; msg=${4:?commit message}; keep_shared=${5:-}; ensure_wt; br="wip/$id"
+    id=${3:?id}; msg=${4:?commit message}; ensure_wt; br="wip/$id"
+    if [[ "$id" != plan && "$id" != CR-* ]]; then
+      crs=$(open_crs | tr '\n' ' ')
+      [[ -n "${crs// }" ]] && die 8 "approvals are held while a change request is open ($crs). Merge or cancel it first; $id stays queued."
+    fi
     # 1. main checkout must be clean and on main
     [[ -f "$repo/.git/MERGE_HEAD" ]] && { g merge --abort 2>/dev/null || g reset -q --merge; echo "note: aborted a leftover merge in the main checkout" >&2; }
     dirty=$(g status --porcelain --untracked-files=no)
@@ -187,7 +211,7 @@ case "$cmd" in
     fi
     # 2. task branch must contain current main and pass check.sh
     do_sync
-    excl=(":(exclude)$PROGRESS"); owns_shared || for f in "${SHARED[@]}"; do excl+=(":(exclude)$f"); done
+    excl=(":(exclude)$PROGRESS"); for f in "${SHARED[@]}"; do is_owned "$f" || excl+=(":(exclude)$f"); done
     if g diff --quiet "$main" "$br" -- . "${excl[@]}"; then   # nothing left to merge: already on main
       g worktree remove --force "$wt" 2>/dev/null || true; g branch -q -D "$br" 2>/dev/null || true
       g push -q origin --delete "$br" 2>/dev/null || true; g worktree prune
@@ -199,11 +223,10 @@ case "$cmd" in
       g reset -q --merge 2>/dev/null || g reset -q --hard HEAD
       die 6 "squash of $br into $main failed; main restored to $(g rev-parse --short HEAD)"
     fi
-    if [[ "$keep_shared" != --keep-shared ]] && ! owns_shared; then
-      for f in "${SHARED[@]}"; do
-        if g cat-file -e "HEAD:$f" 2>/dev/null; then g checkout -q HEAD -- "$f"; else g rm -q --cached --ignore-unmatch "$f" >/dev/null; fi
-      done
-    fi
+    for f in "${SHARED[@]}"; do   # keep main's version of every shared file the branch doesn't own
+      is_owned "$f" && continue
+      if g cat-file -e "HEAD:$f" 2>/dev/null; then g checkout -q HEAD -- "$f"; else g rm -q --cached --ignore-unmatch "$f" >/dev/null; rm -f "$repo/$f"; fi
+    done
     g rm -q --cached --ignore-unmatch "$PROGRESS" >/dev/null; rm -f "$repo/$PROGRESS"
     blocked_files "$repo"
     g commit -q --allow-empty -m "$msg" || { g reset -q --hard HEAD; die 6 "commit on $main failed; main restored"; }

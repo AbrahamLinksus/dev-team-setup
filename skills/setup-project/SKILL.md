@@ -11,7 +11,7 @@ description: >
   (as-built architecture + codebase walkthrough). Every result comes with a visual for the
   owner's approval. Works from a phone.
 metadata:
-  version: "0.4.0"
+  version: "0.4.1"
 ---
 
 # /setup-project — Orchestrator
@@ -144,7 +144,8 @@ Take every `Backlog` task whose dependencies are `Done`; run independent tasks i
    - **Request changes** that stays within the task's acceptance criteria → back to step 2.
      Anything wider is a **change request** (below).
    - **Reject** → **git-pr** `$TASKGIT reject`; Backlog + reason; `record`.
-   - approve exits non-zero: 4/5 → debugger, then a new card; 7 → report the push problem.
+   - approve exits non-zero: 4/5 → debugger, then a new card; 7 → report the push problem;
+     8 → a change request is open: keep the card queued until it merges.
 
 **Milestone end ⏸**: task `M<n>-docs` with two steps: **architect** as-built sync of
 `docs/LLD.md` (changes since last milestone), then **docs** README pass. Milestone card
@@ -163,7 +164,7 @@ Handover card (`result-card.md`) → Approve handover / Request changes. Then ST
 ## Change requests (anytime)
 
 When the owner changes **what** is built or **how** it's designed (not a fix to one task),
-follow `change-requests.md`: pause new tasks → `CR-<n>` branch → planner/architect update
+follow `change-requests.md`: pause new tasks and hold approvals → `CR-<n>` branch → planner/architect update
 SPEC/HLD/LLD → "what changes" card ⏸ → planner re-plans TASKS.md → merge
 (`$TASKGIT approve <repo> CR-<n> "docs: CR-<n> …"`) → sync affected task branches → resume.
 Design docs change only through this flow, the milestone as-built sync, or handover.

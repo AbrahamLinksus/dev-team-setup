@@ -76,3 +76,20 @@ Other notes:
 - Visual capture uses Playwright + Chromium (`skills/setup-project/scripts/capture.py`).
   Mermaid is installed through npm the first time a diagram is rendered.
 - GPU training runs on Colab/GCP; the trainer prepares the scripts for it.
+
+## Development
+
+```
+python3 -m unittest discover -s tests -v   # structure, agents, scope guard (needs pyyaml)
+bash tests/test_taskgit.sh                  # git scenarios against throwaway repos
+python3 tools/gen_agents.py                 # regenerate agents/ after editing the spec
+```
+
+- `tests/test_taskgit.sh` has one scenario per git bug found so far (parallel approvals,
+  change requests wiping recorded results, push failures, diverged main, stale worktrees…).
+  Add a scenario before fixing the next one. `TASKGIT_UNDER_TEST=<path>` runs the suite
+  against another copy of the script, e.g. to confirm a scenario fails on the old version.
+- `tests/test_scope_guard.py` feeds the hook real JSON events, including known bypass
+  attempts (chained commands, `bash -c`, `eval`, substitutions, newlines).
+- CI (`.github/workflows/ci.yml`) runs both on every push and PR.
+- `examples/todo-app/` shows real planning output from a dry run.

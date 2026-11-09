@@ -110,14 +110,126 @@ def abs_violation(name: str, file_path: str, cwd: str, scopes: dict) -> str | No
     return f"{name} may only write inside the project worktree or scratch dirs ({', '.join(scopes.get('scratch', []))}). Blocked: {p}"
 
 
-GIT_WRITE = re.compile(r"\bgit\b[^|;&]*\b(commit|push|reset|checkout|switch|restore|clean|rebase|merge|"
-                       r"cherry-pick|revert|branch\s+-[dDmM]|worktree|stash|tag|rm|mv|am|apply)\b")
+GIT_WRITE_SUBS = {"commit", "push", "reset", "checkout", "switch", "restore", "clean", "rebase", "merge",
+                  "cherry-pick", "revert", "worktree", "stash", "tag", "rm", "mv", "am", "apply", "pull",
+                  "update-ref", "filter-branch", "filter-repo", "gc", "prune", "init", "clone", "config"}
+GIT_READ_SUBS = {"status", "log", "diff", "show", "rev-parse", "ls-remote", "ls-files", "fetch",
+                 "shortlog", "blame", "describe", "rev-list", "cat-file"}
+GIT_WRITE = re.compile(r"\bgit\b[^|;&\n]*?\s(" + "|".join(sorted(GIT_WRITE_SUBS, key=len, reverse=True)) +
+                       r"|branch\s+-[dDmMcC]|remote\s+(add|remove|rm|set-url|rename))\b")
 INSTALL = re.compile(r"\b(pip3?|uv\s+pip|python3?\s+-m\s+pip)\s+(install|uninstall)\b|\buv\s+(add|remove|sync|lock)\b|"
                      r"\b(npm|pnpm|yarn|bun)\s+(install|i|add|remove|uninstall|ci|update|up)\b|\bnpx\s+-y\b|"
                      r"\b(apt|apt-get|brew|conda|mamba)\s+install\b|\bcurl\b[^|]*\|\s*(ba)?sh\b")
-DESTRUCTIVE = re.compile(r"(^|[;&|]\s*)\s*(sudo\s+)?(rm\s+-[a-zA-Z]*r[a-zA-Z]*f|rm\s+-[a-zA-Z]*f[a-zA-Z]*r)\s+(/|~|\$HOME)(\s|$)")
-WRITE_CMDS = re.compile(r"(^|[;&|(]\s*)(rm|mv|cp|tee|touch|mkdir|rmdir|truncate|chmod|chown|ln|install|dd)\b|\bsed\s+(-[a-zA-Z]*i|--in-place)")
+DESTRUCTIVE = re.compile(r"(^|[;&|\n]\s*)\s*(sudo\s+)?(rm\s+-[a-zA-Z]*r[a-zA-Z]*f|rm\s+-[a-zA-Z]*f[a-zA-Z]*r)\s+(/|~|\$HOME)(\s|$)")
+WRITE_CMDS = re.compile(r"(^|[;&|(\n]\s*)(rm|mv|cp|tee|touch|mkdir|rmdir|truncate|chmod|chown|ln|install|dd)\b|\bsed\s+(-[a-zA-Z]*i|--in-place)")
 REDIRECT = re.compile(r"(?<![<>&0-9])(?:\d?>>?|&>)\s*([^\s;&|]+)")
+SEPARATORS = {"&&", "||", ";", "|", "\n", ";;"}
+WRAPPERS = {"sudo", "command", "exec", "env", "time", "nohup", "nice", "builtin"}
+PIPE_FILTERS = {"head", "tail", "grep", "wc", "sort", "cut", "uniq", "cat", "less", "jq"}
+
+
+def segments(command: str) -> list[list[str]] | None:
+    """Split a shell command into simple commands, respecting quotes. None if unparseable
+    or if it uses constructs we refuse to reason about (background &, subshell parens)."""
+    lex = shlex.shlex(command.replace("2>&1", " "), posix=True, punctuation_chars="();<>|&\n")
+    lex.whitespace = " \t\r"
+    lex.whitespace_split = True
+    try:
+        tokens = list(lex)
+    except ValueError:
+        return None
+    segs, cur = [], []
+    for t in tokens:
+        if t in SEPARATORS:
+            if cur:
+                segs.append(cur)
+            cur = []
+        elif t in ("&", "(", ")", "<(", ">(") or set(t) <= set("();<>|&") and t not in (">", ">>", "<"):
+            return None
+        else:
+            cur.append(t)
+    if cur:
+        segs.append(cur)
+    return segs
+
+
+def strip_wrappers(tok: list[str]) -> list[str]:
+    i = 0
+    while i < len(tok) and (tok[i] in WRAPPERS or re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*=.*", tok[i])):
+        i += 1
+    return tok[i:]
+
+
+def git_sub(tok: list[str]) -> tuple[str, list[str]]:
+    """For a `git ...` token list, skip global options (-C dir, -c k=v, --git-dir=…) and
+    return (subcommand, rest)."""
+    i = 1
+    while i < len(tok) and tok[i].startswith("-"):
+        i += 2 if tok[i] in ("-C", "-c", "--git-dir", "--work-tree", "--namespace") else 1
+    return (tok[i], tok[i + 1:]) if i < len(tok) else ("", [])
+
+
+def inner_commands(tok: list[str]) -> list[str]:
+    """Commands hidden inside bash -c / sh -c / eval."""
+    if not tok:
+        return []
+    if tok[0] in ("bash", "sh", "zsh", "dash") and "-c" in tok:
+        i = tok.index("-c")
+        return tok[i + 1:i + 2]
+    if tok[0] == "eval":
+        return [" ".join(tok[1:])]
+    return []
+
+
+def git_write_in(command: str, depth: int = 0) -> bool:
+    segs = segments(command)
+    if segs is None or "$(" in command or "`" in command:
+        # can't reason about structure (subshells, substitutions): fall back to a text scan
+        return bool(GIT_WRITE.search(command))
+    for seg in segs:
+        tok = strip_wrappers(seg)
+        if tok and os.path.basename(tok[0]) == "git":
+            sub, rest = git_sub(tok)
+            if sub in GIT_WRITE_SUBS or (sub == "branch" and any(a.startswith("-") and set(a[1:]) & set("dDmMcC") for a in rest)):
+                return True
+        if depth < 3 and any(git_write_in(c, depth + 1) for c in inner_commands(tok)):
+            return True
+    return False
+
+
+def git_mode_violation(command: str) -> str | None:
+    """git-pr: every simple command must be on the allowlist."""
+    if "$(" in command or "`" in command:
+        return "git-pr may not use command substitution ($(...) or backticks)"
+    segs = segments(command)
+    if segs is None:
+        return "git-pr commands must be plain commands joined by && ; || or | (no subshells, background jobs or unbalanced quotes)"
+    prev_pipe_ok = False
+    for seg in segs:
+        tok = seg
+        if any(t in (">", ">>", "<") for t in tok):
+            return "git-pr may not redirect output to files"
+        name = os.path.basename(tok[0]) if tok else ""
+        ok = False
+        if name == "cd" and len(tok) <= 2:
+            ok = True
+        elif name == "taskgit.sh" or (name in ("bash", "sh") and len(tok) > 1 and os.path.basename(tok[1]) == "taskgit.sh"):
+            ok = True
+        elif name in ("python3", "python") and len(tok) > 1 and os.path.basename(tok[1]) == "capture.py":
+            ok = True
+        elif name == "git":
+            sub, rest = git_sub(tok)
+            if sub in GIT_READ_SUBS:
+                ok = True
+            elif sub == "branch" and all(a in ("--list", "-a", "-v", "-vv", "-r", "--show-current", "--all") for a in rest):
+                ok = True
+            elif sub == "remote" and all(a in ("-v",) for a in rest):
+                ok = True
+        elif name in PIPE_FILTERS:
+            ok = True
+        if not ok:
+            return f"git-pr may only run taskgit.sh, read-only git commands and capture.py. Blocked: {' '.join(tok)[:80]}"
+    return None
 
 
 def bash_violation(name: str, command: str, scopes: dict) -> str | None:
@@ -128,9 +240,8 @@ def bash_violation(name: str, command: str, scopes: dict) -> str | None:
     if DESTRUCTIVE.search(command):
         return "destructive rm on a root/home path blocked"
     if mode == "git":
-        allowed = re.fullmatch(r"\s*((bash\s+)?\S*taskgit\.sh\b.*|git\s+(status|log|diff|show|branch|remote|rev-parse|fetch)\b.*|python3\s+\S*capture\.py\b.*)\s*", command, re.S)
-        return None if allowed else "git-pr may only run taskgit.sh, read-only git commands and capture.py"
-    if GIT_WRITE.search(command):
+        return git_mode_violation(command)
+    if git_write_in(command):
         return "git history is managed by the Orchestrator (taskgit.sh) and git-pr; don't run git write commands"
     if mode != "full" and INSTALL.search(command):
         return "installing or removing packages is a Tier 1 decision: return DECISION NEEDED instead"

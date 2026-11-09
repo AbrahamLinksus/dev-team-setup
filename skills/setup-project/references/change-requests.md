@@ -14,7 +14,9 @@ offline", "add login", "drop the export feature", "use Postgres instead".
 ## Flow
 
 ```
-1 Pause      no new tasks start; running steps finish and checkpoint; open task branches stay as they are
+1 Pause      no new tasks start; running steps finish and checkpoint. Approvals are HELD:
+             taskgit refuses to approve any task while a CR branch is open (exit 8). Cards
+             already waiting stay queued; tell the owner they'll be shown again after the CR.
 2 Branch     $TASKGIT start <repo> CR-<n>
 3 Update     planner → SPEC.md (+ wireframes if screens change); HLD.md if modules/flows change
              architect → LLD.md / CONVENTIONS.md (+ .devteam/scopes.json) if design changes
@@ -22,14 +24,20 @@ offline", "add login", "drop the export feature", "use Postgres instead".
 4 Impact     planner lists the impact on tasks (not yet applied):
                Done tasks needing rework · open tasks affected · tasks added / removed / changed
 5 Card ⏸     "What changes" card (below). Approve / Request changes / Cancel CR
-6 Re-plan    planner revises TASKS.md on the CR branch (rework tasks get new IDs, e.g. T-07b)
-7 Merge      git-pr: $TASKGIT approve <repo> CR-<n> "docs: CR-<n> <title>" --keep-shared
-             log the CR as a Tier 1 decision in DECISIONS.md (record)
-8 Resume     open task branches affected by the CR: sync them ($TASKGIT sync) and send their
-             owner agent a brief with the doc changes; unaffected ones continue as they were
+6 Re-plan    planner revises TASKS.md on the CR branch (rework tasks get new IDs, e.g. T-07b).
+             The CR branch owns TASKS.md only; STATE.md and DECISIONS.md stay main's
+             (checkpoint reverts any change to them).
+7 Merge      git-pr: $TASKGIT approve <repo> CR-<n> "docs: CR-<n> <title>"
+             exit 4 = TASKS.md changed on main since the CR branched → planner redoes the
+             re-plan on top of current main (sync first), then approve again.
+             After the merge: log the CR as a Tier 1 decision in DECISIONS.md and update
+             STATE.md in the main checkout, then $TASKGIT record.
+8 Resume     approvals unblock. Queued cards: re-sync each task ($TASKGIT sync) and re-show
+             the card if the CR affected it. Open task branches affected by the CR: sync them
+             and brief their owner agent with the doc changes. Unaffected ones continue.
 ```
 
-Cancel CR → `$TASKGIT reject <repo> CR-<n>`, resume as before.
+Cancel CR → `$TASKGIT reject <repo> CR-<n>`; approvals unblock; resume as before.
 
 New packages, a changed stack or a changed contract inside a CR still get their own
 Tier 1 decision cards in step 5.

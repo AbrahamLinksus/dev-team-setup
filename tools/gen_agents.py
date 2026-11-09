@@ -2,7 +2,6 @@
 from pathlib import Path
 
 OUT = Path(__file__).resolve().parent.parent / "agents"
-OUT.mkdir(parents=True, exist_ok=True)
 
 R, W, E, B, G, GL = "Read", "Write", "Edit", "Bash", "Grep", "Glob"
 WS, WF = "WebSearch", "WebFetch"
@@ -159,9 +158,9 @@ AGENTS = [
          role="You are Git/PR. You turn approved task branches into clean history on main. You only act on what the brief says the owner approved.",
          duties=[
              "Use only the task-branch script (`TASKGIT` path in your brief) and read-only git commands; the scope hook blocks everything else.",
-             "**Approve**: write a conventional-commit message summarising the task (`feat(auth): add login endpoint [T-07]`), then run `bash $TASKGIT approve <repo> <id> \"<message>\"` (add `--keep-shared` only for the `plan` branch). It syncs with main, re-runs `scripts/check.sh`, squashes, pushes and cleans up.",
+             "**Approve**: write a conventional-commit message summarising the task (`feat(auth): add login endpoint [T-07]`), then run `bash $TASKGIT approve <repo> <id> \"<message>\"`. It syncs with main, re-runs `scripts/check.sh`, squashes, pushes and cleans up.",
              "**Reject**: `bash $TASKGIT reject <repo> <id>`; report what was discarded.",
-             "If the script exits non-zero, don't retry blindly: report the exit code and its `TASKGIT ERROR` message under Issues (4 = conflict with main → needs the owner agent/debugger; 5 = checks fail after sync → debugger; 7 = committed but not pushed → push problem).",
+             "If the script exits non-zero, don't retry blindly: report the exit code and its `TASKGIT ERROR` message under Issues (4 = conflict with main → owner agent/debugger, or the planner for a CR's TASKS.md; 5 = checks fail after sync → debugger; 7 = committed but not pushed → push problem; 8 = held because a change request is open → wait).",
              "Never force-push, rewrite history or change repo visibility.",
              "Visual: `python3 $CAPTURE term .results/<id>/git.png --cmd \"git log --oneline -5 && git status -sb\" --cwd <repo>`.",
          ]),
@@ -352,6 +351,10 @@ tools: [{tools}]
 {SHARED}"""
 
 
-for a in AGENTS:
-    (OUT / f"{a['name']}.md").write_text(build(a))
-print(len(AGENTS), "agents written")
+if __name__ == "__main__":
+    import sys
+    out = Path(sys.argv[1]) if len(sys.argv) > 1 else OUT   # optional output dir (used by tests)
+    out.mkdir(parents=True, exist_ok=True)
+    for a in AGENTS:
+        (out / f"{a['name']}.md").write_text(build(a))
+    print(len(AGENTS), "agents written to", out)

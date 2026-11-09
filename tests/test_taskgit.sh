@@ -1,0 +1,193 @@
+#!/usr/bin/env bash
+# Scenario tests for skills/setup-project/scripts/taskgit.sh against throwaway repos
+# with a local bare "origin". Each scenario reproduces a bug found during review.
+#
+# Run: bash tests/test_taskgit.sh            (all)
+#      bash tests/test_taskgit.sh cr_wipe     (scenarios whose name contains "cr_wipe")
+set -uo pipefail
+
+TG="${TASKGIT_UNDER_TEST:-$(cd "$(dirname "$0")/.." && pwd)/skills/setup-project/scripts/taskgit.sh}"
+FILTER=${1:-}
+export GIT_AUTHOR_NAME=t GIT_AUTHOR_EMAIL=t@t GIT_COMMITTER_NAME=t GIT_COMMITTER_EMAIL=t@t
+export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
+PASS=0; FAIL=0; FAILED=()
+WORK=$(mktemp -d); trap 'rm -rf "$WORK"' EXIT
+
+# ---- helpers ---------------------------------------------------------------------------
+new_repo() {  # fresh origin + main checkout in $R with TASKS/STATE/DECISIONS and check.sh
+  local d="$WORK/$1"; rm -rf "$d"; mkdir -p "$d"
+  git init -q --bare -b main "$d/origin.git"
+  git clone -q "$d/origin.git" "$d/proj" 2>/dev/null
+  R="$d/proj"; ORIGIN="$d/origin.git"
+  git -C "$R" checkout -q -b main 2>/dev/null || true
+  mkdir -p "$R/scripts"
+  printf '#!/bin/bash\n! grep -rq BROKEN --include=*.py .\n' > "$R/scripts/check.sh"
+  printf '# Tasks\n- T-01: In progress\n- T-02: Backlog\n' > "$R/TASKS.md"
+  printf '# State\nstage: build\n' > "$R/STATE.md"
+  printf '# Decisions\n' > "$R/DECISIONS.md"
+  echo "x = 1" > "$R/shared_code.py"
+  git -C "$R" add -A && git -C "$R" commit -qm init && git -C "$R" push -q -u origin main 2>/dev/null
+}
+tg() { bash "$TG" "$@"; }
+tgq() { bash "$TG" "$@" >/dev/null 2>&1; }
+on_main() { git -C "$R" show "origin/main:$1" 2>/dev/null; }
+check() {  # check "<description>" <command...>
+  local desc=$1; shift
+  if "$@"; then PASS=$((PASS+1)); else FAIL=$((FAIL+1)); FAILED+=("$SCEN: $desc"); echo "    ✗ $desc"; fi
+}
+expect_exit() { local want=$1; shift; "$@" >/dev/null 2>&1; local got=$?; [[ $got == "$want" ]] || { echo "      (exit $got, wanted $want)"; return 1; }; }
+clean_main() { [[ -z "$(git -C "$R" status --porcelain --untracked-files=no)" ]] && [[ ! -f "$R/.git/MERGE_HEAD" ]]; }
+contains() { grep -q -- "$2" <<<"$1"; }
+scenario() { SCEN=$1; [[ -z "$FILTER" || "$SCEN" == *"$FILTER"* ]] || return 1; echo "• $SCEN"; return 0; }
+
+# ---- scenarios -------------------------------------------------------------------------
+
+if scenario cr_wipe_recorded_results; then
+  # Reported bug: a task approved+recorded while CR-1 was open was wiped when CR-1 merged.
+  new_repo cr1
+  C=$(tg start "$R" CR-1)
+  T=$(tg start "$R" T-01); echo "a = 1" > "$T/a.py"; tgq checkpoint "$R" T-01 "coder done"
+  sed -i 's/T-02: Backlog/T-02: Backlog (re-planned by CR-1)/; s/T-01: In progress/T-01: In progress (CR view)/' "$C/TASKS.md"
+  echo "- CR-1 decision (should be reverted)" >> "$C/DECISIONS.md"
+  tgq checkpoint "$R" CR-1 "re-plan"
+  check "task approval is held while CR is open (exit 8)" expect_exit 8 tg approve "$R" T-01 "feat: a"
+  check "main untouched by held approval" clean_main
+  # simulate a record that slipped in on main anyway (e.g. from another device)
+  sed -i 's/T-01: In progress/T-01: Done/' "$R/TASKS.md"; echo "- D-01 T-01 decision" >> "$R/DECISIONS.md"
+  tgq record "$R" "chore: record T-01"
+  check "CR with conflicting TASKS.md aborts with exit 4" expect_exit 4 tg approve "$R" CR-1 "docs: CR-1"
+  check "main still has T-01 Done" contains "$(on_main TASKS.md)" "T-01: Done"
+  check "main still has the T-01 decision" contains "$(on_main DECISIONS.md)" "D-01 T-01 decision"
+  check "main checkout clean after abort" clean_main
+  check "CR branch kept for re-plan" test -d "$R-wt/CR-1"
+  # planner redoes the re-plan on top of current main: sync gives conflict → reset TASKS.md to main + re-apply
+  git -C "$C" fetch -q origin main && git -C "$C" merge -q -X theirs --no-edit origin/main >/dev/null 2>&1
+  sed -i 's/T-02: Backlog$/T-02: Backlog (re-planned by CR-1)/' "$C/TASKS.md"; tgq checkpoint "$R" CR-1 "re-plan on current main"
+  check "CR merges after re-plan" expect_exit 0 tg approve "$R" CR-1 "docs: CR-1"
+  m=$(on_main TASKS.md); d=$(on_main DECISIONS.md)
+  check "T-01 Done survived the CR merge" contains "$m" "T-01: Done"
+  check "CR re-plan landed" contains "$m" "re-planned by CR-1"
+  check "T-01 decision survived" contains "$d" "D-01 T-01 decision"
+  check "CR did not change DECISIONS.md" bash -c "! grep -q 'should be reverted' <<<'$d'"
+  check "task approval unblocked after CR merged" expect_exit 0 tg approve "$R" T-01 "feat: a"
+fi
+
+if scenario cr_clean_merge_keeps_both; then
+  new_repo cr2
+  C=$(tg start "$R" CR-2); echo "- T-09: Backlog (new from CR-2)" >> "$C/TASKS.md"; echo "spec v2" > "$C/SPEC.md"
+  tgq checkpoint "$R" CR-2 "docs"
+  sed -i 's/T-01: In progress/T-01: Done/' "$R/TASKS.md"; tgq record "$R" "chore: record"
+  check "non-overlapping CR re-plan merges" expect_exit 0 tg approve "$R" CR-2 "docs: CR-2"
+  m=$(on_main TASKS.md)
+  check "keeps main's record" contains "$m" "T-01: Done"
+  check "keeps CR's new task" contains "$m" "T-09: Backlog"
+  check "CR's spec change landed" test "$(on_main SPEC.md)" = "spec v2"
+fi
+
+if scenario parallel_tasks_shared_files; then
+  # Reported bug: two parallel tasks both edited TASKS.md; the second squash conflicted and left main in UU state.
+  new_repo par
+  A=$(tg start "$R" T-01); B=$(tg start "$R" T-02)
+  echo "a = 1" > "$A/a.py"; sed -i 's/T-01: In progress/T-01: Done/' "$A/TASKS.md"; tgq checkpoint "$R" T-01 x
+  echo "b = 1" > "$B/b.py"; sed -i 's/T-02: Backlog/T-02: Done/' "$B/TASKS.md"; tgq checkpoint "$R" T-02 x
+  check "first approve" expect_exit 0 tg approve "$R" T-01 "feat: a"
+  check "second approve" expect_exit 0 tg approve "$R" T-02 "feat: b"
+  check "main clean, no conflict" clean_main
+  check "both code files on main" test -n "$(on_main a.py)$(on_main b.py)"
+  check "tasks did not change TASKS.md" contains "$(on_main TASKS.md)" "T-02: Backlog"
+fi
+
+if scenario record_missing_shared_file; then
+  new_repo rec; git -C "$R" rm -q STATE.md; git -C "$R" commit -qm "no state"; git -C "$R" push -q 2>/dev/null
+  sed -i 's/T-01: In progress/T-01: Done/' "$R/TASKS.md"
+  check "record works when STATE.md doesn't exist" expect_exit 0 tg record "$R" "chore: record"
+  check "recorded on origin" contains "$(on_main TASKS.md)" "T-01: Done"
+fi
+
+if scenario code_conflict_between_tasks; then
+  new_repo conf
+  A=$(tg start "$R" T-03); B=$(tg start "$R" T-04)
+  echo "x = 3" > "$A/shared_code.py"; tgq checkpoint "$R" T-03 x
+  echo "x = 4" > "$B/shared_code.py"; tgq checkpoint "$R" T-04 x
+  check "first approve" expect_exit 0 tg approve "$R" T-03 "feat: c"
+  check "conflicting second approve exits 4" expect_exit 4 tg approve "$R" T-04 "feat: d"
+  check "main clean after abort" clean_main
+  check "T-04 branch kept" test -d "$R-wt/T-04"
+fi
+
+if scenario check_fails_after_sync; then
+  new_repo chk; E=$(tg start "$R" T-05); echo "BROKEN = 1" > "$E/e.py"; tgq checkpoint "$R" T-05 x
+  before=$(git -C "$R" rev-parse origin/main)
+  check "approve exits 5 when check.sh fails" expect_exit 5 tg approve "$R" T-05 "feat: e"
+  git -C "$R" fetch -q
+  check "main unchanged" test "$(git -C "$R" rev-parse origin/main)" = "$before"
+fi
+
+if scenario stale_worktree_and_resume_from_origin; then
+  new_repo stale; W=$(tg start "$R" T-06); echo "w = 1" > "$W/w.py"; echo "# progress" > "$W/TASK_PROGRESS.md"; tgq checkpoint "$R" T-06 "coder done"
+  rm -rf "$W"
+  check "start restores a deleted worktree" bash -c "[[ \$(bash '$TG' start '$R' T-06) == '$W' ]] && test -f '$W/w.py'"
+  rm -rf "$W"; git -C "$R" worktree prune; git -C "$R" branch -q -D wip/T-06
+  check "start resumes from origin when local branch is gone" bash -c "bash '$TG' start '$R' T-06 >/dev/null && test -f '$W/TASK_PROGRESS.md'"
+fi
+
+if scenario diverged_main; then
+  new_repo div; F=$(tg start "$R" T-07); echo "f = 1" > "$F/f.py"; tgq checkpoint "$R" T-07 x
+  echo local > "$R/local.txt"; git -C "$R" add local.txt; git -C "$R" commit -qm local
+  git clone -q "$ORIGIN" "$WORK/other" 2>/dev/null; echo r > "$WORK/other/r.txt"
+  git -C "$WORK/other" add r.txt; git -C "$WORK/other" commit -qm remote; git -C "$WORK/other" push -q 2>/dev/null; rm -rf "$WORK/other"
+  check "approve exits 3 when local main diverged" expect_exit 3 tg approve "$R" T-07 "feat: f"
+  check "worktree kept" test -d "$R-wt/T-07"
+fi
+
+if scenario leftover_merge_in_main; then
+  new_repo lo; F=$(tg start "$R" T-08); echo "f = 1" > "$F/f.py"; tgq checkpoint "$R" T-08 x
+  echo a > "$R/c.txt"; git -C "$R" add c.txt; git -C "$R" commit -qm ca; git -C "$R" push -q 2>/dev/null
+  git -C "$R" checkout -q -b side HEAD~1; echo b > "$R/c.txt"; git -C "$R" add c.txt; git -C "$R" commit -qm cb
+  git -C "$R" checkout -q main; git -C "$R" merge side >/dev/null 2>&1
+  check "approve cleans a leftover conflicted merge and succeeds" expect_exit 0 tg approve "$R" T-08 "feat: f"
+  check "main clean" clean_main
+fi
+
+if scenario push_rejected_then_retry; then
+  new_repo push; G=$(tg start "$R" T-09); echo "g = 1" > "$G/g.py"; tgq checkpoint "$R" T-09 x
+  printf '#!/bin/sh\nexit 1\n' > "$ORIGIN/hooks/pre-receive"; chmod +x "$ORIGIN/hooks/pre-receive"
+  check "approve exits 7 when push is rejected" expect_exit 7 tg approve "$R" T-09 "feat: g"
+  check "worktree kept after failed push" test -d "$R-wt/T-09"
+  rm "$ORIGIN/hooks/pre-receive"
+  check "re-run approve pushes the waiting commit" expect_exit 0 tg approve "$R" T-09 "feat: g"
+  check "exactly one feat: g commit on origin" test "$(git -C "$R" log --oneline origin/main | grep -c 'feat: g')" = 1
+  check "worktree cleaned up" test ! -d "$R-wt/T-09"
+fi
+
+if scenario secrets_blocked; then
+  new_repo sec; S=$(tg start "$R" T-10); echo "KEY=1" > "$S/.env"
+  check "checkpoint refuses .env (exit 2)" expect_exit 2 tg checkpoint "$R" T-10 x
+  rm "$S/.env"; echo "KEY=" > "$S/.env.example"
+  check ".env.example is fine" expect_exit 0 tg checkpoint "$R" T-10 x
+fi
+
+if scenario plan_owns_all_shared; then
+  new_repo plan; P=$(tg start "$R" plan)
+  printf '# Tasks\n- T-01: Backlog\n- T-02: Backlog\n- T-03: Backlog\n' > "$P/TASKS.md"; echo "- D-01 stack" >> "$P/DECISIONS.md"
+  tgq checkpoint "$R" plan "tasks"
+  check "plan approve" expect_exit 0 tg approve "$R" plan "chore: plan"
+  check "plan's TASKS.md landed" contains "$(on_main TASKS.md)" "T-03: Backlog"
+  check "plan's DECISIONS.md landed" contains "$(on_main DECISIONS.md)" "D-01 stack"
+fi
+
+if scenario scope_reverts_out_of_scope_files; then
+  new_repo scope; W=$(tg start "$R" T-11); mkdir -p "$W/tests" "$W/src"
+  echo "def test(): pass" > "$W/tests/test_x.py"; echo "hacked" >> "$W/shared_code.py"; echo "new" > "$W/src/sneaky.py"
+  out=$(tg scope "$R" T-11 tester)
+  check "reports reverted files" contains "$out" "REVERTED 2"
+  check "test file kept" test -f "$W/tests/test_x.py"
+  check "tracked file restored" test "$(cat "$W/shared_code.py")" = "x = 1"
+  check "untracked out-of-scope file removed" test ! -e "$W/src/sneaky.py"
+fi
+
+# ---- summary ---------------------------------------------------------------------------
+echo
+echo "taskgit scenarios: $PASS passed, $FAIL failed"
+for f in "${FAILED[@]}"; do echo "  FAILED: $f"; done
+(( FAIL == 0 ))
