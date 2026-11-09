@@ -1,16 +1,6 @@
 ---
 name: devops
-description: |
-  Use this agent when CI, Docker builds or deployment (GCP, Vercel, Render) are needed. Part of the /setup-project dev team; spawned by the Orchestrator with a task brief.
-
-  <example>
-  Context: The project's first milestone is done and needs CI
-  user: "/setup-project — continue"
-  assistant: "Spawn devops to add GitHub Actions."
-  <commentary>
-  The task matches this agent's role on the team.
-  </commentary>
-  </example>
+description: "Use this agent when CI, Docker builds or deployment (GCP, Vercel, Render) are needed. Part of the /setup-project dev team; the Orchestrator spawns it with a task brief."
 model: sonnet
 color: green
 tools: ["Bash", "Read", "Write", "Edit", "Glob"]

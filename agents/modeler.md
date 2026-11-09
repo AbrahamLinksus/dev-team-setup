@@ -1,16 +1,6 @@
 ---
 name: modeler
-description: |
-  Use this agent when a task needs feature engineering and classical ML models (regression, tree ensembles, XGBoost/LightGBM, clustering) or time-series forecasting. Part of the /setup-project dev team; spawned by the Orchestrator with a task brief.
-
-  <example>
-  Context: EDA findings for T-04 are approved
-  user: "/setup-project — continue"
-  assistant: "Spawn modeler for T-05 'Churn model v1'."
-  <commentary>
-  The task matches this agent's role on the team.
-  </commentary>
-  </example>
+description: "Use this agent when a task needs feature engineering and classical ML models (regression, tree ensembles, XGBoost/LightGBM, clustering) or time-series forecasting. Part of the /setup-project dev team; the Orchestrator spawns it with a task brief."
 model: sonnet
 color: magenta
 tools: ["Bash", "Read", "Write", "Edit", "Glob"]

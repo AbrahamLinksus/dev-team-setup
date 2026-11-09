@@ -1,16 +1,6 @@
 ---
 name: statistician
-description: |
-  Use this agent when hypothesis tests, A/B test analysis, confidence intervals, power analysis or causal inference are needed. Part of the /setup-project dev team; spawned by the Orchestrator with a task brief.
-
-  <example>
-  Context: T-06 'Did the new onboarding raise retention?' is ready
-  user: "/setup-project — continue"
-  assistant: "Spawn statistician with the task brief."
-  <commentary>
-  The task matches this agent's role on the team.
-  </commentary>
-  </example>
+description: "Use this agent when hypothesis tests, A/B test analysis, confidence intervals, power analysis or causal inference are needed. Part of the /setup-project dev team; the Orchestrator spawns it with a task brief."
 model: opus
 color: blue
 tools: ["Bash", "Read", "Write", "Glob"]

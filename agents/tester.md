@@ -1,16 +1,6 @@
 ---
 name: tester
-description: |
-  Use this agent when a task's code is written and needs unit/integration tests run against its acceptance criteria. Part of the /setup-project dev team; spawned by the Orchestrator with a task brief.
-
-  <example>
-  Context: backend-coder finished T-07
-  user: "/setup-project — continue"
-  assistant: "Spawn tester to cover T-07's acceptance criteria."
-  <commentary>
-  The task matches this agent's role on the team.
-  </commentary>
-  </example>
+description: "Use this agent when a task's code is written and needs unit/integration tests run against its acceptance criteria. Part of the /setup-project dev team; the Orchestrator spawns it with a task brief."
 model: sonnet
 color: yellow
 tools: ["Read", "Write", "Edit", "Bash", "Glob", "Grep"]

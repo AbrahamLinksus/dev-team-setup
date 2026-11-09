@@ -51,7 +51,8 @@ class StructureTest(unittest.TestCase):
                 fm = frontmatter(path)
                 self.assertEqual(fm["name"], path.stem)
                 self.assertIn(fm["model"], {"opus", "sonnet", "haiku", "inherit"})
-                self.assertIn("<example>", fm["description"])
+                # the Claude app rejects XML-like tags in descriptions
+                self.assertNotRegex(fm["description"], r"[<>]")
                 tools = fm.get("tools", [])
                 unknown = {t for t in tools if t not in KNOWN_TOOLS and not t.startswith("mcp__")}
                 self.assertFalse(unknown, unknown)
@@ -72,6 +73,11 @@ class StructureTest(unittest.TestCase):
             fm = frontmatter(path)
             if "Bash" not in fm.get("tools", []):
                 self.assertEqual(scopes["agents"][path.stem].get("bash", "none"), "none", path.stem)
+
+    def test_skill_description_has_no_tags(self):
+        fm = frontmatter(SKILL / "SKILL.md")
+        self.assertNotRegex(fm["description"], r"[<>]")   # "description cannot contain XML tags"
+        self.assertLessEqual(len(fm["description"]), 1024)
 
     def test_skill_references_exist(self):
         text = (SKILL / "SKILL.md").read_text()

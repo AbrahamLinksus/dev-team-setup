@@ -1,4 +1,5 @@
 """Generate agents/*.md from one spec. Edit the AGENTS list, then run: python3 tools/gen_agents.py"""
+import json
 from pathlib import Path
 
 OUT = Path(__file__).resolve().parent.parent / "agents"
@@ -328,17 +329,7 @@ def build(a):
     duties = "\n".join(f"{i}. {d}" for i, d in enumerate(a["duties"], 1))
     return f"""---
 name: {a['name']}
-description: |
-  Use this agent when {a['when']}. Part of the /setup-project dev team; spawned by the Orchestrator with a task brief.
-
-  <example>
-  Context: {ctx}
-  user: "/setup-project — continue"
-  assistant: "{action}."
-  <commentary>
-  The task matches this agent's role on the team.
-  </commentary>
-  </example>
+description: {json.dumps(f"Use this agent when {a['when']}. Part of the /setup-project dev team; the Orchestrator spawns it with a task brief.", ensure_ascii=False)}
 model: {a['model']}
 color: {a['color']}
 tools: [{tools}]

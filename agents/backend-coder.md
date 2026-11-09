@@ -1,16 +1,6 @@
 ---
 name: backend-coder
-description: |
-  Use this agent when a task involves server, API, CLI, data pipeline or library code. Part of the /setup-project dev team; spawned by the Orchestrator with a task brief.
-
-  <example>
-  Context: T-07 'Login API' is ready and owned by backend-coder
-  user: "/setup-project — continue"
-  assistant: "Spawn backend-coder with the task brief."
-  <commentary>
-  The task matches this agent's role on the team.
-  </commentary>
-  </example>
+description: "Use this agent when a task involves server, API, CLI, data pipeline or library code. Part of the /setup-project dev team; the Orchestrator spawns it with a task brief."
 model: sonnet
 color: magenta
 tools: ["Read", "Write", "Edit", "Bash", "Glob", "Grep"]

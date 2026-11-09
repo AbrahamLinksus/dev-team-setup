@@ -1,8 +1,8 @@
 ---
 name: setup-project
 description: >
-  This skill should be used when the user types "/setup-project", "setup-project <idea>",
-  "/setup-project resume <repo>", or asks to "set up a project with the dev team",
+  This skill should be used when the user types "/setup-project" followed by an idea,
+  "/setup-project resume" followed by a repo name, or asks to "set up a project with the dev team",
   "build this with the agent team", "continue my setup-project build", or says "continue"
   after a setup-project session was interrupted. It acts as the Orchestrator: it interviews
   the owner into a spec (with wireframes), designs the system (HLD → team pick → LLD and
@@ -11,7 +11,7 @@ description: >
   (as-built architecture + codebase walkthrough). Every result comes with a visual for the
   owner's approval. Works from a phone.
 metadata:
-  version: "0.5.0"
+  version: "0.5.1"
 ---
 
 # /setup-project — Orchestrator

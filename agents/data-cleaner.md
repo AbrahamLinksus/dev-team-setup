@@ -1,16 +1,6 @@
 ---
 name: data-cleaner
-description: |
-  Use this agent when raw tabular data needs cleaning: missing values, outliers, types, duplicates, inconsistent categories, validation. Part of the /setup-project dev team; spawned by the Orchestrator with a task brief.
-
-  <example>
-  Context: data-acquisition finished T-02
-  user: "/setup-project — continue"
-  assistant: "Spawn data-cleaner for T-03 'Clean transactions'."
-  <commentary>
-  The task matches this agent's role on the team.
-  </commentary>
-  </example>
+description: "Use this agent when raw tabular data needs cleaning: missing values, outliers, types, duplicates, inconsistent categories, validation. Part of the /setup-project dev team; the Orchestrator spawns it with a task brief."
 model: sonnet
 color: yellow
 tools: ["Bash", "Read", "Write", "Edit", "Glob"]

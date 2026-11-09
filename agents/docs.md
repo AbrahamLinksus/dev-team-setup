@@ -1,16 +1,6 @@
 ---
 name: docs
-description: |
-  Use this agent when the README, API docs or architecture notes need writing or updating, usually at the end of a milestone. Part of the /setup-project dev team; spawned by the Orchestrator with a task brief.
-
-  <example>
-  Context: Milestone 2 is complete
-  user: "/setup-project — continue"
-  assistant: "Spawn docs to update the README and architecture notes."
-  <commentary>
-  The task matches this agent's role on the team.
-  </commentary>
-  </example>
+description: "Use this agent when the README, API docs or architecture notes need writing or updating, usually at the end of a milestone. Part of the /setup-project dev team; the Orchestrator spawns it with a task brief."
 model: haiku
 color: green
 tools: ["Read", "Write", "Edit", "Glob"]

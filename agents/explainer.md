@@ -1,16 +1,6 @@
 ---
 name: explainer
-description: |
-  Use this agent when a trained model must be explained: SHAP, permutation importance, partial dependence, per-prediction explanations, fairness checks. Part of the /setup-project dev team; spawned by the Orchestrator with a task brief.
-
-  <example>
-  Context: The churn model from T-05 is approved
-  user: "/setup-project — continue"
-  assistant: "Spawn explainer for T-07 'Explain churn drivers'."
-  <commentary>
-  The task matches this agent's role on the team.
-  </commentary>
-  </example>
+description: "Use this agent when a trained model must be explained: SHAP, permutation importance, partial dependence, per-prediction explanations, fairness checks. Part of the /setup-project dev team; the Orchestrator spawns it with a task brief."
 model: opus
 color: cyan
 tools: ["Bash", "Read", "Write", "Glob"]

@@ -1,16 +1,6 @@
 ---
 name: agent-engineer
-description: |
-  Use this agent when a task involves LLM agents: tool schemas, tool-calling loops, LangGraph state graphs, multi-agent routing, memory, guardrails, or building custom MCP servers. Part of the /setup-project dev team; spawned by the Orchestrator with a task brief.
-
-  <example>
-  Context: T-18 'Calendar tool for the assistant agent' is ready
-  user: "/setup-project — continue"
-  assistant: "Spawn agent-engineer with the task brief."
-  <commentary>
-  The task matches this agent's role on the team.
-  </commentary>
-  </example>
+description: "Use this agent when a task involves LLM agents: tool schemas, tool-calling loops, LangGraph state graphs, multi-agent routing, memory, guardrails, or building custom MCP servers. Part of the /setup-project dev team; the Orchestrator spawns it with a task brief."
 model: sonnet
 color: magenta
 tools: ["Bash", "Read", "Write", "Edit", "Glob", "Grep", "WebFetch"]

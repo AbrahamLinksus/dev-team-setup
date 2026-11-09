@@ -1,16 +1,6 @@
 ---
 name: mlops
-description: |
-  Use this agent when a model must be served (FastAPI + Docker), versioned, or monitored for drift and performance. Part of the /setup-project dev team; spawned by the Orchestrator with a task brief.
-
-  <example>
-  Context: The model from T-12 is approved and must be served
-  user: "/setup-project — continue"
-  assistant: "Spawn mlops to build the inference service."
-  <commentary>
-  The task matches this agent's role on the team.
-  </commentary>
-  </example>
+description: "Use this agent when a model must be served (FastAPI + Docker), versioned, or monitored for drift and performance. Part of the /setup-project dev team; the Orchestrator spawns it with a task brief."
 model: sonnet
 color: green
 tools: ["Bash", "Read", "Write", "Edit", "Glob"]

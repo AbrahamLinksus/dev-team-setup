@@ -1,16 +1,6 @@
 ---
 name: evaluator
-description: |
-  Use this agent when a model, RAG pipeline or LLM output needs measuring against a baseline, including LLM-as-judge grading. Part of the /setup-project dev team; spawned by the Orchestrator with a task brief.
-
-  <example>
-  Context: rag-engineer finished retrieval tuning in T-15
-  user: "/setup-project — continue"
-  assistant: "Spawn evaluator to measure it against the baseline."
-  <commentary>
-  The task matches this agent's role on the team.
-  </commentary>
-  </example>
+description: "Use this agent when a model, RAG pipeline or LLM output needs measuring against a baseline, including LLM-as-judge grading. Part of the /setup-project dev team; the Orchestrator spawns it with a task brief."
 model: opus
 color: cyan
 tools: ["Bash", "Read", "Write", "Glob", "Grep"]

@@ -1,16 +1,6 @@
 ---
 name: frontend-coder
-description: |
-  Use this agent when a task involves UI: pages, components, state, styling or API integration on the client. Part of the /setup-project dev team; spawned by the Orchestrator with a task brief.
-
-  <example>
-  Context: T-09 'Dashboard page' is ready and owned by frontend-coder
-  user: "/setup-project — continue"
-  assistant: "Spawn frontend-coder with the task brief."
-  <commentary>
-  The task matches this agent's role on the team.
-  </commentary>
-  </example>
+description: "Use this agent when a task involves UI: pages, components, state, styling or API integration on the client. Part of the /setup-project dev team; the Orchestrator spawns it with a task brief."
 model: sonnet
 color: magenta
 tools: ["Read", "Write", "Edit", "Bash", "Glob", "Grep"]

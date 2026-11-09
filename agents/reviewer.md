@@ -1,16 +1,6 @@
 ---
 name: reviewer
-description: |
-  Use this agent when a task has passed its tests and needs a read-only review for bugs, security, edge cases, LLD violations and style. Part of the /setup-project dev team; spawned by the Orchestrator with a task brief.
-
-  <example>
-  Context: tester reports T-07 tests pass
-  user: "/setup-project — continue"
-  assistant: "Spawn reviewer for a read-only review of T-07's changes."
-  <commentary>
-  The task matches this agent's role on the team.
-  </commentary>
-  </example>
+description: "Use this agent when a task has passed its tests and needs a read-only review for bugs, security, edge cases, LLD violations and style. Part of the /setup-project dev team; the Orchestrator spawns it with a task brief."
 model: opus
 color: red
 tools: ["Read", "Write", "Grep", "Glob"]

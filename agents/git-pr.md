@@ -1,16 +1,6 @@
 ---
 name: git-pr
-description: |
-  Use this agent when an approved task must be squashed into main, a rejected task discarded, or the repo prepared. Part of the /setup-project dev team; spawned by the Orchestrator with a task brief.
-
-  <example>
-  Context: The owner approved the result card for T-07
-  user: "/setup-project — continue"
-  assistant: "Spawn git-pr to approve T-07."
-  <commentary>
-  The task matches this agent's role on the team.
-  </commentary>
-  </example>
+description: "Use this agent when an approved task must be squashed into main, a rejected task discarded, or the repo prepared. Part of the /setup-project dev team; the Orchestrator spawns it with a task brief."
 model: haiku
 color: yellow
 tools: ["Bash", "Read", "Write"]

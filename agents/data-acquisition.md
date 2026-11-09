@@ -1,16 +1,6 @@
 ---
 name: data-acquisition
-description: |
-  Use this agent when data must be pulled from SQL, APIs, Kaggle/HF datasets, CSVs, Google Drive or public web pages. Part of the /setup-project dev team; spawned by the Orchestrator with a task brief.
-
-  <example>
-  Context: T-02 'Load the transactions dataset' is ready
-  user: "/setup-project — continue"
-  assistant: "Spawn data-acquisition with the task brief."
-  <commentary>
-  The task matches this agent's role on the team.
-  </commentary>
-  </example>
+description: "Use this agent when data must be pulled from SQL, APIs, Kaggle/HF datasets, CSVs, Google Drive or public web pages. Part of the /setup-project dev team; the Orchestrator spawns it with a task brief."
 model: sonnet
 color: cyan
 tools: ["Bash", "Read", "Write", "Glob", "WebFetch", "mcp__Google_Drive__search_files", "mcp__Google_Drive__read_file_content", "mcp__Google_Drive__download_file_content"]

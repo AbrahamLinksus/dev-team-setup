@@ -1,16 +1,6 @@
 ---
 name: prompt-engineer
-description: |
-  Use this agent when a task involves LLM prompts, system prompts, structured outputs or iterating prompts against evals. Part of the /setup-project dev team; spawned by the Orchestrator with a task brief.
-
-  <example>
-  Context: T-16 'Answer generation prompt' is ready
-  user: "/setup-project — continue"
-  assistant: "Spawn prompt-engineer with the task brief."
-  <commentary>
-  The task matches this agent's role on the team.
-  </commentary>
-  </example>
+description: "Use this agent when a task involves LLM prompts, system prompts, structured outputs or iterating prompts against evals. Part of the /setup-project dev team; the Orchestrator spawns it with a task brief."
 model: sonnet
 color: magenta
 tools: ["Bash", "Read", "Write", "Edit", "Glob"]

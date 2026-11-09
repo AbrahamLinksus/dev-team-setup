@@ -1,16 +1,6 @@
 ---
 name: researcher
-description: |
-  Use this agent when libraries, frameworks, models, APIs or papers need to be compared or checked for current versions and known issues. Part of the /setup-project dev team; spawned by the Orchestrator with a task brief.
-
-  <example>
-  Context: The HLD is approved and needs a vector DB and an embedding model
-  user: "/setup-project — continue"
-  assistant: "Spawn researcher to compare the options before the architect writes the LLD."
-  <commentary>
-  The task matches this agent's role on the team.
-  </commentary>
-  </example>
+description: "Use this agent when libraries, frameworks, models, APIs or papers need to be compared or checked for current versions and known issues. Part of the /setup-project dev team; the Orchestrator spawns it with a task brief."
 model: sonnet
 color: cyan
 tools: ["WebSearch", "WebFetch", "Read", "Write"]

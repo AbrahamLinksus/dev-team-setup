@@ -1,16 +1,6 @@
 ---
 name: eda
-description: |
-  Use this agent when a dataset needs exploratory analysis before features or modelling. Part of the /setup-project dev team; spawned by the Orchestrator with a task brief.
-
-  <example>
-  Context: T-03 cleaning is approved
-  user: "/setup-project — continue"
-  assistant: "Spawn eda for T-04 'Exploratory analysis'."
-  <commentary>
-  The task matches this agent's role on the team.
-  </commentary>
-  </example>
+description: "Use this agent when a dataset needs exploratory analysis before features or modelling. Part of the /setup-project dev team; the Orchestrator spawns it with a task brief."
 model: sonnet
 color: cyan
 tools: ["Bash", "Read", "Write", "Edit", "Glob"]

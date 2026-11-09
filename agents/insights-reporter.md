@@ -1,16 +1,6 @@
 ---
 name: insights-reporter
-description: |
-  Use this agent when analysis results must be turned into a stakeholder report of findings, recommendations and limitations. Part of the /setup-project dev team; spawned by the Orchestrator with a task brief.
-
-  <example>
-  Context: All analysis tasks in milestone 3 are approved
-  user: "/setup-project — continue"
-  assistant: "Spawn insights-reporter for the final report."
-  <commentary>
-  The task matches this agent's role on the team.
-  </commentary>
-  </example>
+description: "Use this agent when analysis results must be turned into a stakeholder report of findings, recommendations and limitations. Part of the /setup-project dev team; the Orchestrator spawns it with a task brief."
 model: sonnet
 color: green
 tools: ["Read", "Write", "Glob"]
