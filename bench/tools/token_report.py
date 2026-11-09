@@ -13,9 +13,9 @@ replies (each counted once); the difference is shown as "background calls".
 Older logs without cost-state fall back to replies only and are marked as a lower bound.
 
 Usage (run from the folder you started `claude` in, or pass --project-dir):
-  python3 bench/token_report.py --latest               # newest session
-  python3 bench/token_report.py --session <id> [...]   # specific sessions
-  python3 bench/token_report.py --since 2026-11-09T10:00   # every session started after this
+  python3 bench/tools/token_report.py --latest               # newest session
+  python3 bench/tools/token_report.py --session <id> [...]   # specific sessions
+  python3 bench/tools/token_report.py --since 2026-11-09T10:00   # every session started after this
   add --label "plugin run" for the summary row, --json for machine-readable output
 """
 from __future__ import annotations

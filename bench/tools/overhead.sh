@@ -3,7 +3,7 @@
 # The difference in input tokens is what the plugin adds to every session (skill + agent
 # descriptions). Restores the plugin to enabled when done.
 #
-# Run: bash bench/overhead.sh            (plugin installed as dev-team-setup@dev-team-setup)
+# Run: bash bench/tools/overhead.sh          (plugin installed as dev-team-setup@dev-team-setup)
 set -uo pipefail
 PLUGIN=${PLUGIN:-dev-team-setup@dev-team-setup}
 RUNS=${RUNS:-3}

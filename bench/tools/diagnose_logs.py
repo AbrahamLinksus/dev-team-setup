@@ -3,7 +3,7 @@
 any message text, so token_report.py can be checked against /cost.
 
 Run from the folder you started `claude` in:
-  python3 ~/dev-team-setup/bench/diagnose_logs.py
+  python3 ~/dev-team-setup/bench/tools/diagnose_logs.py
 """
 import json
 import re

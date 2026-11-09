@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Black-box acceptance test for bench/spec.md, the same for both runs.
+"""Black-box acceptance test for bench/small/spec.md, the same for both runs.
 
 Start the app first (follow its README), then:
-  python3 bench/acceptance.py http://localhost:8000
+  python3 ~/dev-team-setup/bench/small/acceptance.py http://localhost:8000
 Standard library only.
 """
 import json
@@ -31,6 +31,12 @@ def call(method, path, body=None):
         return r.status, r.headers, r.read()
     except urllib.error.HTTPError as e:
         return e.code, e.headers, e.read()
+    except urllib.error.URLError as e:
+        if isinstance(e.reason, ConnectionRefusedError):
+            sys.exit(f"Can't reach {BASE}: connection refused. Is the app running?")
+        return 0, {}, b""
+    except (TimeoutError, ConnectionError, OSError):
+        return 0, {}, b""       # hung or dropped: counts as a failed check
 
 
 results = []

@@ -11,7 +11,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-SCRIPT = Path(__file__).resolve().parent.parent / "bench" / "token_report.py"
+SCRIPT = Path(__file__).resolve().parent.parent / "bench" / "tools" / "token_report.py"
 
 
 def usage(i=0, cw=0, cr=0, o=0):

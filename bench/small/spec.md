@@ -1,4 +1,4 @@
-# Benchmark app: link shortener API
+# Small benchmark: link shortener API
 
 Both runs build exactly this. Small on purpose: one service, three endpoints.
 
@@ -14,7 +14,8 @@ Both runs build exactly this. Small on purpose: one service, three endpoints.
 
 ## Stack (fixed)
 Python 3.12+, FastAPI, SQLite via the standard library `sqlite3`, `uv` for the project,
-`pytest` + `pytest-cov`, `ruff`, `mypy --strict`. No other runtime packages.
+`pytest` + `pytest-cov`, `ruff`, `mypy --strict`. Allowed extras: `uvicorn` (to run the app)
+and `httpx` (for FastAPI's test client). No other packages.
 
 ## Quality bar
 - Tests for every endpoint, including the error cases.

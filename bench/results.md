@@ -1,29 +1,64 @@
-# Results
+# Benchmark results
 
-Date: · Claude Code version (`claude --version`): · Plugin version:
+Date: · Claude Code (`claude --version`): · Plugin version: · Model (`/model`):
 
-## Overhead (from overhead.sh)
-| Without plugin | With plugin | Overhead per session |
+## Overhead (Part B)
+| Without plugin | With plugin (steady) | Overhead per model call |
 |---|---|---|
 | | | |
 
-## Tokens (paste the summary rows from token_report.py)
+---
+
+## Small app: link shortener (Part C)
+
+### Tokens and cost (summary rows from token_report.py)
 | Run | All tokens | Output | Cache reads | Subagent tokens | Logged replies | Time | Cost |
 |---|---|---|---|---|---|---|---|
-| baseline | | | | | | | |
-| plugin | | | | | | | |
+| small-normal | | | | | | | |
+| small-plugin | | | | | | | |
 
-## Cost and effort
-| Run | `/cost` (sum of all sessions, cross-check) | Sessions | Your interventions |
+### Effort
+| Run | Sessions | Your interventions | `/cost` sum (cross-check) |
 |---|---|---|---|
-| baseline | | 1 | |
-| plugin | | | |
+| small-normal | 1 | | |
+| small-plugin | | | |
 
-## Outcome (acceptance.py + the row from check_outcome.sh)
-| Run | Acceptance | Tests passed | Failed | Coverage | Ruff errors | Mypy errors | Lines of code | README |
+### Outcome
+| Run | Acceptance | Restart keeps data | Tests passed | Failed | Coverage | Ruff | Mypy | Lines |
 |---|---|---|---|---|---|---|---|---|
-| baseline | /8 | | | | | | | |
-| plugin | /8 | | | | | | | |
+| small-normal | /8 | | | | | | | |
+| small-plugin | /8 | | | | | | | |
+
+---
+
+## Production app: issue tracker (Part D)
+
+### Tokens and cost
+| Run | All tokens | Output | Cache reads | Subagent tokens | Logged replies | Time | Cost |
+|---|---|---|---|---|---|---|---|
+| prod-normal | | | | | | | |
+| prod-plugin | | | | | | | |
+
+### Effort
+| Run | Sessions | Your interventions | `/cost` sum (cross-check) | Finished? |
+|---|---|---|---|---|
+| prod-normal | 1 | | | |
+| prod-plugin | | | | |
+
+### Outcome: API
+| Run | Acceptance | Tests passed | Failed | Coverage | Ruff | Mypy | Lines |
+|---|---|---|---|---|---|---|---|
+| prod-normal | /29 | | | | | | |
+| prod-plugin | /29 | | | | | | |
+
+### Outcome: web, packaging, UI
+| Run | Web build | Web lint | Web tests | README | Dockerfile | Compose | CI | Migrations | .env.example | Docker build | UI works (desktop / phone) |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| prod-normal | | | | | | | | | | | |
+| prod-plugin | | | | | | | | | | | |
+
+---
 
 ## Notes
-- Anything that went wrong, got stuck, or needed extra help:
+- Where a run got stuck, needed nudging, or was stopped (and why):
+- Plugin run, "By agent" table (paste from token_report.py):
