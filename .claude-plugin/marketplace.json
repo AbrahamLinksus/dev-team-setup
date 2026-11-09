@@ -1,0 +1,14 @@
+{
+  "name": "dev-team-setup",
+  "owner": {
+    "name": "Jake Roberts"
+  },
+  "plugins": [
+    {
+      "name": "dev-team-setup",
+      "source": "./",
+      "description": "Turn an idea into a working project with a team of AI agents. You approve every step."
+    }
+  ],
+  "description": "Jake's Claude plugins"
+}
