@@ -201,6 +201,33 @@ class GuardTest(unittest.TestCase):
         self.assertEqual(p.returncode, 2)
         self.assertIn("unrecognized arguments", p.stderr)
 
+    def test_inline_code_blocked_for_readonly(self):
+        # S3: interpreter one-liners bypass every text rule
+        for cmd in [
+            "python3 -c \"import subprocess; subprocess.run(['git','commit','-am','x'])\"",
+            "python3 -c \"import shutil; shutil.rmtree('src')\"",
+            "uv run python -c 'import os; os.remove(\"a\")'",
+            "python -Bc 'print(1)'",
+            "node -e \"require('fs').rmSync('src',{recursive:true})\"",
+            "node --eval 'x'",
+            "perl -pi -e 's/a/b/' src/x.py",
+            "perl -ne 'print' x",
+            "ruby -e 'File.delete(\"x\")'",
+            "php -r 'unlink(\"x\");'",
+            "bash /tmp/script.sh",
+            "sh ./clean.sh",
+            "source /tmp/env.sh",
+            "cd src && python3 -c 'x'",
+        ]:
+            with self.subTest(cmd=cmd):
+                self.assertIsNotNone(self.bash("statistician", cmd))
+        for cmd in ["uv run python /tmp/a.py", "python3 /tmp/a.py --flag", "uv run --with scipy python /tmp/a.py",
+                    "node /tmp/a.js", "grep -rn 'python -c' docs", "bash --version"]:
+            with self.subTest(cmd=cmd, expect="allow"):
+                self.assertIsNone(self.bash("statistician", cmd))
+        # code mode keeps one-liners (the post-step scope revert covers their file changes)
+        self.assertIsNone(self.bash("backend-coder", "python3 -c 'print(1)'"))
+
     def test_no_shell_roles(self):
         for agent in ("reviewer", "researcher", "planner", "architect", "docs", "insights-reporter"):
             with self.subTest(agent=agent):

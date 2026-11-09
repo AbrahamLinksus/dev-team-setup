@@ -207,6 +207,55 @@ def embedded_commands(command: str) -> list[str]:
     return [c for seg in segments(command) or [] for c in inner_commands(strip_wrappers(seg))]
 
 
+RUNNERS = {("uv", "run"), ("poetry", "run"), ("pipenv", "run"), ("pdm", "run"), ("conda", "run")}
+SHELLS = {"bash", "sh", "zsh", "dash", "ksh"}
+# interpreter -> its flags that take code inline
+INLINE_FLAGS = {"node": {"-e", "--eval", "-p", "--print"}, "deno": {"eval"}, "bun": {"-e", "--eval"},
+                "ruby": {"-e"}, "php": {"-r"}}
+INLINE_TEXT = re.compile(r"\b(python[0-9.]*|pypy3?)\s+(-\S+\s+)*-[a-zA-Z]*c|\b(node|bun)\s+(-\S+\s+)*(-e|-p|--eval|--print)\b|"
+                         r"\bperl\s+(-\S+\s+)*-[a-zA-Z]*[eE]|\bruby\s+(-\S+\s+)*-e\b|\bphp\s+-r\b|\b(ba|z|da|k)?sh\s+[^-\s]")
+
+
+def strip_runner(tok: list[str]) -> list[str]:
+    """`uv run [opts] python …` → `python …`."""
+    if len(tok) >= 2 and (os.path.basename(tok[0]), tok[1]) in RUNNERS:
+        i = 2
+        while i < len(tok) and tok[i].startswith("-"):
+            i += 2 if tok[i] in ("--with", "--python", "-p", "--project", "--directory", "-n", "--name") else 1
+        return tok[i:]
+    return tok
+
+
+def inline_code(command: str) -> str | None:
+    """Code run from the command line (python -c, node -e, perl -e, bash script.sh …), which no
+    text rule can inspect. Returns the offending command, or None."""
+    segs = segments(command)
+    if segs is None or "$(" in command or "`" in command:
+        m = INLINE_TEXT.search(command)
+        return m.group(0) if m else None
+    for seg in segs:
+        tok = strip_runner(strip_wrappers(seg))
+        if not tok:
+            continue
+        name, args = os.path.basename(tok[0]), tok[1:]
+        opts = []
+        for a in args:  # options before the script/first argument
+            if not a.startswith("-") and not (name == "deno" and a == "eval"):
+                break
+            opts.append(a)
+        if re.fullmatch(r"python[0-9.]*|pypy3?", name) and any(not o.startswith("--") and "c" in o[1:] for o in opts):
+            return " ".join(tok)[:80]
+        if name == "perl" and any(not o.startswith("--") and set(o[1:]) & {"e", "E"} for o in opts):
+            return " ".join(tok)[:80]
+        if name in INLINE_FLAGS and (set(opts) & INLINE_FLAGS[name] or (name == "deno" and args[:1] == ["eval"])):
+            return " ".join(tok)[:80]
+        if name in SHELLS and "-c" not in args and len(args) > len(opts):
+            return " ".join(tok)[:80]  # runs a script file the guard can't see into
+        if name in ("source", "."):
+            return " ".join(tok)[:80]
+    return None
+
+
 def git_write_in(command: str, depth: int = 0) -> bool:
     segs = segments(command)
     if segs is None or "$(" in command or "`" in command:
@@ -282,6 +331,11 @@ def bash_violation(name: str, command: str, scopes: dict, depth: int = 0) -> str
     if mode != "full" and INSTALL.search(command):
         return "installing or removing packages is a Tier 1 decision: return DECISION NEEDED instead"
     if mode == "readonly":
+        inline = inline_code(command)
+        if inline:
+            return (f"{name} is read-only: inline code (python -c, node -e, perl -e, bash script.sh …) can't be "
+                    f"checked, so it's blocked. Write the script to /tmp with Write and run that file instead. "
+                    f"Blocked: {inline}")
         if WRITE_CMDS.search(command):
             return f"{name} is read-only: file-changing shell commands are blocked (write scratch files with Write under /tmp)"
         for target in REDIRECT.findall(command):
