@@ -129,9 +129,24 @@ INSTALL = re.compile(r"\b(pip3?|uv\s+pip|python3?\s+-m\s+pip)\s+(install|uninsta
                      r"\b(apt|apt-get|brew|conda|mamba)\s+install\b|\bcurl\b[^|]*\|\s*(ba)?sh\b")
 DESTRUCTIVE = re.compile(r"(^|[;&|\n]\s*)\s*(sudo\s+)?(rm\s+-[a-zA-Z]*r[a-zA-Z]*f|rm\s+-[a-zA-Z]*f[a-zA-Z]*r)\s+(/|~|\$HOME)(\s|$)")
 WRITE_CMDS = re.compile(r"(^|[;&|(\n]\s*)(rm|mv|cp|tee|touch|mkdir|rmdir|truncate|chmod|chown|ln|install|dd)\b|\bsed\s+(-[a-zA-Z]*i|--in-place)")
+WRITE_NAMES = {"rm", "mv", "cp", "tee", "touch", "mkdir", "rmdir", "truncate", "chmod", "chown", "ln", "install",
+               "dd", "shred", "unlink", "rsync"}
+FIND_DELETE = re.compile(r"\bfind\b[^|;&\n]*\s-delete\b")
 REDIRECT = re.compile(r"(?<![<>&0-9])(?:\d?>>?|&>)\s*([^\s;&|]+)")
 SEPARATORS = {"&&", "||", ";", "|", "\n", ";;"}
-WRAPPERS = {"sudo", "command", "exec", "env", "time", "nohup", "nice", "builtin"}
+WRAPPERS = {"sudo", "command", "exec", "env", "time", "nohup", "nice", "builtin", "timeout", "watch", "xargs",
+            "parallel", "stdbuf", "ionice", "chronic", "unbuffer", "setsid", "flock", "doas", "caffeinate"}
+# wrapper options that take a separate value (so the value isn't mistaken for the wrapped command)
+WRAPPER_OPT_ARGS = {
+    "sudo": {"-u", "-g", "-C", "-h", "-p", "-U", "-r", "-t"}, "doas": {"-u", "-C"},
+    "env": {"-u", "--unset", "-C", "--chdir", "-S", "--split-string"}, "nice": {"-n", "--adjustment"},
+    "timeout": {"-s", "--signal", "-k", "--kill-after"}, "watch": {"-n", "--interval"},
+    "xargs": {"-I", "-n", "-P", "-L", "-d", "-E", "-s", "-a", "--max-args", "--max-procs", "--delimiter",
+              "--arg-file", "--replace", "--max-lines", "--eof", "--max-chars"},
+    "parallel": {"-j", "--jobs", "-S", "--sshlogin", "-N", "--delay", "--timeout"},
+    "stdbuf": {"-i", "-o", "-e"}, "ionice": {"-c", "-n", "-p"}, "flock": {"-w", "-E"},
+}
+FIND_EXEC = {"-exec", "-execdir", "-ok", "-okdir"}
 PIPE_FILTERS = {"head", "tail", "grep", "wc", "sort", "cut", "uniq", "cat", "less", "jq"}
 
 
@@ -161,10 +176,44 @@ def segments(command: str) -> list[list[str]] | None:
 
 
 def strip_wrappers(tok: list[str]) -> list[str]:
+    """`sudo -u x timeout -s 9 5 xargs -n1 git push` → `git push`."""
     i = 0
-    while i < len(tok) and (tok[i] in WRAPPERS or re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*=.*", tok[i])):
+    while i < len(tok):
+        name = os.path.basename(tok[i])
+        if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*=.*", tok[i]):
+            i += 1
+            continue
+        if name not in WRAPPERS:
+            break
         i += 1
+        takes = WRAPPER_OPT_ARGS.get(name, set())
+        while i < len(tok) and (tok[i].startswith("-") or re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*=.*", tok[i])):
+            i += 2 if tok[i] in takes else 1
+        if name in ("timeout", "flock") and i < len(tok):
+            i += 1  # the duration / lock file
+        if name == "watch" and i == len(tok) - 1 and " " in tok[i]:
+            try:  # watch 'git push' runs its single argument through sh -c
+                return strip_wrappers(shlex.split(tok[i]))
+            except ValueError:
+                return tok[i:]
     return tok[i:]
+
+
+def find_exec_cmds(tok: list[str]) -> list[str]:
+    """`find . -exec git commit -m x {} ;` → ["git commit -m x {}"]."""
+    if not tok or os.path.basename(tok[0]) != "find":
+        return []
+    out, i = [], 0
+    while i < len(tok):
+        if tok[i] in FIND_EXEC:
+            j = i + 1
+            while j < len(tok) and tok[j] not in (";", "+"):
+                j += 1
+            if j > i + 1:
+                out.append(shlex.join(tok[i + 1:j]))
+            i = j
+        i += 1
+    return out
 
 
 def git_sub(tok: list[str]) -> tuple[str, list[str]]:
@@ -199,7 +248,7 @@ def inner_commands(tok: list[str]) -> list[str]:
         return tok[i + 1:i + 2]
     if tok[0] == "eval":
         return [" ".join(tok[1:])]
-    return capture_cmds(tok)
+    return capture_cmds(tok) + find_exec_cmds(tok)
 
 
 def embedded_commands(command: str) -> list[str]:
@@ -336,7 +385,9 @@ def bash_violation(name: str, command: str, scopes: dict, depth: int = 0) -> str
             return (f"{name} is read-only: inline code (python -c, node -e, perl -e, bash script.sh …) can't be "
                     f"checked, so it's blocked. Write the script to /tmp with Write and run that file instead. "
                     f"Blocked: {inline}")
-        if WRITE_CMDS.search(command):
+        hidden = [strip_wrappers(seg) for seg in segments(command) or []]
+        if WRITE_CMDS.search(command) or FIND_DELETE.search(command) or any(
+                tok and os.path.basename(tok[0]) in WRITE_NAMES for tok in hidden):
             return f"{name} is read-only: file-changing shell commands are blocked (write scratch files with Write under /tmp)"
         for target in REDIRECT.findall(command):
             t = target.strip("'\"")

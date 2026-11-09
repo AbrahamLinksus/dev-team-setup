@@ -228,6 +228,31 @@ class GuardTest(unittest.TestCase):
         # code mode keeps one-liners (the post-step scope revert covers their file changes)
         self.assertIsNone(self.bash("backend-coder", "python3 -c 'print(1)'"))
 
+    def test_wrapped_commands_are_unwrapped(self):
+        # S4: xargs / find -exec / timeout / watch / parallel hid git writes from the guard
+        for cmd in [
+            "echo origin | xargs git push",
+            "xargs -n 1 -I {} git push {} main < remotes.txt",
+            "find . -name '*.py' -exec git commit -m x {} \\;",
+            "find . -execdir git rm {} +",
+            "timeout 30 git push origin main",
+            "timeout -s KILL 5 git push",
+            "watch -n 1 git push",
+            "watch 'git push origin main'",
+            "parallel git push ::: origin",
+            "sudo -u me env FOO=1 nice -n 5 git commit -am x",
+        ]:
+            with self.subTest(cmd=cmd):
+                self.assertIsNotNone(self.bash("backend-coder", cmd))
+        for cmd in ["find src -name '*.tmp' -delete", "find . -exec rm {} \\;", "ls | xargs rm",
+                    "timeout 5 touch x", "xargs -a list.txt mv -t old/"]:
+            with self.subTest(agent="statistician", cmd=cmd):
+                self.assertIsNotNone(self.bash("statistician", cmd))
+        for cmd in ["timeout 60 uv run pytest -q", "find . -name '*.py' -exec grep -l TODO {} \\;",
+                    "git ls-files | xargs wc -l", "watch -n 5 git status"]:
+            with self.subTest(cmd=cmd, expect="allow"):
+                self.assertIsNone(self.bash("backend-coder", cmd))
+
     def test_no_shell_roles(self):
         for agent in ("reviewer", "researcher", "planner", "architect", "docs", "insights-reporter"):
             with self.subTest(agent=agent):
