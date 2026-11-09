@@ -38,7 +38,13 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 GUARD="$HERE/../../../hooks/scope_guard.py"
 
 die() { local code=$1; shift; printf 'TASKGIT ERROR: %b\n' "$*" >&2; exit "$code"; }
-usage() { sed -n '2,/^set -uo/p' "$0" | sed 's/^# \{0,1\}//' | head -n -1 >&2; exit 1; }
+usage() { sed -n '2,/^set -uo/p' "$0" | sed 's/^# \{0,1\}//' | sed '$d' >&2; exit 1; }
+# Portable to macOS: its /bin/bash is 3.2 (no mapfile) and its tools are BSD (no grep -P, stat -c).
+read_lines() {  # read_lines <array-name> < input: one array element per line
+  local __line; eval "$1=()"
+  while IFS= read -r __line || [[ -n "$__line" ]]; do eval "$1+=(\"\$__line\")"; done
+}
+file_size() { wc -c < "$1" | tr -d ' '; }
 
 cmd=${1:-}; [[ -z "$cmd" ]] && usage
 repo=${2:-}; [[ -z "$repo" ]] && usage
@@ -56,11 +62,12 @@ push_branch() {  # push_branch <dir> <branch>; quiet on success
 
 blocked_files() {
   local bad
-  bad=$(git -C "$1" diff --cached --name-only | grep -P '(^|/)\.env$|(^|/)\.env\.(?!example$)|\.pem$|\.key$|^\.results/' || true)
+  bad=$(git -C "$1" diff --cached --name-only | grep -E '(^|/)\.env(\..+)?$|\.pem$|\.key$|^\.results/' \
+        | grep -Ev '(^|/)\.env\.example$' || true)
   [[ -n "$bad" ]] && { git -C "$1" reset -q; die 2 "refusing to commit secrets/results: $bad"; }
   local f big=""
   while IFS= read -r f; do
-    [[ -f "$1/$f" ]] && (( $(stat -c %s "$1/$f") > 20971520 )) && big+="$f "
+    [[ -f "$1/$f" ]] && (( $(file_size "$1/$f") > 20971520 )) && big+="$f "
   done < <(git -C "$1" diff --cached --name-only)
   [[ -n "$big" ]] && { git -C "$1" reset -q; die 2 "files over 20MB staged: $big"; }
   return 0
@@ -221,9 +228,9 @@ case "$cmd" in
       gw reset -q "$base" || die 1 "could not undo commits the agent made on wip/$id"
       echo "scope: undid $n commit(s) the agent made itself; their changes are checked below" >&2
     fi
-    mapfile -t changed < <(gw status --porcelain --untracked-files=all | sed -E 's/^.. //; s/.* -> //')
+    read_lines changed < <(gw status --porcelain --untracked-files=all | sed -E 's/^.. //; s/.* -> //')
     (( ${#changed[@]} == 0 )) && { echo "scope: no changes"; exit 0; }
-    mapfile -t bad < <(python3 "$GUARD" --check "$agent" "$wt" "${changed[@]}" | tr -d '\r')
+    read_lines bad < <(python3 "$GUARD" --check "$agent" "$wt" "${changed[@]}" | tr -d '\r')
     if (( ${#bad[@]} == 0 )); then echo "scope: ${#changed[@]} changed file(s), all within $agent's scope"; exit 0; fi
     for f in "${bad[@]}"; do
       if gw ls-files --error-unmatch -- "$f" >/dev/null 2>&1; then gw checkout -q HEAD -- "$f"; else rm -rf -- "$wt/$f"; fi
