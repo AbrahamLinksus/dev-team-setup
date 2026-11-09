@@ -5,7 +5,7 @@
 | Field | Value |
 |---|---|
 | Problem | {{one-line problem}} |
-| Repo | AbrahamLinksus/{{repo}} ({{private/public}}) |
+| Repo | {{github_owner}}/{{repo}} ({{private/public}}) |
 | Stage | {{1 Team pick · 3 HLD · 4 LLD · 5 Env · 6 Tasks · 7 Build}} |
 | Milestone | {{M2 · name}} ({{done}}/{{total}} tasks) |
 | Next step | {{T-08 · owner · what}} |
@@ -18,7 +18,7 @@
 ## Open work
 - Tasks in progress live on `wip/*` branches (see `taskgit.sh list`); their step states are in each branch's TASK_PROGRESS.md.
 
-## Open decisions (waiting for Jake)
+## Open decisions (waiting for the owner)
 - none
 
 ## How to run

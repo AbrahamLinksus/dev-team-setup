@@ -1,0 +1,13 @@
+{
+  "description": "dev-team-setup scope guard: enforces each /setup-project agent's file and shell limits. Only acts on this plugin's agents.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit|Bash",
+        "hooks": [
+          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}\"/hooks/scope_guard.py", "timeout": 10 }
+        ]
+      }
+    ]
+  }
+}

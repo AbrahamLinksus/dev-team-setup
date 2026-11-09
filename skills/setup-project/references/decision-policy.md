@@ -1,6 +1,6 @@
 # Decision policy
 
-## Tier 1: Jake decides (stop work, ask)
+## Tier 1: the owner decides (stop work, ask)
 
 - Architecture, module boundaries, data flow
 - Stack, frameworks, languages, databases, vector DBs, hosting
@@ -22,11 +22,11 @@
 - Hyperparameter search ranges inside an approved budget
 
 Each Tier 2 decision is one line in the agent's report → the Orchestrator appends it to
-`DECISIONS.md` and lists it on the result card, where Jake can overrule it.
+`DECISIONS.md` and lists it on the result card, where the owner can overrule it.
 
 ## How agents escalate
 
-A subagent cannot ask Jake directly. When it hits a Tier 1 decision it stops and returns:
+A subagent cannot ask the owner directly. When it hits a Tier 1 decision it stops and returns:
 
 ```
 DECISION NEEDED
@@ -38,7 +38,7 @@ Recommended: <A/B> because <reason>
 Affects: <files / tasks / cost>
 ```
 
-## Decision card (what the Orchestrator sends Jake)
+## Decision card (what the Orchestrator sends the owner)
 
 Use AskUserQuestion: the question holds the context in ≤2 lines; 2–4 options, with
 the recommended one first and labelled "(Recommended)"; each option's description holds
@@ -48,5 +48,5 @@ Log every Tier 1 answer in `DECISIONS.md`:
 
 ```
 | ID | Date | Decision | Chosen | Alternatives | Decided by | Task |
-| D-07 | 2026-11-09 | Vector DB | Qdrant | pgvector, Chroma | Jake | T-04 |
+| D-07 | 2026-11-09 | Vector DB | Qdrant | pgvector, Chroma | the owner | T-04 |
 ```

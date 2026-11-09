@@ -27,7 +27,7 @@ Owner: backend-coder · Started: 2026-11-09 14:20 IST
 Debugger rounds: 0/3
 Open decision: none
 <!-- or: Open decision: D-12 token expiry — options A) 15 min B) 1 h — asked 14:32 -->
-Jake's change requests: none
+the owner's change requests: none
 ```
 
 Status: ⬜ pending · ⏳ in progress · ✅ done · ❌ failed.
@@ -36,9 +36,13 @@ Status: ⬜ pending · ⏳ in progress · ✅ done · ❌ failed.
 
 1. Set the step to ⏳ and checkpoint: `$TASKGIT checkpoint <repo> <id> "<step> started"`.
 2. Spawn the agent.
-3. When it returns: set ✅ (or ❌ with the reason), add the note, checkpoint
-   `"<step> done"`.
-4. Only then spawn the next agent.
+3. When it returns: `$TASKGIT scope <repo> <id> <agent>` (reverts out-of-scope files).
+4. Set ✅ (or ❌ with the reason), add the note, checkpoint `"<step> done"`.
+5. Only then spawn the next agent.
+
+Shared files (`TASKS.md`, `STATE.md`, `DECISIONS.md`) are never changed on task branches
+(`checkpoint` reverts them). They're updated in the main checkout after `approve`, and
+committed with `$TASKGIT record`. That's what keeps parallel tasks from conflicting.
 
 A step marked ⏳ on resume was interrupted: restart it from the beginning (its partial
 files are on the branch; the agent reads them and continues).
@@ -54,10 +58,10 @@ for each branch:
     uv sync / npm ci in wt                   # deps are already approved
     if any step ✅ involved code: run scripts/check.sh once
         fails → mark the failing step ⏳ again and restart from it
-    open decision? → ask Jake again (AskUserQuestion)
+    open decision? → ask the owner again (AskUserQuestion)
     else → restart the first step that isn't ✅
 no wip branches               → read STATE.md "Next step" and continue from TASKS.md
 ```
 
-Tell Jake in one line where it resumed, e.g. "Resumed todo-app at T-07 · review step
+Tell the owner in one line where it resumed, e.g. "Resumed todo-app at T-07 · review step
 (coder ✅, tester ✅)".

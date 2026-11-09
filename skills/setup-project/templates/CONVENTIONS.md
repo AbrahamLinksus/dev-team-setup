@@ -1,6 +1,6 @@
 # CONVENTIONS — {{project}}
 
-> Written by the Architect with the LLD and approved by Jake. Every coder reads this
+> Written by the Architect with the LLD and approved by the owner. Every coder reads this
 > before every task; the Tester enforces section 6 automatically, and the Reviewer
 > enforces sections 2–5.
 

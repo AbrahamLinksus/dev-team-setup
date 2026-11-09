@@ -1,6 +1,6 @@
 # DECISIONS — {{project}}
 
-## Tier 1 — decided by Jake
+## Tier 1 — decided by the owner
 | ID | Date | Decision | Chosen | Alternatives | Task |
 |---|---|---|---|---|---|
 

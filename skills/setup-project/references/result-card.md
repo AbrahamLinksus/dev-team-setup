@@ -34,8 +34,8 @@ Rules:
 
 AskUserQuestion, header `T-07`:
 - **Approve** (or **Accept partial** when any goal is ⚠️/❌): commit + push, status Done
-- **Request changes**: Jake types what; the same owner agent reworks it
-- **Reject**: revert the task's changes; status Backlog with Jake's reason
+- **Request changes**: the owner types what; the same owner agent reworks it
+- **Reject**: revert the task's changes; status Backlog with the owner's reason
 
 The approval covers the push; don't ask about the push separately.
 

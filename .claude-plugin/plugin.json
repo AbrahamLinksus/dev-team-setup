@@ -1,6 +1,6 @@
 {
   "name": "dev-team-setup",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "/setup-project: picks a team of subagents (software, AI/ML, data science) for a project, plans it from HLD down to LLD, builds it task by task, and shows each result with a visual and asks for approval.",
   "author": {
     "name": "Jake Roberts"
@@ -13,5 +13,31 @@
     "ai-engineering",
     "data-science"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "userConfig": {
+    "owner_name": {
+      "type": "string",
+      "title": "Your name",
+      "description": "How the Orchestrator addresses you in decision cards and result cards.",
+      "required": true
+    },
+    "github_owner": {
+      "type": "string",
+      "title": "GitHub user or org",
+      "description": "Owner for the project repos /setup-project creates (e.g. your GitHub username).",
+      "required": true
+    },
+    "approval_mode": {
+      "type": "string",
+      "title": "Approval mode",
+      "description": "every-task = a result card and approval for every task. batch-low-risk = low-risk tasks are approved together in one batch card (high-risk tasks still get their own card).",
+      "default": "every-task"
+    },
+    "cost_mode": {
+      "type": "string",
+      "title": "Cost mode",
+      "description": "quality = models as defined per agent. balanced = Sonnet for reviewer/debugger on low-risk tasks and max 2 debugger rounds.",
+      "default": "quality"
+    }
+  }
 }
