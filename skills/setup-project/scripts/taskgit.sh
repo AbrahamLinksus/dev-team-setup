@@ -16,7 +16,8 @@
 #     and re-runs scripts/check.sh, so a task is always tested against current main.
 #
 # Usage:
-#   taskgit.sh start      <repo> <id>                    create/restore worktree; prints its path
+#   taskgit.sh start      <repo> <id>                    create/restore worktree, install locked deps
+#                                                        (uv/npm/pnpm/yarn; TASKGIT_SKIP_DEPS=1 skips); prints its path
 #   taskgit.sh checkpoint <repo> <id> "<step msg>"       commit all on wip/<id>, push
 #   taskgit.sh scope      <repo> <id> <agent>            revert files <agent> may not change (prints them)
 #   taskgit.sh sync       <repo> <id>                    merge origin/main into wip/<id>, run check.sh, push
@@ -99,6 +100,31 @@ revert_shared_in_wt() {  # branches may not change main-owned files they don't o
   return 0
 }
 
+install_deps() {  # install locked dependencies into a new worktree; uses $id $wt
+  # .venv and node_modules are git-ignored, so a fresh worktree has none, and coders may not
+  # install anything themselves. Lockfiles are already approved, so installing them is not Tier 1.
+  [[ "${TASKGIT_SKIP_DEPS:-0}" == 1 ]] && return 0
+  local log lock dir failed=""
+  local -a cmd
+  log="$(gw rev-parse --absolute-git-dir)/devteam-deps.log"; : > "$log"
+  while IFS= read -r lock; do
+    dir=$(dirname "$lock")
+    case "$(basename "$lock")" in
+      uv.lock)           cmd=(uv sync --frozen) ;;
+      package-lock.json) cmd=(npm ci --no-audit --no-fund) ;;
+      pnpm-lock.yaml)    cmd=(pnpm install --frozen-lockfile) ;;
+      yarn.lock)         cmd=(yarn install --frozen-lockfile) ;;
+      *) continue ;;
+    esac
+    if ! command -v "${cmd[0]}" >/dev/null 2>&1; then failed+="$dir (${cmd[0]} not found) "; continue; fi
+    echo "\$ cd $dir && ${cmd[*]}" >> "$log"
+    (cd "$wt/$dir" && "${cmd[@]}") >> "$log" 2>&1 < /dev/null || failed+="$dir "
+  done < <(cd "$wt" && find . -maxdepth 3 \( -name node_modules -o -name .venv -o -name .git \) -prune -o \
+             \( -name uv.lock -o -name package-lock.json -o -name pnpm-lock.yaml -o -name yarn.lock \) -print | sort)
+  [[ -n "$failed" ]] && echo "warning: installing dependencies failed in: $failed(log: $log). Checks will fail in this worktree until that's fixed; give the log to env-setup." >&2
+  return 0
+}
+
 do_sync() {  # merge origin/main into wip/<id>, run check.sh; uses $id $wt
   g fetch -q origin "$main" || die 3 "fetch failed"
   if gw merge-base --is-ancestor "origin/$main" HEAD; then
@@ -165,6 +191,7 @@ case "$cmd" in
       g worktree add -q -b "$br" "$wt" "origin/$main" 2>/dev/null || g worktree add -q -b "$br" "$wt" "$main" \
         || die 1 "worktree add failed"
     fi
+    install_deps
     mark_step_base
     echo "$wt"
     ;;

@@ -203,6 +203,23 @@ if scenario scope_catches_committed_changes; then
   check "checkpoint pushes only the in-scope change" test "$(git -C "$R" show "origin/wip/T-12:shared_code.py")" = "x = 1"
 fi
 
+if scenario start_installs_locked_deps; then
+  # T1: node_modules/.venv are git-ignored, so fresh worktrees had no dependencies and coders can't install.
+  new_repo deps; mkdir -p "$R/frontend" "$WORK/fakebin"
+  echo '{}' > "$R/frontend/package-lock.json"; git -C "$R" add -A; git -C "$R" commit -qm lock; git -C "$R" push -q 2>/dev/null
+  printf '#!/bin/sh\nmkdir -p node_modules && echo "$*" > node_modules/.installed\n' > "$WORK/fakebin/npm"; chmod +x "$WORK/fakebin/npm"
+  D=$(PATH="$WORK/fakebin:$PATH" tg start "$R" T-13)
+  check "start prints only the worktree path" test "$D" = "$R-wt/T-13"
+  check "npm ci ran in frontend/" contains "$(cat "$D/frontend/node_modules/.installed" 2>/dev/null)" "ci"
+  check "checkpoint still works after the install" expect_exit 0 tg checkpoint "$R" T-13 x
+  D2=$(TASKGIT_SKIP_DEPS=1 PATH="$WORK/fakebin:$PATH" tg start "$R" T-14)
+  check "TASKGIT_SKIP_DEPS=1 skips the install" test ! -e "$D2/frontend/node_modules"
+  nonpm=$(tr ':' '
+' <<<"$PATH" | while IFS= read -r d; do [[ -x "$d/npm" ]] || printf '%s:' "$d"; done)
+  out=$(PATH="${nonpm%:}" bash "$TG" start "$R" T-15 2>&1 >/dev/null)
+  check "a missing package manager is a warning, not an error" contains "$out" "npm not found"
+fi
+
 # ---- summary ---------------------------------------------------------------------------
 echo
 echo "taskgit scenarios: $PASS passed, $FAIL failed"

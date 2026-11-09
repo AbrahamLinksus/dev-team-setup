@@ -157,7 +157,9 @@ Mirror the current milestone in the task widget.
 Take every `Backlog` task whose dependencies are `Done`; run independent tasks in parallel
 (own worktrees; shared files are only edited on main). Per task `T-xx`:
 
-1. `$TASKGIT start <repo> T-xx`; write `TASK_PROGRESS.md`; widget → in progress.
+1. `$TASKGIT start <repo> T-xx` (a new worktree gets the locked dependencies installed: `uv sync`,
+   `npm ci`, …; a warning names the log if that fails, then give it to env-setup before any code step);
+   write `TASK_PROGRESS.md`; widget → in progress.
 2. Owner agent (step protocol). `DECISION NEEDED` → record it in TASK_PROGRESS.md, checkpoint,
    ask the owner, resume with the answer.
 3. **tester** (`scripts/check.sh` must pass) → write the diff to a file without opening it
@@ -214,8 +216,8 @@ from STATE.md, TASKS.md, DECISIONS.md and TASK_PROGRESS.md; take nothing from a 
 Agent IDs from earlier sessions are not continued; every step after a resume spawns fresh.
 1. Reuse `~/projects/<repo>` or clone it.
 2. Read STATE.md / TASKS.md / DECISIONS.md on main; `$TASKGIT list <repo>`.
-3. Per open wip branch (`plan`, `CR-n`, `T-xx`): `$TASKGIT start`, read TASK_PROGRESS.md,
-   `uv sync` / `npm ci`, run `check.sh` once if code steps are ✅, re-ask any open decision
+3. Per open wip branch (`plan`, `CR-n`, `T-xx`): `$TASKGIT start` (installs dependencies into a
+   restored worktree), read TASK_PROGRESS.md, run `check.sh` once if code steps are ✅, re-ask any open decision
    or open spec round, restart the first step that isn't ✅.
 4. Tell the owner in one line where it resumed, then continue.
 

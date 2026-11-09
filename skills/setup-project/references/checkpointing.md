@@ -68,9 +68,8 @@ machine only the TASK_PROGRESS.md notes remain; re-run a step if its details are
 repo present locally?         → reuse; else clone (gh) or add_repo + clone
 $TASKGIT list <repo>          → open wip branches (plan, T-xx…)
 for each branch:
-    wt = $TASKGIT start <repo> <id>          # restores worktree from origin
+    wt = $TASKGIT start <repo> <id>          # restores worktree from origin + installs locked deps
     read wt/TASK_PROGRESS.md
-    uv sync / npm ci in wt                   # deps are already approved
     if any step ✅ involved code: run scripts/check.sh once
         fails → mark the failing step ⏳ again and restart from it
     open decision? → ask the owner again (AskUserQuestion)
