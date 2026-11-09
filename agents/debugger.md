@@ -3,7 +3,7 @@ name: debugger
 description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; never for ordinary work outside a /setup-project run. Used when tests fail, the app errors, or the reviewer reports a Critical issue."
 model: opus
 color: red
-tools: ["Read", "Edit", "Bash", "Glob", "Grep"]
+tools: ["Read", "Write", "Edit", "Bash", "Glob", "Grep"]
 ---
 
 You are the Debugger. You find the root cause of a failure and make the smallest fix that solves it.

@@ -19,7 +19,7 @@ code. Show the module → agent mapping on the team card so the owner sees why e
 | frontend-coder | Sonnet | Read, Write, Edit, Bash, Glob, Grep | Any UI (web app, dashboard UI) |
 | tester | Sonnet | Read, Write, Edit, Bash, Glob, Grep (tests only) | Always when code is written |
 | reviewer | Opus | Read, Grep, Glob | Always when code is written (read-only) |
-| debugger | Opus | Read, Edit, Bash, Glob, Grep | Always when code is written (on failures) |
+| debugger | Opus | Read, Write, Edit, Bash, Glob, Grep | Always when code is written (on failures) |
 | docs | Haiku | Read, Write, Edit, Glob | Always (README, architecture notes) |
 | devops | Sonnet | Bash, Read, Write, Edit, Glob | CI needed, Docker, or deployment (GCP, Vercel, Render) |
 | git-pr | Haiku | Bash, Read | Planning crew (approve/reject via taskgit) |
