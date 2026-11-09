@@ -72,6 +72,7 @@ Change these with `/plugin configure dev-team-setup@dev-team-setup`.
 
 - [How it works](docs/how-it-works.md): the agents, the guardrails, the files each project gets
 - [Example run](examples/todo-app/): real planning output for a small todo app
+- [Token benchmark](bench/): compare a normal session with the plugin on the same app
 
 **Contributing:** run the tests before you push.
 
