@@ -49,6 +49,9 @@ with a single implementation and no planned second one.
 
 ## 6. Automated checks (`scripts/check.sh` must pass; Tester runs it on every task)
 
+Coders and the debugger run `CHECK_NO_COVERAGE=1 scripts/check.sh` (every check except the coverage
+threshold, since tests are the Tester's job); the Tester runs the full script and owns coverage.
+
 | Check | Python | TypeScript |
 |---|---|---|
 | Lint + format | `ruff check` + `ruff format --check` (rules: E,F,W,I,N,UP,B,SIM,C90,PL,RUF) | `eslint` (typescript-eslint strict) + `prettier --check` |

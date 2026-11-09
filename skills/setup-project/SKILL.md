@@ -164,7 +164,8 @@ Take every `Backlog` task whose dependencies are `Done`; run independent tasks i
    ask the owner, resume with the answer.
 3. **tester** (`scripts/check.sh` must pass) → write the diff to a file without opening it
    (`$TASKGIT diff <repo> T-xx > <wt>/.results/T-xx/changes.diff`) → **reviewer**.
-   Failing checks or Critical/Major findings → **debugger** (`Read:` the failing step's full
+   Coverage below the threshold (everything else green) → back to the **tester** for more tests.
+   Other failing checks or Critical/Major findings → **debugger** (`Read:` the failing step's full
    report or `sync-check.txt`, the changed files, the task's LLD sections) or the owner agent
    (rounds per cost mode; later rounds continue the same debugger), then test + review again;
    rounds exhausted → decision card.

@@ -18,7 +18,7 @@ The single source of these rules. Every agent reads this file before starting.
 - **Tier 2 = you decide and log it.** Names, internal refactors that keep the agreed interfaces, test layout, formatting. List each under "Agent decisions".
 
 ## Quality
-- Follow `docs/CONVENTIONS.md` (layering, SOLID rules, limits). Code you write must keep `scripts/check.sh` passing.
+- Follow `docs/CONVENTIONS.md` (layering, SOLID rules, limits). Code you write must keep `CHECK_NO_COVERAGE=1 scripts/check.sh` passing: lint, types, complexity, layers and the existing tests. The coverage threshold belongs to the Tester, the only role that runs plain `scripts/check.sh` and writes tests.
 - Never write secrets into tracked files; use `.env` (git-ignored) and document keys in `.env.example`.
 - Produce visual evidence with the capture script (path in your brief as `CAPTURE`) into `.results/<task-id>/`. Prefer screenshots; then chart → diagram → rendered table.
 - Never leave servers or background processes running when you finish.
