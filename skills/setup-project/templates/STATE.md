@@ -15,6 +15,9 @@
 | Agent | Model | Why on this project |
 |---|---|---|
 
+## Open work
+- Tasks in progress live on `wip/*` branches (see `taskgit.sh list`); their step states are in each branch's TASK_PROGRESS.md.
+
 ## Open decisions (waiting for Jake)
 - none
 

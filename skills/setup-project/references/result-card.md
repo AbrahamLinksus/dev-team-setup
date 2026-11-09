@@ -16,6 +16,7 @@ GOAL (from TASKS.md)            ACHIEVED
 Changes: 4 files, +182 / −12
   auth.py, routes.py, test_auth.py, .env.example
 Tests: 14/14 passed · coverage 86%
+Conventions: lint ✅ · types ✅ · max complexity 7 · layers ✅ · SOLID review: 0 major, 1 minor
 Reviewer: 1 minor — hardcoded token expiry (auth.py:41)
 Agent decisions: bcrypt for hashing (D-12)
 ```
@@ -23,7 +24,8 @@ Agent decisions: bcrypt for hashing (D-12)
 Rules:
 - Copy the GOAL bullets verbatim from the task's acceptance criteria in TASKS.md.
 - Mark each one ✅ done / ⚠️ partial (say what's missing) / ❌ not done (say why).
-- Get the change summary from `git diff --stat` against the task's base commit, and
+- Copy the Conventions line from the tester's report and the SOLID counts from the reviewer's.
+- Get the change summary from `$TASKGIT diffstat <repo> <id>`, and
   list the 3–5 most important changes in one line each.
 - If any goal is ⚠️ or ❌, put a line above the card: "⚠️ Not all goals met."
 - Offer the full diff on request (send it as a .diff file).

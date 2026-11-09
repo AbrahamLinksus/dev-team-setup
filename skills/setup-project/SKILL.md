@@ -3,171 +3,170 @@ name: setup-project
 description: >
   This skill should be used when Jake types "/setup-project", "setup-project <problem>",
   "/setup-project resume <repo>", or asks to "set up a project with the dev team",
-  "pick a team for this project" or "continue my setup-project build". It acts as the
-  Orchestrator: it classifies the problem, proposes a team of subagents (Core software,
-  AI/ML, Data science), plans the project from the high-level breakdown down to the
-  low-level design, builds it task by task, and returns each result with a visual for
-  Jake's approval. Works from a phone.
+  "pick a team for this project", "continue my setup-project build" or says "continue"
+  after a setup-project session was interrupted. It acts as the Orchestrator: it
+  classifies the problem, proposes a team of subagents (Core software, AI/ML, Data science),
+  plans the project from the high-level breakdown down to the low-level design and coding
+  conventions, builds it task by task with checkpoints that survive the session ending, and
+  returns each result with a visual for Jake's approval. Works from a phone.
 metadata:
-  version: "0.1.0"
+  version: "0.2.0"
   author: Jake Roberts
 ---
 
 # /setup-project — Orchestrator
 
 Act as the Orchestrator (main session, Opus). Never write project code yourself: delegate
-every task to the team's subagents with the Agent tool, collect their reports, and run
-the checkpoints. Jake must never be left out of a Tier 1 decision.
+every task to the team's subagents with the Agent tool, collect their reports, run the
+checkpoints, and run the approval gates. Jake must never be left out of a Tier 1 decision.
 
 ## Pipeline
 
 ```
-0 Intake → 1 Team pick ⏸ → 2 Repo + workspace → 3 HLD ⏸ → 4 LLD + packages ⏸
+0 Intake → 1 Team pick ⏸ → 2 Repo + workspace → 3 HLD ⏸ → 4 LLD + conventions + packages ⏸
 → 5 Env setup (⏸ before installs) → 6 Task list → 7 Build loop (⏸ every task, ⏸ every milestone)
 ```
 ⏸ = stop and get Jake's approval with AskUserQuestion. Before each ⏸, send a push
 notification if a PushNotification tool is available (load it with ToolSearch), since
 Jake is often on his phone.
 
-Read these references when the stage needs them:
-- `references/agent-catalog.md`: every agent, its pack, model, tools and when to pick it
-- `references/decision-policy.md`: Tier 1 vs Tier 2 decisions, the decision card format
-- `references/result-card.md`: the per-task and per-milestone result card + approval flow
-- `references/visual-capture.md`: which visual to produce for each task type, and the scripts
-- `templates/`: STATE.md, TASKS.md, DECISIONS.md, HLD.md, LLD.md skeletons
+Paths used below (`<skill>` = this skill's base directory, shown when the skill loads):
+- `CAPTURE=<skill>/scripts/capture.py`: screenshots, terminal images, diagrams, tables
+- `TASKGIT=<skill>/scripts/taskgit.sh`: wip branches, worktrees, checkpoints, approve/reject
+- `<skill>/templates/`: STATE, TASKS, DECISIONS, HLD, LLD, CONVENTIONS skeletons
 
-Spawn agents with `subagent_type: "dev-team-setup:<agent-name>"` (use the bare
-`<agent-name>` if that is how the agent list shows them). Give every agent: the project
-path, the task ID and its acceptance criteria, the paths of HLD.md / LLD.md /
-TASKS.md / STATE.md, and `CAPTURE=<this skill's base directory>/scripts/capture.py`
-(absolute path; agents can't find it on their own). Run agents in parallel only when their tasks don't depend on each other.
+References (read when the stage needs them):
+- `references/agent-catalog.md`: every agent, its pack, model, tools and when to pick it
+- `references/decision-policy.md`: Tier 1 vs Tier 2, the decision card format
+- `references/result-card.md`: per-task and per-milestone result card + approval flow
+- `references/visual-capture.md`: which visual for each task type
+- `references/checkpointing.md`: checkpoint protocol, TASK_PROGRESS.md format, resume algorithm
+
+Spawn agents with `subagent_type: "dev-team-setup:<agent-name>"` (or the bare
+`<agent-name>` if that is how the agent list shows them). Every brief contains: the
+worktree path to work in, the task ID and its acceptance criteria verbatim, the paths of
+STATE.md / TASKS.md / docs/HLD.md / docs/LLD.md / docs/CONVENTIONS.md, and the absolute
+`CAPTURE` and `TASKGIT` paths (agents can't find them on their own). Run agents in
+parallel only for tasks that don't depend on each other; each task has its own worktree.
 
 ## 0 · Intake
 
-- `/setup-project resume <repo>` → go to **Resume** below.
+- `/setup-project resume <repo>`, or "continue" after an interruption → **Resume** below.
 - `/setup-project <problem>` → restate the problem in 2–3 lines. If the goal, users or
   main constraint are unclear, ask up to 3 questions in one AskUserQuestion call.
 
 ## 1 · Team pick ⏸
 
-1. Read `references/agent-catalog.md`. Classify the problem into one or more tracks
-   (Core software, AI/ML, Data science). For a problem that spans tracks, build one
-   **hybrid team** drawn from each pack.
-2. Send Jake (SendUserMessage) the proposed team as a table: agent · model · one-line
-   reason it's needed for *this* problem. Keep it to the agents the problem really needs.
-3. Ask with AskUserQuestion:
-   - Q1 "Approve this team?" → Approve / Remove some (Jake types which)
-   - Q2–Q4 (multiSelect): optional agents from other packs that could help, max 4 per
-     question, grouped by pack, each with a one-line reason. Jake can type any other
-     agent's name in the free-text box.
-4. Record the final team in STATE.md.
+1. Read `references/agent-catalog.md`. Classify the problem into tracks (Core software,
+   AI/ML, Data science); for a problem that spans tracks, build one **hybrid team**.
+2. Send Jake (SendUserMessage) the proposed team: agent · model · one-line reason for *this* problem.
+3. AskUserQuestion: Q1 "Approve this team?" (Approve / Remove some); Q2–Q4 (multiSelect)
+   optional agents from other packs, max 4 per question, each with a one-line reason.
+   Jake can type any other agent's name in the free-text box.
 
 ## 2 · Repo + workspace
 
-1. Ask (one AskUserQuestion call): project/repo name (offer 2–3 kebab-case suggestions)
-   and visibility (Private / Public). **Always ask visibility; never default it.**
-2. Working copy: `~/projects/<repo>` in the cloud workspace.
-3. GitHub (owner `AbrahamLinksus`), in this order:
-   - If `gh auth status` succeeds: `gh repo create AbrahamLinksus/<repo> --<visibility> --clone`.
-   - Otherwise call the add_repo tool (`mcp__claude-code-remote__add_repo`, access
-     `push`). If the repo doesn't exist yet, ask Jake to create an **empty** repo with
-     that name and visibility in the GitHub app, then call add_repo again and clone.
-4. Copy the templates into the repo: `STATE.md`, `TASKS.md`, `DECISIONS.md` at the root,
-   `docs/HLD.md`, `docs/LLD.md`. Fill in the project name, problem and team.
-5. Initial commit via the **git-pr** agent (the push is approved by the team pick).
+1. One AskUserQuestion call: repo name (2–3 kebab-case suggestions) and visibility
+   (Private / Public). **Always ask visibility; never default it.**
+2. GitHub (owner `AbrahamLinksus`), in order:
+   - `gh auth status` works → `gh repo create AbrahamLinksus/<repo> --<visibility>`.
+   - Otherwise call add_repo (`mcp__claude-code-remote__add_repo`, access `push`). If the
+     repo doesn't exist, ask Jake to create an **empty** repo with that name and
+     visibility in the GitHub app, then call add_repo again.
+3. Clone to `~/projects/<repo>` (main checkout; only `approve` changes main).
+4. Copy templates: `STATE.md`, `TASKS.md`, `DECISIONS.md` at the root;
+   `docs/HLD.md`, `docs/LLD.md`, `docs/CONVENTIONS.md`. Fill in project, problem, team.
+   Add `.gitignore` with `.env`, `.results/`, `.venv/`, `node_modules/`.
+5. Commit and push this skeleton to main (covered by the team-pick approval).
+6. Planning stages 3–5 run on `wip/plan`: `$TASKGIT start ~/projects/<repo> plan`.
 
 ## 3 · High-level breakdown ⏸
 
-1. **planner** writes `docs/HLD.md`: goal, scope (in/out), users, modules and how they
-   interact, data flow, milestones, risks. For DS problems it also frames the target,
-   success metric, KPIs and hypotheses.
-2. Produce a visual: module/data-flow Mermaid diagram rendered to PNG (see visual-capture).
-3. Send the visual and a ≤10-line summary. Ask: Approve / Request changes / Reject.
-   Loop until approved.
+1. **planner** writes `docs/HLD.md` in the plan worktree (goal, scope in/out, users,
+   modules, data flow, milestones, risks; for DS work also target, metric, KPIs, hypotheses).
+   Checkpoint: `$TASKGIT checkpoint <repo> plan "HLD drafted"`.
+2. Render the data-flow diagram (`$CAPTURE mermaid`). Send it and a ≤10-line summary.
+3. Ask Approve / Request changes / Reject; loop until approved. Record the approval in
+   `TASK_PROGRESS.md` of the plan worktree and checkpoint.
 
-## 4 · Low-level design + packages ⏸
+## 4 · Low-level design + conventions + packages ⏸
 
-1. **researcher** compares candidate libraries/frameworks for each module (current
-   versions, maintenance, known issues) → `docs/research.md`.
-2. **architect** writes `docs/LLD.md` from the approved HLD + research: chosen stack
-   (it decides per project, defaulting to FastAPI + Next.js/React when unclear),
-   folder structure, classes/modules, DB schema, API contracts, and the **package table**
-   (package · version · why · alternative rejected).
-3. Visuals: component + sequence diagrams (Mermaid → PNG) and the package table as an image.
-4. Show the stack and package choices as **Tier 1 decision cards** (decision-policy.md);
-   then ask: Approve LLD / Request changes / Reject.
+1. **researcher** → `docs/research.md` (2–4 candidates per decision point, with sources). Checkpoint.
+2. **architect** → `docs/LLD.md` (stack, folders, modules/classes, schema, API contracts,
+   sequences, pinned package table incl. dev tooling) and `docs/CONVENTIONS.md` (layering,
+   SOLID rules for this project, limits, automated checks, layer contracts). Checkpoint.
+3. Visuals: component/sequence diagrams, the package table and the layer map as images.
+4. Every stack/package choice → one Tier 1 decision card (decision-policy.md). Then ask:
+   Approve LLD + conventions / Request changes / Reject.
 
 ## 5 · Environment setup (⏸ before installs)
 
-1. **env-setup** prepares (without installing) the exact install plan: uv project
-   (`pyproject.toml`) and/or node project, pinned packages, folder structure, `.env.example`,
-   `.gitignore`, pre-commit, Dockerfile only if the LLD calls for it.
-2. Show the install plan; ask: Install / Edit list / Cancel.
-3. On approval **env-setup** installs and runs a smoke check. Visual: terminal output
-   image of the install + smoke check. Commit via **git-pr** after Jake approves the result card.
+1. **env-setup** phase 1 returns the install plan (no installs). Show it; ask Install / Edit / Cancel.
+2. Phase 2 on approval: installs, writes `scripts/check.sh` + tool configs + pre-commit,
+   runs a smoke check and `scripts/check.sh`. Visual: terminal images.
+3. Checkpoint, then send the planning result card (HLD + LLD + env). On approval:
+   **git-pr** runs `$TASKGIT approve <repo> plan "chore: project plan, design and environment"`.
 
 ## 6 · Task list
 
-1. **planner** writes `TASKS.md` from the LLD: tasks grouped by milestone, each with ID
-   (T-01…), owner agent, acceptance criteria (checkable bullets), dependencies, status
-   `Backlog`.
-2. Mirror the current milestone's tasks in the task widget (TaskCreate), owner in the subject.
-3. Update STATE.md (current milestone, next task).
+1. **planner** writes `TASKS.md` from the LLD (tasks per milestone; ID, owner, deps,
+   status `Backlog`, 2–5 checkable acceptance criteria). Commit to main with the plan
+   approval if still open, otherwise as `chore: task list` (covered by the LLD approval).
+2. Mirror the current milestone in the task widget (TaskCreate); update STATE.md.
 
 ## 7 · Build loop
 
 For each milestone, take every `Backlog` task whose dependencies are `Done`; run
-independent ones in parallel. For each task:
+independent ones in parallel. For each task follow `references/checkpointing.md`:
 
-1. Status → `In progress`. Spawn the owner agent (e.g. **backend-coder**, **frontend-coder**,
-   **rag-engineer**, **data-cleaner**…). If the agent returns `DECISION NEEDED`, stop that
-   task and show Jake a decision card; resume with his answer.
-2. Status → `Review`. Spawn **tester** (writes/runs tests), then **reviewer** (read-only).
-   If tests fail or the reviewer reports a Critical issue, spawn **debugger** (max 3
-   rounds); after 3 failed rounds, show Jake the problem as a decision card.
+1. `wt=$($TASKGIT start <repo> T-07)`. Write `TASK_PROGRESS.md` (steps pending), checkpoint.
+2. Owner agent (e.g. **backend-coder**, **frontend-coder**, **rag-engineer**…) works in `$wt`.
+   `DECISION NEEDED` → record it in TASK_PROGRESS.md, checkpoint, ask Jake, resume with
+   the answer. Done → mark the step ✅, checkpoint.
+3. **tester** (runs `scripts/check.sh`: lint, types, complexity, layers, tests + coverage)
+   → checkpoint → **reviewer** (read-only, SOLID checklist) → checkpoint. Failing checks
+   or a Critical/Major review → **debugger** or the owner agent (max 3 rounds; record the
+   round in TASK_PROGRESS.md); after 3 rounds, show Jake a decision card.
    For ML/DS tasks also run **evaluator** where metrics apply.
-3. Produce the visual (visual-capture.md). Prefer a screenshot whenever anything can be
-   rendered or run.
-4. Status → `Needs you`. Send the result card (result-card.md) and its images
-   (SendUserFile), then ask Approve / Request changes / Reject.
-   - **Approve** → **git-pr** commits and pushes (this approval covers the push, because
-     the card shows all changes). Status → `Done`.
-   - **Request changes** → back to step 1 with Jake's notes.
-   - **Reject** → **git-pr** reverts the task's changes; status → `Backlog`, with a note.
-5. After every task: update TASKS.md, DECISIONS.md (Tier 2 decisions the agents logged),
-   STATE.md, and the task widget.
+4. Produce the visual (visual-capture.md); screenshots first.
+5. Send the result card (result-card.md, including the Conventions line; get the changes
+   with `$TASKGIT diffstat <repo> T-07`) and ask Approve / Request changes / Reject.
+   - **Approve** → update TASKS.md (Done + result), DECISIONS.md, STATE.md inside `$wt`,
+     then **git-pr** runs `$TASKGIT approve`. The approval covers the push to main.
+   - **Request changes** → back to step 2 with Jake's notes (same branch).
+   - **Reject** → **git-pr** runs `$TASKGIT reject`; status Backlog with Jake's reason.
 
-**Milestone end ⏸**: **docs** updates README/architecture notes. Send the milestone
-card (all tasks: goal vs achieved, a before/after visual of the whole project, open
-issues). Ask: Approve milestone / Request changes. Then start the next milestone.
+**Milestone end ⏸**: **docs** updates README/architecture notes on a `wip/M<n>-docs`
+task branch. Send the milestone card; ask Approve milestone / Request changes.
 
-At the end of the project: **devops** sets up CI (and deploys only if Jake asks:
-GCP, Vercel or Render), **docs** finalises the README and drafts nothing unrequested.
+Project end: **devops** sets up CI (deploys only if Jake asks: GCP, Vercel or Render).
 
-## Session hygiene (cloud + phone)
+## Checkpoint rule (usage can run out at any moment)
 
-- Background processes stop a few minutes after a reply ends. Never leave important
-  work running unattended: finish each task in the turn, commit, and stop at a checkpoint.
-- STATE.md is the source of truth for resuming: current stage, milestone, task statuses
-  summary, open decisions, next step, how to run the project. Update it after every
-  task and push it with the task's commit.
-- GPU training can't run in the workspace: **trainer** writes the scripts/notebooks
-  and a "run on Colab/GCP" note; Jake runs them and shares the results.
-- Keep messages short and mobile-readable: tables ≤5 columns, images over long text.
+- Checkpoint (`$TASKGIT checkpoint`) after **every** agent step and **before** spawning
+  the next agent, so at most one step is ever lost. Pushing `wip/*` branches is
+  pre-approved by Jake; **main changes only via `approve`**.
+- `TASK_PROGRESS.md` (on the wip branch) holds the step states, debugger round and any open
+  decision. It is removed automatically when the task is squashed into main.
+- Never leave servers or background jobs running at the end of a turn.
 
 ## Resume
 
-`/setup-project resume <repo>`:
-1. Get the repo (gh clone, or add_repo + clone as in stage 2) into `~/projects/<repo>`.
-2. Read STATE.md, TASKS.md, DECISIONS.md. Re-run env setup from the lockfiles
-   (`uv sync` / `npm ci`) without asking again (the packages were already approved).
-3. Send Jake a 5-line status (stage, milestone, done/remaining tasks, open decisions)
-   and continue from the next step.
+Run this for `/setup-project resume <repo>` or "continue" (details in checkpointing.md):
+1. Get the repo into `~/projects/<repo>` (reuse it if present; else gh clone or add_repo + clone).
+2. Read STATE.md, TASKS.md, DECISIONS.md on main; run `$TASKGIT list <repo>` for open wip branches.
+3. For each wip branch: `$TASKGIT start` (restores the worktree), read TASK_PROGRESS.md,
+   re-sync deps (`uv sync` / `npm ci`, no approval needed, they're already approved),
+   re-run `scripts/check.sh` once to confirm ✅ steps still hold, then restart the first
+   step not marked ✅. An open decision is asked again.
+4. Send Jake: "Resumed <repo> at T-07 · reviewer step (coder ✅, tester ✅)", then continue.
 
 ## Rules
 
 - Tier 1 decisions always go to Jake (decision-policy.md). When unsure of the tier, it's Tier 1.
 - Every result has a visual; text-only only when nothing can be rendered.
-- Agents stay within their task scope and tools; read-only agents never edit.
-- Never push without an approved result card. Never change repo visibility.
-- Never store secrets in the repo; use `.env` (git-ignored) and `.env.example`.
+- Agents stay within their task scope, worktree and tools; read-only agents never edit.
+- main changes only through `$TASKGIT approve` after an approved card. Never force-push,
+  never change repo visibility, never commit secrets.
+- GPU training can't run in the workspace: **trainer** prepares Colab/GCP scripts.
+- Keep messages mobile-readable: tables ≤5 columns, images over long text.

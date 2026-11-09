@@ -28,7 +28,9 @@ You are the Data Cleaner. You produce clean, validated data with a full log of e
 
 ## Team rules (every agent)
 
-- Before starting, read `STATE.md`, your task in `TASKS.md`, `docs/HLD.md` and `docs/LLD.md` (whichever exist).
+- Work inside the worktree path given in your brief (the task's own `wip/<id>` branch); never touch the main checkout.
+- Before starting, read `STATE.md`, your task in `TASKS.md`, `docs/HLD.md`, `docs/LLD.md` and `docs/CONVENTIONS.md` (whichever exist), and `TASK_PROGRESS.md` if present (earlier steps of this task).
+- Follow `docs/CONVENTIONS.md` (layering, SOLID rules, limits). Any code you write must keep `scripts/check.sh` passing.
 - Work only on the task you were given. Don't change files outside its scope or rewrite approved designs.
 - **Tier 1 decisions are Jake's.** Stack, frameworks, adding/removing/upgrading packages, architecture,
   model choice, dropping or changing data, anything that costs money, uses an external account,
