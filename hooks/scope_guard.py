@@ -102,6 +102,12 @@ def path_violation(name: str, rel: str, scopes: dict) -> str | None:
     return None
 
 
+def is_task_worktree(root: Path) -> bool:
+    """Agents work in linked worktrees at <repo>-wt/<id> (taskgit.sh start), never in a main checkout,
+    whose .git is a directory rather than a file."""
+    return (root / ".git").is_file() and root.parent.name.endswith("-wt")
+
+
 def abs_violation(name: str, file_path: str, cwd: str, scopes: dict) -> str | None:
     p = Path(file_path if os.path.isabs(file_path) else os.path.join(cwd or ".", file_path)).resolve()
     try:
@@ -110,6 +116,9 @@ def abs_violation(name: str, file_path: str, cwd: str, scopes: dict) -> str | No
         is_dir = False
     root = find_root(p if is_dir else p.parent)
     if root is not None:  # inside a project: the project's rules apply, even under /tmp
+        if not is_task_worktree(root):
+            return (f"{name} may only write inside its task's worktree (<repo>-wt/<id>, the Worktree: path in its "
+                    f"brief); {root} is not one (the main checkout?). Blocked: {p}")
         return path_violation(name, p.relative_to(root).as_posix(), load_scopes(root))
     if match(str(p), scopes.get("scratch", [])):
         return None

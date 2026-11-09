@@ -32,9 +32,14 @@ class GuardTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.tmp = tempfile.TemporaryDirectory()
-        cls.repo = Path(cls.tmp.name) / "proj"
-        cls.repo.mkdir()
-        subprocess.run(["git", "init", "-q", str(cls.repo)], check=True)
+        # agents work in a linked worktree <repo>-wt/<id>, as taskgit.sh start creates it
+        cls.main = Path(cls.tmp.name) / "proj"
+        cls.main.mkdir()
+        git = ["git", "-c", "user.name=t", "-c", "user.email=t@t", "-C", str(cls.main)]
+        subprocess.run(git[:5] + ["init", "-q", str(cls.main)], check=True)
+        subprocess.run(git + ["commit", "-q", "--allow-empty", "-m", "init"], check=True)
+        cls.repo = Path(cls.tmp.name) / "proj-wt" / "T-1"
+        subprocess.run(git + ["worktree", "add", "-q", "-b", "wip/T-1", str(cls.repo)], check=True)
 
     @classmethod
     def tearDownClass(cls):
@@ -85,6 +90,14 @@ class GuardTest(unittest.TestCase):
                            ("backend-coder", "backend/src/app.py"), ("frontend-coder", "frontend/src/App.tsx")]:
             with self.subTest(agent=agent, path=rel, expect="allow"):
                 self.assertIsNone(self.write(agent, rel))
+
+    def test_writes_only_in_task_worktree(self):
+        # S8: a write anywhere in a git repo used to pass; the main checkout is off limits
+        self.assertIsNotNone(hook("dev-team-setup:backend-coder", "Write",
+                                  {"file_path": str(self.main / "backend" / "app.py")}, str(self.main)))
+        self.assertIsNotNone(hook("dev-team-setup:tester", "Write",
+                                  {"file_path": str(self.main / "tests" / "test_a.py")}, str(self.repo)))
+        self.assertIsNone(self.write("backend-coder", "backend/app.py"))
 
     def test_outside_repo(self):
         self.assertIsNone(hook("dev-team-setup:statistician", "Write", {"file_path": "/tmp/scratch-x/a.py"}, "/"))
