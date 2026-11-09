@@ -1,5 +1,5 @@
 {
-  "_comment": "What each agent may change. Globs are relative to the project worktree root. '@group' expands a group. bash modes: none | readonly (no file-changing commands) | code (run code/tests; no git writes, no installs) | full (code + installs; env-setup only) | git (taskgit.sh + read-only git; git-pr only). Projects can override per agent in .devteam/scopes.json (written by the architect, approved with the LLD).",
+  "_comment": "What each agent may change. Globs are relative to the project worktree root. '@group' expands a group. bash modes: none | readonly (no file-changing commands) | code (run code/tests; no git writes, no installs) | full (code + installs; env-setup only) | git (taskgit.sh + read-only git; git-pr only). Projects can override per agent in .devteam/scopes.json (written by the architect, approved with the LLD). The 'gates' group (check.sh, lint/type/test configs, CI) and the tests are denied to the code-writing roles they judge: only env-setup (configs), devops (CI) and tester (tests) change them.",
   "scratch": [
     "/tmp/**"
   ],
@@ -39,6 +39,30 @@
       "**/*.spec.tsx",
       "**/__tests__/**",
       "evals/**"
+    ],
+    "gates": [
+      "scripts/check.sh",
+      "**/pyproject.toml",
+      "**/setup.cfg",
+      "**/tox.ini",
+      "**/.coveragerc",
+      "**/mypy.ini",
+      "**/.mypy.ini",
+      "**/ruff.toml",
+      "**/.ruff.toml",
+      "**/.flake8",
+      "**/pytest.ini",
+      "**/.importlinter",
+      "**/.eslintrc*",
+      "**/eslint.config.*",
+      "**/.prettierrc*",
+      "**/prettier.config.*",
+      "**/.dependency-cruiser.*",
+      "**/tsconfig*.json",
+      "**/vitest.config.*",
+      "**/jest.config.*",
+      ".pre-commit-config.yaml",
+      ".github/**"
     ],
     "frontend_dirs": [
       "frontend/**",
@@ -108,7 +132,9 @@
         "@main_owned",
         "@design",
         "@frontend_dirs",
-        "@raw_data"
+        "@raw_data",
+        "@gates",
+        "@tests"
       ],
       "bash": "code"
     },
@@ -120,7 +146,9 @@
         "@main_owned",
         "@design",
         "@backend_dirs",
-        "@raw_data"
+        "@raw_data",
+        "@gates",
+        "@tests"
       ],
       "bash": "code"
     },
@@ -144,7 +172,9 @@
       "deny": [
         "@main_owned",
         "@design",
-        "@raw_data"
+        "@raw_data",
+        "@gates",
+        "@tests"
       ],
       "bash": "code"
     },
@@ -190,7 +220,9 @@
       "deny": [
         "@main_owned",
         "@design",
-        "@raw_data"
+        "@raw_data",
+        "@gates",
+        "@tests"
       ],
       "bash": "code"
     },
@@ -210,7 +242,9 @@
         "@main_owned",
         "@design",
         "@raw_data",
-        "@frontend_dirs"
+        "@frontend_dirs",
+        "@gates",
+        "@tests"
       ],
       "bash": "code"
     },
@@ -236,7 +270,9 @@
         "@main_owned",
         "@design",
         "@raw_data",
-        "@frontend_dirs"
+        "@frontend_dirs",
+        "@gates",
+        "@tests"
       ],
       "bash": "code"
     },
@@ -248,7 +284,9 @@
         "@main_owned",
         "@design",
         "@raw_data",
-        "@frontend_dirs"
+        "@frontend_dirs",
+        "@gates",
+        "@tests"
       ],
       "bash": "code"
     },

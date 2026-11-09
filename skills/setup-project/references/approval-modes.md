@@ -12,6 +12,8 @@ A task is **high-risk** if any of these is true; otherwise it's **low-risk**:
 - it touches an API contract, DB schema, auth/security code, data deletion, prompts used in
   production, deployment/CI, or a file listed as a variation point in CONVENTIONS.md
 - the scope check reverted any file
+- it touches a gate file (`scripts/check.sh`, a lint/type/test config, CI: the `gates` group in
+  `scopes.json`): only env-setup and devops may change those, so any such change needs your eyes
 - diff over 400 changed lines
 
 Record the class and the reason in TASK_PROGRESS.md.

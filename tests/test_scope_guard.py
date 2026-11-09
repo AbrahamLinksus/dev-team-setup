@@ -72,6 +72,20 @@ class GuardTest(unittest.TestCase):
             with self.subTest(agent=agent, path=rel, expect="deny"):
                 self.assertIsNotNone(self.write(agent, rel))
 
+    def test_gate_files_protected(self):
+        # S7: the agents a gate judges may not change it
+        for agent in ("backend-coder", "frontend-coder", "debugger", "trainer", "rag-engineer", "agent-engineer", "mlops"):
+            for rel in ("scripts/check.sh", "pyproject.toml", "backend/pyproject.toml", ".github/workflows/ci.yml",
+                        "frontend/.eslintrc.json", "tsconfig.json", ".pre-commit-config.yaml", ".dependency-cruiser.js",
+                        "tests/test_a.py", "backend/tests/test_api.py", "frontend/src/App.test.tsx"):
+                with self.subTest(agent=agent, path=rel):
+                    self.assertIsNotNone(self.write(agent, rel))
+        for agent, rel in [("env-setup", "scripts/check.sh"), ("env-setup", "pyproject.toml"),
+                           ("devops", ".github/workflows/ci.yml"), ("tester", "tests/test_a.py"),
+                           ("backend-coder", "backend/src/app.py"), ("frontend-coder", "frontend/src/App.tsx")]:
+            with self.subTest(agent=agent, path=rel, expect="allow"):
+                self.assertIsNone(self.write(agent, rel))
+
     def test_outside_repo(self):
         self.assertIsNone(hook("dev-team-setup:statistician", "Write", {"file_path": "/tmp/scratch-x/a.py"}, "/"))
         self.assertIsNotNone(hook("dev-team-setup:backend-coder", "Write", {"file_path": "/root/elsewhere.py"}, "/"))
