@@ -77,6 +77,42 @@ for line in main.open(encoding="utf-8", errors="replace"):
         break
 
 
+def scrub(v, depth=0):
+    """Keep structure and numbers; cut any string longer than 40 chars (no message text)."""
+    if isinstance(v, dict):
+        return {k: scrub(x, depth + 1) for k, x in v.items()} if depth < 6 else "{...}"
+    if isinstance(v, list):
+        return [scrub(x, depth + 1) for x in v[:5]] + (["..."] if len(v) > 5 else [])
+    if isinstance(v, str) and len(v) > 40:
+        return f"<{len(v)} chars>"
+    return v
+
+
+print("\n== keys per line type")
+keys_by_type, samples = {}, {}
+for line in main.open(encoding="utf-8", errors="replace"):
+    try:
+        d = json.loads(line)
+    except ValueError:
+        continue
+    t = d.get("type")
+    keys_by_type.setdefault(t, set()).update(d.keys())
+    if t in ("cost-state", "api-request", "api-request-shape", "system"):
+        samples.setdefault(t, []).append(d)
+for t, ks in sorted(keys_by_type.items(), key=lambda kv: str(kv[0])):
+    print(f"  {t}: {sorted(ks)}")
+
+print("\n== cost-state lines (all)")
+for d in samples.get("cost-state", []):
+    print(json.dumps(scrub(d), indent=1))
+for t in ("api-request", "api-request-shape", "system"):
+    if samples.get(t):
+        print(f"\n== {t}: first and last line")
+        print(json.dumps(scrub(samples[t][0]), indent=1)[:1500])
+        if len(samples[t]) > 1:
+            print(json.dumps(scrub(samples[t][-1]), indent=1)[:1500])
+
+
 def total(key_fn):
     seen = {}
     for r in rows:
