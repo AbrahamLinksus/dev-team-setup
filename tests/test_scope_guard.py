@@ -73,6 +73,25 @@ class GuardTest(unittest.TestCase):
         self.assertIsNone(hook("dev-team-setup:statistician", "Write", {"file_path": "/tmp/scratch-x/a.py"}, "/"))
         self.assertIsNotNone(hook("dev-team-setup:backend-coder", "Write", {"file_path": "/root/elsewhere.py"}, "/"))
 
+    def test_unreadable_paths_do_not_crash(self):
+        # regression (CI): PermissionError on /root made the hook crash, which lets the call through.
+        # hook() raises if the guard exits non-zero, so a crash fails this test.
+        locked = self.repo / "locked"
+        locked.mkdir(exist_ok=True)
+        locked.chmod(0)
+        try:
+            # walks past the unreadable folder, finds the repo, applies the repo's rules
+            self.assertIsNotNone(hook("dev-team-setup:statistician", "Write",
+                                      {"file_path": str(locked / "x.py")}, "/"))
+            hook("dev-team-setup:backend-coder", "Write", {"file_path": "/root/elsewhere.py"}, "/")
+        finally:
+            locked.chmod(0o700)
+
+    def test_fails_closed_on_bad_input(self):
+        self.assertIsNotNone(hook("dev-team-setup:backend-coder", "Write", {"file_path": 123}, str(self.repo)))
+        self.assertIsNotNone(hook("dev-team-setup:backend-coder", "Bash", {"command": ["git", "push"]}, str(self.repo)))
+        self.assertIsNone(hook("other-plugin:x", "Write", {"file_path": 123}, str(self.repo)))  # not ours: no opinion
+
     def test_repo_under_tmp_still_scoped(self):
         # regression: the /tmp scratch rule used to override project rules for repos under /tmp
         self.assertIsNotNone(self.write("statistician", "src/x.py"))

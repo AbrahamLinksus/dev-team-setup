@@ -75,8 +75,11 @@ def agent_name(agent_type: str | None, scopes: dict) -> str | None:
 
 def find_root(path: Path) -> Path | None:
     for p in [path, *path.parents]:
-        if (p / ".git").exists():
-            return p
+        try:
+            if (p / ".git").exists():
+                return p
+        except OSError:  # unreadable directory: keep walking up
+            continue
     return None
 
 
@@ -102,7 +105,11 @@ def path_violation(name: str, rel: str, scopes: dict) -> str | None:
 
 def abs_violation(name: str, file_path: str, cwd: str, scopes: dict) -> str | None:
     p = Path(file_path if os.path.isabs(file_path) else os.path.join(cwd or ".", file_path)).resolve()
-    root = find_root(p.parent if not p.is_dir() else p)
+    try:
+        is_dir = p.is_dir()
+    except OSError:
+        is_dir = False
+    root = find_root(p if is_dir else p.parent)
     if root is not None:  # inside a project: the project's rules apply, even under /tmp
         return path_violation(name, p.relative_to(root).as_posix(), load_scopes(root))
     if match(str(p), scopes.get("scratch", [])):
@@ -273,18 +280,27 @@ def hook_main() -> None:
     name = agent_name(event.get("agent_type"), scopes)
     if not name:
         return  # not one of our agents: no opinion
-    tool, inp, cwd = event.get("tool_name", ""), event.get("tool_input") or {}, event.get("cwd") or os.getcwd()
-    reason = None
-    if tool in ("Write", "Edit", "MultiEdit", "NotebookEdit"):
-        fp = inp.get("file_path") or inp.get("notebook_path")
-        if fp:
-            reason = abs_violation(name, fp, cwd, scopes)
-    elif tool == "Bash":
-        cmd = inp.get("command", "")
-        root = find_root(Path(cwd).resolve())
-        reason = bash_violation(name, cmd, load_scopes(root))
+    try:
+        reason = evaluate(name, event, scopes)
+    except Exception as exc:  # fail closed for our agents: a crashing hook would let the call through
+        reason = f"scope guard could not evaluate this call ({type(exc).__name__}: {exc}); blocked to be safe"
     if reason:
         deny(reason)
+
+
+def evaluate(name: str, event: dict, scopes: dict) -> str | None:
+    tool, inp, cwd = event.get("tool_name", ""), event.get("tool_input") or {}, event.get("cwd") or os.getcwd()
+    if tool in ("Write", "Edit", "MultiEdit", "NotebookEdit"):
+        fp = inp.get("file_path") or inp.get("notebook_path")
+        if not isinstance(fp, str) or not fp:
+            raise ValueError("missing or non-string file path")
+        return abs_violation(name, fp, cwd, scopes)
+    if tool == "Bash":
+        cmd = inp.get("command", "")
+        if not isinstance(cmd, str):
+            raise ValueError("non-string command")
+        return bash_violation(name, cmd, load_scopes(find_root(Path(cwd).resolve())))
+    return None
 
 
 def check_main(argv: list[str]) -> None:
