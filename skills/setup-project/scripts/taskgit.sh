@@ -79,6 +79,13 @@ ensure_wt() {  # sets wt; fails if the worktree doesn't exist
   wt="$wtroot/$id"; [[ -d "$wt" ]] || die 1 "no worktree for $id; run: taskgit.sh start $repo $id"
 }
 
+# The commit the current agent step started from. Every commit taskgit makes on wip/<id>
+# (start, checkpoint, sync) moves it; `scope` compares the worktree against it, so edits an
+# agent committed itself are still checked (and its own commits undone). Kept in the
+# worktree's private git dir, which agents may not write.
+step_base_file() { echo "$(gw rev-parse --absolute-git-dir)/devteam-step-base"; }
+mark_step_base() { gw rev-parse HEAD > "$(step_base_file)"; }
+
 revert_shared_in_wt() {  # branches may not change main-owned files they don't own
   local f changed=""
   for f in "${SHARED[@]}"; do
@@ -119,6 +126,7 @@ do_sync() {  # merge origin/main into wip/<id>, run check.sh; uses $id $wt
     fi
     echo "sync: merged main@$(g rev-parse --short "origin/$main") into wip/$id"
   fi
+  mark_step_base
   if [[ -x "$wt/scripts/check.sh" || -f "$wt/scripts/check.sh" ]] && [[ "${TASKGIT_SKIP_CHECK:-0}" != 1 ]]; then
     local out
     if ! out=$(cd "$wt" && bash scripts/check.sh 2>&1); then
@@ -137,7 +145,10 @@ case "$cmd" in
     mkdir -p "$wtroot"
     g worktree prune                                   # forget worktrees whose folder was deleted
     g fetch -q origin "$main" 2>/dev/null || true
-    if [[ -d "$wt" ]] && gw rev-parse --git-dir >/dev/null 2>&1; then echo "$wt"; exit 0; fi
+    if [[ -d "$wt" ]] && gw rev-parse --git-dir >/dev/null 2>&1; then
+      [[ -f "$(step_base_file)" ]] || mark_step_base
+      echo "$wt"; exit 0
+    fi
     [[ -e "$wt" ]] && die 1 "$wt exists but is not a worktree; move it away first"
     if g ls-remote --exit-code --heads origin "$br" >/dev/null 2>&1; then
       g fetch -q origin "+$br:refs/remotes/origin/$br"
@@ -154,6 +165,7 @@ case "$cmd" in
       g worktree add -q -b "$br" "$wt" "origin/$main" 2>/dev/null || g worktree add -q -b "$br" "$wt" "$main" \
         || die 1 "worktree add failed"
     fi
+    mark_step_base
     echo "$wt"
     ;;
 
@@ -163,6 +175,7 @@ case "$cmd" in
     gw add -A
     blocked_files "$wt"
     gw commit -q --allow-empty -m "wip($id): $msg" || die 1 "commit failed"
+    mark_step_base
     push_branch "$wt" "wip/$id" || die 7 "checkpoint committed locally but NOT pushed (see error above)"
     echo "checkpoint wip/$id: $msg"
     ;;
@@ -170,9 +183,18 @@ case "$cmd" in
   scope)
     id=${3:?id}; agent=${4:?agent}; ensure_wt
     [[ -f "$GUARD" ]] || die 1 "scope guard not found at $GUARD"
+    # An agent that commits its own edits would hide them from `git status`: undo any commit
+    # made since the step started (keeping its changes in the worktree) so they are checked too.
+    base=$(cat "$(step_base_file)" 2>/dev/null || true)
+    if [[ -n "$base" && "$(gw rev-parse HEAD)" != "$base" ]]; then
+      gw cat-file -e "$base^{commit}" 2>/dev/null || die 1 "step base $base for $id is missing; checkpoint again"
+      n=$(gw rev-list --count "$base..HEAD" 2>/dev/null || echo "?")
+      gw reset -q "$base" || die 1 "could not undo commits the agent made on wip/$id"
+      echo "scope: undid $n commit(s) the agent made itself; their changes are checked below" >&2
+    fi
     mapfile -t changed < <(gw status --porcelain --untracked-files=all | sed -E 's/^.. //; s/.* -> //')
     (( ${#changed[@]} == 0 )) && { echo "scope: no changes"; exit 0; }
-    mapfile -t bad < <(python3 "$GUARD" --check "$agent" "$wt" "${changed[@]}")
+    mapfile -t bad < <(python3 "$GUARD" --check "$agent" "$wt" "${changed[@]}" | tr -d '\r')
     if (( ${#bad[@]} == 0 )); then echo "scope: ${#changed[@]} changed file(s), all within $agent's scope"; exit 0; fi
     for f in "${bad[@]}"; do
       if gw ls-files --error-unmatch -- "$f" >/dev/null 2>&1; then gw checkout -q HEAD -- "$f"; else rm -rf -- "$wt/$f"; fi
