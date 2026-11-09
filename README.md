@@ -7,12 +7,14 @@ your phone.
 ## Flow
 
 ```
-Problem → Orchestrator (Opus) proposes a team → you approve
-→ Planner: high-level design ⏸ → Researcher + Architect: low-level design + packages ⏸
-→ Env-Setup (uv) ⏸ before installs → repo created (you choose visibility)
-→ Planner: task list → build loop, task by task:
-    owner agent → Tester → Reviewer → Debugger if needed → visual → result card ⏸
-→ milestone card ⏸ → next milestone
+Idea → repo (you choose visibility)
+→ Spec interview: rounds of questions until SPEC.md is complete, + wireframes for UI ⏸
+→ HLD ⏸ → team picked from the HLD's modules ⏸ → LLD + conventions + packages ⏸
+→ environment install ⏸ → task list ⏸
+→ build loop, task by task: owner agent → tester → reviewer → debugger if needed → visual → result card ⏸
+→ each milestone: architect syncs LLD to the code, docs updates README ⏸
+→ handover: CI, ARCHITECTURE.md (as built), WALKTHROUGH.md, README run/test/extend ⏸
+Anytime: a change request updates SPEC/HLD/LLD, shows a "what changes" card ⏸, re-plans tasks, resumes.
 ```
 
 Every result comes with a visual (screenshot first, then chart/diagram, then table),
@@ -55,7 +57,9 @@ Unmarked agents use Sonnet.
 ## Files created in each project
 
 `STATE.md` (where things stand, for resuming), `TASKS.md`, `DECISIONS.md`,
-`docs/HLD.md`, `docs/LLD.md`, `.results/` (images, git-ignored).
+`docs/SPEC.md` + `docs/wireframes/`, `docs/HLD.md`, `docs/LLD.md` (kept as-built),
+`docs/CONVENTIONS.md`, and at handover `docs/ARCHITECTURE.md` + `docs/WALKTHROUGH.md`.
+`.results/` holds images (git-ignored).
 
 ## Setup
 

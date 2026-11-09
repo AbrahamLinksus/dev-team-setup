@@ -5,7 +5,8 @@
 | Thing | Location | Survives the session ending? |
 |---|---|---|
 | Approved work | `main` (pushed) | ✅ |
-| Planning in progress (HLD/LLD/env) | branch `wip/plan`, worktree `<repo>-wt/plan` | ✅ (pushed at every checkpoint) |
+| Planning in progress (spec/HLD/LLD/env/tasks) | branch `wip/plan`, worktree `<repo>-wt/plan` | ✅ (pushed at every checkpoint) |
+| Change request in progress | branch `wip/CR-<n>`, worktree `<repo>-wt/CR-<n>` | ✅ |
 | Task in progress | branch `wip/<task-id>`, worktree `<repo>-wt/<task-id>` | ✅ (pushed at every checkpoint) |
 | Step states, debugger round, open decision | `TASK_PROGRESS.md` on the wip branch | ✅ |
 | Images in `.results/` | worktree only (git-ignored) | ❌ (re-capture on resume if needed) |
@@ -31,6 +32,10 @@ the owner's change requests: none
 ```
 
 Status: ⬜ pending · ⏳ in progress · ✅ done · ❌ failed.
+
+On `wip/plan`, TASK_PROGRESS.md also records the spec round (`Spec round: 3 · 9/12 complete`)
+and the last QUESTIONS block that hasn't been answered yet, so a resumed session re-asks
+exactly those questions. On `wip/CR-<n>` it records the CR text verbatim and the CR step (1–8).
 
 ## Protocol for each step
 

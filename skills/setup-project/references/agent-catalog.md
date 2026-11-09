@@ -1,15 +1,20 @@
 # Agent catalog
 
-Use this to pick the team. "Pick when" is the test for including an agent.
+**Planning crew (always used, not part of the team pick):** planner, researcher, architect,
+env-setup, git-pr. They run the spec, HLD, LLD and environment stages.
+
+**Team pick (after the HLD is approved):** map each HLD module to the agents that build it,
+using "Pick when" below. Recommend tester, reviewer, debugger and docs for any project with
+code. Show the module → agent mapping on the team card so the owner sees why each one is there.
 
 ## Core software pack
 
 | Agent | Model | Tools | Pick when |
 |---|---|---|---|
-| planner | Opus | Read, Write, Edit, Glob | Always (HLD, DS problem framing, TASKS.md) |
-| researcher | Sonnet | WebSearch, WebFetch, Read, Write (docs/research.md only) | Any choice of libraries, frameworks, models or papers |
-| architect | Opus | Read, Write, Edit, Glob, Grep | Always (LLD, stack, package table) |
-| env-setup | Sonnet | Bash, Read, Write, Edit, Glob | Always |
+| planner | Opus | Read, Write, Edit, Glob | Planning crew (spec, wireframes, HLD, TASKS.md, change requests) |
+| researcher | Sonnet | WebSearch, WebFetch, Read, Write (docs/research.md only) | Planning crew; also any later library/model choice |
+| architect | Opus | Read, Write, Edit, Glob, Grep | Planning crew (LLD, conventions, as-built sync, handover docs) |
+| env-setup | Sonnet | Bash, Read, Write, Edit, Glob | Planning crew |
 | backend-coder | Sonnet | Read, Write, Edit, Bash, Glob, Grep | Any server, API, CLI, pipeline or library code |
 | frontend-coder | Sonnet | Read, Write, Edit, Bash, Glob, Grep | Any UI (web app, dashboard UI) |
 | tester | Sonnet | Read, Write, Edit, Bash, Glob, Grep (tests only) | Always when code is written |
@@ -17,7 +22,7 @@ Use this to pick the team. "Pick when" is the test for including an agent.
 | debugger | Opus | Read, Edit, Bash, Glob, Grep | Always when code is written (on failures) |
 | docs | Haiku | Read, Write, Edit, Glob | Always (README, architecture notes) |
 | devops | Sonnet | Bash, Read, Write, Edit, Glob | CI needed, Docker, or deployment (GCP, Vercel, Render) |
-| git-pr | Haiku | Bash, Read | Always (repo, commits, pushes, reverts) |
+| git-pr | Haiku | Bash, Read | Planning crew (approve/reject via taskgit) |
 
 ## AI/ML pack
 

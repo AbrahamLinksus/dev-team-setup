@@ -50,10 +50,19 @@ T-06 Register API        4/4     ✅
 T-07 Login API           2/3     ⚠️ accepted partial
 ...
 Open issues: rate-limit lockout message (carried to M3)
+LLD as-built: 3 changes (TokenService split from AuthService · /login returns expires_at · users.email unique)
 Decisions this milestone: D-09…D-14
 Next milestone: M3 · RAG pipeline (6 tasks)
 ```
 
 Visual: before/after of the whole project (e.g. app screenshot then vs now, or a
 metrics chart vs baseline, or an updated architecture diagram).
-Ask: Approve milestone / Request changes.
+Ask: Approve milestone / Request changes. Send the LLD "Changes since last milestone"
+section rendered as an image when there are changes.
+
+## Handover card (project end)
+
+Images: running app (or main output) screenshot, the as-built system diagram, README
+"How to run" rendered. Then a list of what was delivered: `docs/ARCHITECTURE.md`,
+`docs/WALKTHROUGH.md`, README sections, CI status, final coverage, open issues / tech debt.
+Ask: Approve handover / Request changes.

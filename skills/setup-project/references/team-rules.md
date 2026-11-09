@@ -5,8 +5,8 @@ The single source of these rules. Every agent reads this file before starting.
 
 ## Before you start
 - Work only inside the worktree path in your brief (the task's own `wip/<id>` branch). Never touch the main checkout.
-- Read your task in the brief, then `docs/HLD.md`, `docs/LLD.md`, `docs/CONVENTIONS.md` (whichever exist), and `TASK_PROGRESS.md` if present (earlier steps of this task).
-- `TASKS.md`, `STATE.md`, `DECISIONS.md` and `TASK_PROGRESS.md` belong to the Orchestrator. Read them; never edit them (the planner may write `TASKS.md` during planning only).
+- Read your task in the brief, then `docs/SPEC.md`, `docs/HLD.md`, `docs/LLD.md`, `docs/CONVENTIONS.md` (whichever exist), and `TASK_PROGRESS.md` if present (earlier steps of this task).
+- `TASKS.md`, `STATE.md`, `DECISIONS.md` and `TASK_PROGRESS.md` belong to the Orchestrator. Read them; never edit them (only the planner writes `TASKS.md`, during planning and change requests).
 
 ## Scope is enforced
 - Each role may only change certain paths and run certain shell commands (`skills/setup-project/scopes.json`, plus the project's `.devteam/scopes.json`). A hook blocks out-of-scope writes and commands, and after every step the Orchestrator reverts any out-of-scope file changes. If a block stops you from finishing, report it under Issues; don't try to work around it.

@@ -7,7 +7,7 @@
 #     every step is committed + pushed there (`checkpoint`), so work survives the session ending.
 #   - Shared files (TASKS.md, STATE.md, DECISIONS.md) belong to main: tasks never change
 #     them (checkpoint reverts any change); the Orchestrator updates them on main with
-#     `record` after `approve`. Exception: the planning branch (`approve ... --keep-shared`).
+#     `record` after `approve`. Exceptions: `plan` and `CR-<n>` branches (approve with --keep-shared).
 #   - Before a result card is shown, `sync` merges the latest main into the task branch
 #     and re-runs scripts/check.sh, so a task is always tested against current main.
 #
@@ -60,6 +60,8 @@ blocked_files() {
   return 0
 }
 
+owns_shared() { [[ "$id" == plan || "$id" == CR-* ]]; }  # planning / change-request branches may edit shared files
+
 ensure_wt() {  # sets wt; fails if the worktree doesn't exist
   wt="$wtroot/$id"; [[ -d "$wt" ]] || die 1 "no worktree for $id; run: taskgit.sh start $repo $id"
 }
@@ -90,7 +92,7 @@ do_sync() {  # merge origin/main into wip/<id>, run check.sh; uses $id $wt
         die 4 "wip/$id conflicts with main in: $(echo $other). Merge aborted; the task branch is unchanged. Send it to the owner agent/debugger to rebase onto main."
       fi
       for f in $conflicts; do
-        if [[ "$f" == "$PROGRESS" ]]; then gw checkout -q --ours -- "$f"; else gw checkout -q --theirs -- "$f"; fi
+        if [[ "$f" == "$PROGRESS" ]] || owns_shared; then gw checkout -q --ours -- "$f"; else gw checkout -q --theirs -- "$f"; fi
         gw add -- "$f"
       done
       gw commit -q --no-edit || { gw merge --abort; die 4 "could not complete merge of main into wip/$id"; }
@@ -137,7 +139,7 @@ case "$cmd" in
 
   checkpoint)
     id=${3:?id}; msg=${4:?step message}; ensure_wt
-    [[ "$id" != plan ]] && revert_shared_in_wt
+    owns_shared || revert_shared_in_wt
     gw add -A
     blocked_files "$wt"
     gw commit -q --allow-empty -m "wip($id): $msg" || die 1 "commit failed"
@@ -185,7 +187,7 @@ case "$cmd" in
     fi
     # 2. task branch must contain current main and pass check.sh
     do_sync
-    excl=(":(exclude)$PROGRESS"); for f in "${SHARED[@]}"; do excl+=(":(exclude)$f"); done
+    excl=(":(exclude)$PROGRESS"); owns_shared || for f in "${SHARED[@]}"; do excl+=(":(exclude)$f"); done
     if g diff --quiet "$main" "$br" -- . "${excl[@]}"; then   # nothing left to merge: already on main
       g worktree remove --force "$wt" 2>/dev/null || true; g branch -q -D "$br" 2>/dev/null || true
       g push -q origin --delete "$br" 2>/dev/null || true; g worktree prune
@@ -197,7 +199,7 @@ case "$cmd" in
       g reset -q --merge 2>/dev/null || g reset -q --hard HEAD
       die 6 "squash of $br into $main failed; main restored to $(g rev-parse --short HEAD)"
     fi
-    if [[ "$keep_shared" != --keep-shared ]]; then
+    if [[ "$keep_shared" != --keep-shared ]] && ! owns_shared; then
       for f in "${SHARED[@]}"; do
         if g cat-file -e "HEAD:$f" 2>/dev/null; then g checkout -q HEAD -- "$f"; else g rm -q --cached --ignore-unmatch "$f" >/dev/null; fi
       done

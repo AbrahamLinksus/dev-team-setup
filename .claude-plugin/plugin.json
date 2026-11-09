@@ -1,7 +1,7 @@
 {
   "name": "dev-team-setup",
-  "version": "0.3.0",
-  "description": "/setup-project: picks a team of subagents (software, AI/ML, data science) for a project, plans it from HLD down to LLD, builds it task by task, and shows each result with a visual and asks for approval.",
+  "version": "0.4.0",
+  "description": "/setup-project: interviews you into a spec, designs the system, picks a team of subagents (software, AI/ML, data science), builds it task by task with a visual and your approval at every step, and hands over as-built docs.",
   "author": {
     "name": "Jake Roberts"
   },

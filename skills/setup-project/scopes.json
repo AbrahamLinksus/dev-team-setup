@@ -1,44 +1,334 @@
 {
   "_comment": "What each agent may change. Globs are relative to the project worktree root. '@group' expands a group. bash modes: none | readonly (no file-changing commands) | code (run code/tests; no git writes, no installs) | full (code + installs; env-setup only) | git (taskgit.sh + read-only git; git-pr only). Projects can override per agent in .devteam/scopes.json (written by the architect, approved with the LLD).",
-  "scratch": ["/tmp/**"],
+  "scratch": [
+    "/tmp/**"
+  ],
   "groups": {
-    "main_owned": ["TASKS.md", "STATE.md", "DECISIONS.md", "TASK_PROGRESS.md"],
-    "design": ["docs/HLD.md", "docs/LLD.md", "docs/CONVENTIONS.md", "docs/research.md", ".devteam/**"],
-    "vcs": [".git", ".git/**"],
-    "tests": ["tests/**", "**/tests/**", "**/test_*.py", "**/*_test.py", "**/conftest.py",
-              "**/*.test.ts", "**/*.test.tsx", "**/*.test.js", "**/*.test.jsx",
-              "**/*.spec.ts", "**/*.spec.tsx", "**/__tests__/**", "evals/**"],
-    "frontend_dirs": ["frontend/**", "web/**", "ui/**", "client/**"],
-    "backend_dirs": ["backend/**", "server/**", "api/**"],
-    "raw_data": ["data/raw/**"]
+    "main_owned": [
+      "TASKS.md",
+      "STATE.md",
+      "DECISIONS.md",
+      "TASK_PROGRESS.md"
+    ],
+    "design": [
+      "docs/SPEC.md",
+      "docs/wireframes/**",
+      "docs/HLD.md",
+      "docs/LLD.md",
+      "docs/CONVENTIONS.md",
+      "docs/research.md",
+      "docs/ARCHITECTURE.md",
+      "docs/WALKTHROUGH.md",
+      ".devteam/**"
+    ],
+    "vcs": [
+      ".git",
+      ".git/**"
+    ],
+    "tests": [
+      "tests/**",
+      "**/tests/**",
+      "**/test_*.py",
+      "**/*_test.py",
+      "**/conftest.py",
+      "**/*.test.ts",
+      "**/*.test.tsx",
+      "**/*.test.js",
+      "**/*.test.jsx",
+      "**/*.spec.ts",
+      "**/*.spec.tsx",
+      "**/__tests__/**",
+      "evals/**"
+    ],
+    "frontend_dirs": [
+      "frontend/**",
+      "web/**",
+      "ui/**",
+      "client/**"
+    ],
+    "backend_dirs": [
+      "backend/**",
+      "server/**",
+      "api/**"
+    ],
+    "raw_data": [
+      "data/raw/**"
+    ]
   },
-  "deny_all": ["@vcs", "**/.env", ".env"],
+  "deny_all": [
+    "@vcs",
+    "**/.env",
+    ".env"
+  ],
   "agents": {
-    "planner":          { "write": ["docs/HLD.md", "TASKS.md", ".results/**"], "deny": [], "bash": "none" },
-    "researcher":       { "write": ["docs/research.md"], "bash": "none" },
-    "architect":        { "write": ["docs/LLD.md", "docs/CONVENTIONS.md", ".devteam/**", ".results/**"], "bash": "none" },
-    "env-setup":        { "write": ["**"], "deny": ["@main_owned", "docs/HLD.md", "docs/LLD.md", "docs/CONVENTIONS.md", "docs/research.md"], "bash": "full" },
-    "backend-coder":    { "write": ["**"], "deny": ["@main_owned", "@design", "@frontend_dirs", "@raw_data"], "bash": "code" },
-    "frontend-coder":   { "write": ["**"], "deny": ["@main_owned", "@design", "@backend_dirs", "@raw_data"], "bash": "code" },
-    "tester":           { "write": ["@tests", ".results/**"], "bash": "code" },
-    "reviewer":         { "write": [], "bash": "none" },
-    "debugger":         { "write": ["**"], "deny": ["@main_owned", "@design", "@raw_data"], "bash": "code" },
-    "docs":             { "write": ["README.md", "**/README.md", "docs/**", ".results/**"], "deny": ["@main_owned", "@design"], "bash": "none" },
-    "devops":           { "write": [".github/**", "Dockerfile", "**/Dockerfile", ".dockerignore", "docker-compose*.yml", "compose*.yml", "deploy/**", "infra/**", "vercel.json", "render.yaml", ".results/**"], "bash": "code" },
-    "git-pr":           { "write": [], "bash": "git" },
-    "trainer":          { "write": ["**"], "deny": ["@main_owned", "@design", "@raw_data"], "bash": "code" },
-    "evaluator":        { "write": ["evals/**", "reports/eval*", ".results/**"], "bash": "code" },
-    "rag-engineer":     { "write": ["**"], "deny": ["@main_owned", "@design", "@raw_data", "@frontend_dirs"], "bash": "code" },
-    "prompt-engineer":  { "write": ["prompts/**", "**/prompts/**", "src/**", "backend/**", ".results/**"], "deny": ["@main_owned", "@design"], "bash": "code" },
-    "agent-engineer":   { "write": ["**"], "deny": ["@main_owned", "@design", "@raw_data", "@frontend_dirs"], "bash": "code" },
-    "mlops":            { "write": ["**"], "deny": ["@main_owned", "@design", "@raw_data", "@frontend_dirs"], "bash": "code" },
-    "data-acquisition": { "write": ["data/raw/**", "data/external/**", "data/SOURCES.md", "src/data/**", "scripts/acquire*", ".results/**"], "bash": "code" },
-    "data-cleaner":     { "write": ["src/data/**", "data/processed/**", "data/interim/**", "data/CLEANING_LOG.md", "@tests", ".results/**"], "deny": ["@raw_data"], "bash": "code" },
-    "eda":              { "write": ["notebooks/**", ".results/**"], "bash": "code" },
-    "statistician":     { "write": [".results/**"], "bash": "readonly" },
-    "modeler":          { "write": ["src/**", "models/**", "notebooks/**", "@tests", ".results/**"], "deny": ["@raw_data", "@main_owned", "@design"], "bash": "code" },
-    "explainer":        { "write": ["reports/**", ".results/**"], "bash": "code" },
-    "visualizer":       { "write": ["src/viz/**", "dashboards/**", "app/**", "streamlit_app.py", "reports/**", "notebooks/**", ".results/**"], "deny": ["@main_owned", "@design"], "bash": "code" },
-    "insights-reporter":{ "write": ["reports/**", ".results/**"], "bash": "none" }
+    "planner": {
+      "write": [
+        "docs/SPEC.md",
+        "docs/wireframes/**",
+        "docs/HLD.md",
+        "TASKS.md",
+        ".results/**"
+      ],
+      "deny": [],
+      "bash": "none"
+    },
+    "researcher": {
+      "write": [
+        "docs/research.md"
+      ],
+      "bash": "none"
+    },
+    "architect": {
+      "write": [
+        "docs/LLD.md",
+        "docs/CONVENTIONS.md",
+        "docs/ARCHITECTURE.md",
+        "docs/WALKTHROUGH.md",
+        ".devteam/**",
+        ".results/**"
+      ],
+      "bash": "none"
+    },
+    "env-setup": {
+      "write": [
+        "**"
+      ],
+      "deny": [
+        "@main_owned",
+        "@design"
+      ],
+      "bash": "full"
+    },
+    "backend-coder": {
+      "write": [
+        "**"
+      ],
+      "deny": [
+        "@main_owned",
+        "@design",
+        "@frontend_dirs",
+        "@raw_data"
+      ],
+      "bash": "code"
+    },
+    "frontend-coder": {
+      "write": [
+        "**"
+      ],
+      "deny": [
+        "@main_owned",
+        "@design",
+        "@backend_dirs",
+        "@raw_data"
+      ],
+      "bash": "code"
+    },
+    "tester": {
+      "write": [
+        "@tests",
+        ".results/**"
+      ],
+      "bash": "code"
+    },
+    "reviewer": {
+      "write": [],
+      "bash": "none"
+    },
+    "debugger": {
+      "write": [
+        "**"
+      ],
+      "deny": [
+        "@main_owned",
+        "@design",
+        "@raw_data"
+      ],
+      "bash": "code"
+    },
+    "docs": {
+      "write": [
+        "README.md",
+        "**/README.md",
+        "docs/**",
+        ".results/**"
+      ],
+      "deny": [
+        "@main_owned",
+        "@design"
+      ],
+      "bash": "none"
+    },
+    "devops": {
+      "write": [
+        ".github/**",
+        "Dockerfile",
+        "**/Dockerfile",
+        ".dockerignore",
+        "docker-compose*.yml",
+        "compose*.yml",
+        "deploy/**",
+        "infra/**",
+        "vercel.json",
+        "render.yaml",
+        ".results/**"
+      ],
+      "bash": "code"
+    },
+    "git-pr": {
+      "write": [],
+      "bash": "git"
+    },
+    "trainer": {
+      "write": [
+        "**"
+      ],
+      "deny": [
+        "@main_owned",
+        "@design",
+        "@raw_data"
+      ],
+      "bash": "code"
+    },
+    "evaluator": {
+      "write": [
+        "evals/**",
+        "reports/eval*",
+        ".results/**"
+      ],
+      "bash": "code"
+    },
+    "rag-engineer": {
+      "write": [
+        "**"
+      ],
+      "deny": [
+        "@main_owned",
+        "@design",
+        "@raw_data",
+        "@frontend_dirs"
+      ],
+      "bash": "code"
+    },
+    "prompt-engineer": {
+      "write": [
+        "prompts/**",
+        "**/prompts/**",
+        "src/**",
+        "backend/**",
+        ".results/**"
+      ],
+      "deny": [
+        "@main_owned",
+        "@design"
+      ],
+      "bash": "code"
+    },
+    "agent-engineer": {
+      "write": [
+        "**"
+      ],
+      "deny": [
+        "@main_owned",
+        "@design",
+        "@raw_data",
+        "@frontend_dirs"
+      ],
+      "bash": "code"
+    },
+    "mlops": {
+      "write": [
+        "**"
+      ],
+      "deny": [
+        "@main_owned",
+        "@design",
+        "@raw_data",
+        "@frontend_dirs"
+      ],
+      "bash": "code"
+    },
+    "data-acquisition": {
+      "write": [
+        "data/raw/**",
+        "data/external/**",
+        "data/SOURCES.md",
+        "src/data/**",
+        "scripts/acquire*",
+        ".results/**"
+      ],
+      "bash": "code"
+    },
+    "data-cleaner": {
+      "write": [
+        "src/data/**",
+        "data/processed/**",
+        "data/interim/**",
+        "data/CLEANING_LOG.md",
+        "@tests",
+        ".results/**"
+      ],
+      "deny": [
+        "@raw_data"
+      ],
+      "bash": "code"
+    },
+    "eda": {
+      "write": [
+        "notebooks/**",
+        ".results/**"
+      ],
+      "bash": "code"
+    },
+    "statistician": {
+      "write": [
+        ".results/**"
+      ],
+      "bash": "readonly"
+    },
+    "modeler": {
+      "write": [
+        "src/**",
+        "models/**",
+        "notebooks/**",
+        "@tests",
+        ".results/**"
+      ],
+      "deny": [
+        "@raw_data",
+        "@main_owned",
+        "@design"
+      ],
+      "bash": "code"
+    },
+    "explainer": {
+      "write": [
+        "reports/**",
+        ".results/**"
+      ],
+      "bash": "code"
+    },
+    "visualizer": {
+      "write": [
+        "src/viz/**",
+        "dashboards/**",
+        "app/**",
+        "streamlit_app.py",
+        "reports/**",
+        "notebooks/**",
+        ".results/**"
+      ],
+      "deny": [
+        "@main_owned",
+        "@design"
+      ],
+      "bash": "code"
+    },
+    "insights-reporter": {
+      "write": [
+        "reports/**",
+        ".results/**"
+      ],
+      "bash": "none"
+    }
   }
 }

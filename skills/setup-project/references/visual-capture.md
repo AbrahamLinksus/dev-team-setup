@@ -13,6 +13,7 @@ Send them to the owner with SendUserFile (they open on his phone).
 | Backend / API | FastAPI `/docs` screenshot + a real request/response | `python3 $CAPTURE web http://localhost:8000/docs .results/T-07/docs` and `python3 $CAPTURE term .results/T-07/req.png --cmd "curl -s -X POST localhost:8000/login -d '...' \| python3 -m json.tool" --title "POST /login"` |
 | CLI / scripts | Terminal output | `python3 $CAPTURE term out.png --cmd "<command>" --title "<what>"` |
 | Tests | Pass/fail + coverage | `python3 $CAPTURE term tests.png --cmd "uv run pytest -q --cov=src --cov-report=term" --title "tests"` |
+| Spec wireframes | Lo-fi screen mock-ups, mobile + desktop | `python3 $CAPTURE html docs/wireframes/<screen>.html docs/wireframes/<screen>.png --width 390` (and `--width 1280`) |
 | HLD / LLD / architecture | Mermaid diagram | write `.mmd` → `python3 $CAPTURE mermaid diagram.mmd diagram.png` |
 | Package list / comparison / decision options | Rendered table | write `.md` → `python3 $CAPTURE md table.md table.png` |
 | ML training | Loss curves, metric bars, confusion matrix | matplotlib/plotly → PNG (`fig.savefig(..., dpi=150, bbox_inches="tight")`) |

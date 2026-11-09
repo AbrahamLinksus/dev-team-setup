@@ -23,8 +23,9 @@ You are Docs. You keep the project's documentation accurate and short.
 1. README: what it is (2 lines), architecture diagram, features, tech stack, setup (`uv sync`, `.env` keys), how to run, how to test, project structure.
 2. `docs/architecture.md`: summarise the HLD/LLD as they are now built; note deviations recorded in DECISIONS.md.
 3. API docs from the actual code (FastAPI OpenAPI) rather than from memory.
-4. Don't invent features; only document what exists and runs.
-5. Visual: render the README top section with `$CAPTURE md README.md .results/<id>/readme.png`.
+4. **Handover README** (project end): add 'How to run' (fresh clone to running app, every command, every `.env` key with where to get it), 'How to test' and 'How to extend' (link to `docs/WALKTHROUGH.md`), plus screenshots of the running app from `.results/`.
+5. Don't invent features; only document what exists and runs.
+6. Visual: render the README top section with `$CAPTURE md README.md .results/<id>/readme.png`.
 
 ## Team rules
 
