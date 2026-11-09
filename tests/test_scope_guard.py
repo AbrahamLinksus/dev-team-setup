@@ -3,6 +3,8 @@
 
 Run: python3 -m unittest discover -s tests -v
 """
+from __future__ import annotations  # `str | None` annotations on Python 3.9 (macOS's python3)
+
 import json
 import subprocess
 import sys

@@ -125,6 +125,16 @@ class StructureTest(unittest.TestCase):
                 with self.subTest(agent=path.stem):
                     self.assertNotIn("docs/HLD.md", path.read_text())
 
+    def test_runs_on_python_39(self):
+        # C2: `str | None` in a signature raises TypeError at import on Python 3.9 (macOS's stock
+        # python3) unless annotations are postponed
+        for path in [*ROOT.glob("hooks/*.py"), *ROOT.glob("skills/**/*.py"), *ROOT.glob("tools/*.py"), *ROOT.glob("tests/test_*.py")]:
+            text = path.read_text(encoding="utf-8")
+            if re.search(r"^\s*def .*(:|->)\s*[\w\[\], ]+\s*\|\s*(None|\w)", text, re.M):
+                with self.subTest(file=str(path.relative_to(ROOT))):
+                    self.assertTrue("from __future__ import annotations" in text,
+                                    "uses `X | Y` annotations: add `from __future__ import annotations`")
+
     def test_no_hardcoded_owner(self):
         for path in list((ROOT / "agents").glob("*.md")) + list(SKILL.rglob("*.md")):
             with self.subTest(file=str(path.relative_to(ROOT))):
