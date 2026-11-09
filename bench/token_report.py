@@ -6,7 +6,11 @@ Reads the session logs Claude Code writes to ~/.claude/projects/<project>/:
                                      lines here, marked "isSidechain": true)
   <session-id>/**/*.jsonl            subagent logs (newer versions)
 
-Each model reply is counted once (logs can repeat a reply across several lines).
+Totals come from Claude Code's own accounting: the last "cost-state" line of each
+session (the same numbers /cost shows, including background calls such as summaries
+and titles that never appear as replies). The per-agent split comes from the logged
+replies (each counted once); the difference is shown as "background calls".
+Older logs without cost-state fall back to replies only and are marked as a lower bound.
 
 Usage (run from the folder you started `claude` in, or pass --project-dir):
   python3 bench/token_report.py --latest               # newest session
@@ -122,6 +126,32 @@ def collect(files: list[tuple[Path, str | None]], totals: Totals) -> None:
             totals.add(agent, model, usage, ts)
 
 
+CAMEL = {"inputTokens": "input_tokens", "cacheCreationInputTokens": "cache_creation_input_tokens",
+         "cacheReadInputTokens": "cache_read_input_tokens", "outputTokens": "output_tokens"}
+BACKGROUND = "background calls (not logged as replies)"
+
+
+def read_cost_state(main: Path) -> dict | None:
+    """Last cost-state line of a session: Claude Code's cumulative totals (what /cost shows)."""
+    last = None
+    for d in read_lines(main):
+        if d.get("type") == "cost-state" and isinstance(d.get("modelUsage"), dict):
+            last = d
+    if last is None:
+        return None
+    by_model = {m: {f: int(u.get(c) or 0) for c, f in CAMEL.items()} for m, u in last["modelUsage"].items()}
+    return {"cost": float(last.get("totalCostUSD") or 0), "by_model": by_model,
+            "minutes": (last.get("totalDuration") or 0) / 60000, "unknown_cost": bool(last.get("hasUnknownModelCost"))}
+
+
+def sum_fields(d: dict) -> dict:
+    out = defaultdict(int)
+    for u in d.values():
+        for f in FIELDS:
+            out[f] += u[f]
+    return out
+
+
 def session_files(pdir: Path, sid: str) -> list[tuple[Path, str | None]]:
     files: list[tuple[Path, str | None]] = []
     main = pdir / f"{sid}.jsonl"
@@ -187,51 +217,85 @@ def main() -> int:
         print("No matching sessions.", file=sys.stderr)
         return 1
 
-    totals = Totals()
+    totals = Totals()                                   # visible replies, all sessions
+    auth_model = defaultdict(lambda: defaultdict(int))   # authoritative per-model totals
+    cost, cost_complete, minutes_cs, notes = 0.0, True, 0.0, []
     for sid in sids:
         files = session_files(pdir, sid)
         if not files:
             print(f"warning: no log files for session {sid}", file=sys.stderr)
+        st = Totals()
+        collect(files, st)
         collect(files, totals)
         totals.sessions.append(sid)
+        main_file = pdir / f"{sid}.jsonl"
+        cs = read_cost_state(main_file) if main_file.exists() else None
+        if cs is None:
+            cost_complete = False
+            notes.append(f"{sid[:8]}: no cost-state in log, counted replies only (lower bound)")
+            for m, u in st.by_model.items():
+                for f in FIELDS:
+                    auth_model[m][f] += u[f]
+            continue
+        cost += cs["cost"]
+        minutes_cs += cs["minutes"]
+        cost_complete &= not cs["unknown_cost"]
+        vis_all = sum_fields(st.by_agent)
+        cs_all = sum_fields(cs["by_model"])
+        covers = all(vis_all[f] <= cs_all[f] * 1.01 + 10 for f in FIELDS)
+        for m, u in cs["by_model"].items():
+            for f in FIELDS:
+                auth_model[m][f] += u[f]
+        if not covers:  # cost-state counted the main thread only: add subagent replies on top
+            cost_complete = False
+            notes.append(f"{sid[:8]}: cost-state excludes subagents; their reply tokens were added, their cost is not included")
+            for k, u in st.by_agent.items():
+                if k != "main session":
+                    for f in FIELDS:
+                        auth_model["(subagents)"][f] += u[f]
 
-    grand = defaultdict(int)
-    for u in totals.by_agent.values():
-        for f in FIELDS:
-            grand[f] += u[f]
-    minutes = (totals.last - totals.first).total_seconds() / 60 if totals.first and totals.last else 0
+    vis_grand = sum_fields(totals.by_agent)
+    grand = sum_fields(auth_model)
+    background = {f: max(0, grand[f] - vis_grand[f]) for f in FIELDS}
+    by_agent = {k: dict(v) for k, v in totals.by_agent.items()}
+    if sum(background.values()):
+        by_agent[BACKGROUND] = background
+    minutes = minutes_cs or ((totals.last - totals.first).total_seconds() / 60 if totals.first and totals.last else 0)
     total_all = sum(grand.values())
     sub_total = sum(sum(u.values()) for k, u in totals.by_agent.items() if k != "main session")
+    calls = sum(totals.calls.values())
+    cost_txt = (f"${cost:.2f}" + ("" if cost_complete else " (partial)")) if cost else "n/a"
 
     if a.json:
         print(json.dumps({"label": a.label, "sessions": totals.sessions, "minutes": round(minutes, 1),
+                          "cost_usd": round(cost, 4), "cost_complete": cost_complete,
                           "totals": dict(grand), "all_tokens": total_all, "subagent_tokens": sub_total,
-                          "calls": sum(totals.calls.values()),
-                          "by_agent": {k: dict(v) for k, v in totals.by_agent.items()},
-                          "by_model": {k: dict(v) for k, v in totals.by_model.items()}}, indent=2))
+                          "background": background, "calls": calls, "notes": notes,
+                          "by_agent": by_agent,
+                          "by_model": {k: dict(v) for k, v in auth_model.items()}}, indent=2))
         return 0
 
     head = "| {} | input | cache write | cache read | output | all tokens |"
     sep = "|---|---|---|---|---|---|"
     print(f"## Tokens · {a.label}\n")
-    print(f"Sessions: {len(totals.sessions)} · model calls: {sum(totals.calls.values())} · "
-          f"wall time: {minutes:.0f} min\n")
+    print(f"Sessions: {len(totals.sessions)} · logged model replies: {calls} · "
+          f"time: {minutes:.0f} min · **cost: {cost_txt}**\n")
+    for n in notes:
+        print(f"- note: {n}")
     print("### By agent\n")
     print("| agent | calls | input | cache write | cache read | output | all tokens |")
     print("|---|---|---|---|---|---|---|")
-    for k, u in sorted(totals.by_agent.items(), key=lambda kv: -sum(kv[1].values())):
-        print(row(k, u, totals.calls[k]))
-    print(row("**total**", grand, sum(totals.calls.values())))
-    print("\n### By model\n")
+    for k, u in sorted(by_agent.items(), key=lambda kv: (kv[0] == BACKGROUND, -sum(kv[1].values()))):
+        print(row(k, u, totals.calls.get(k, "-") if k != BACKGROUND else "-"))
+    print(row("**total**", grand, calls))
+    print("\n### By model (Claude Code's own totals, same as /cost)\n")
     print(head.format("model")); print(sep)
-    for k, u in sorted(totals.by_model.items(), key=lambda kv: -sum(kv[1].values())):
+    for k, u in sorted(auth_model.items(), key=lambda kv: -sum(kv[1].values())):
         print(row(k, u))
     print("\n### Summary row for bench/results.md\n")
     print(f"| {a.label} | {fmt(total_all)} | {fmt(grand['output_tokens'])} | "
-          f"{fmt(grand['cache_read_input_tokens'])} | {fmt(sub_total)} | {sum(totals.calls.values())} | "
-          f"{minutes:.0f} min |")
-    print("\nCache reads are billed at a fraction of normal input. For cost, also note what "
-          "`/cost` (or `/usage`) shows at the end of each session.")
+          f"{fmt(grand['cache_read_input_tokens'])} | {fmt(sub_total)} | {calls} | "
+          f"{minutes:.0f} min | {cost_txt} |")
     return 0
 
 

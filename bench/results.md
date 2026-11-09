@@ -8,13 +8,13 @@ Date: · Claude Code version (`claude --version`): · Plugin version:
 | | | |
 
 ## Tokens (paste the summary rows from token_report.py)
-| Run | All tokens | Output | Cache reads | Subagent tokens | Model calls | Wall time |
-|---|---|---|---|---|---|---|
-| baseline | | | | | | |
-| plugin | | | | | | |
+| Run | All tokens | Output | Cache reads | Subagent tokens | Logged replies | Time | Cost |
+|---|---|---|---|---|---|---|---|
+| baseline | | | | | | | |
+| plugin | | | | | | | |
 
 ## Cost and effort
-| Run | `/cost` (sum of all sessions) | Sessions | Your interventions |
+| Run | `/cost` (sum of all sessions, cross-check) | Sessions | Your interventions |
 |---|---|---|---|
 | baseline | | 1 | |
 | plugin | | | |

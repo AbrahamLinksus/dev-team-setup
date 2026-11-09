@@ -92,5 +92,80 @@ class TokenReportTest(unittest.TestCase):
         self.assertIn("| plugin |", out)
 
 
+def cost_state(cost, models):
+    camel = {"input_tokens": "inputTokens", "cache_creation_input_tokens": "cacheCreationInputTokens",
+             "cache_read_input_tokens": "cacheReadInputTokens", "output_tokens": "outputTokens"}
+    return {"type": "cost-state", "totalCostUSD": cost, "totalDuration": 609650, "hasUnknownModelCost": False,
+            "modelUsage": {m: {camel[k]: v for k, v in u.items()} | {"thinkingTokens": 1, "costUSD": 0} for m, u in models.items()}}
+
+
+class CostStateTest(unittest.TestCase):
+    """Real numbers from the baseline run (Claude Code 2.1.312): replies in the log vs cost-state."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.pdir = Path(self.tmp.name)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def report(self, *args):
+        out = subprocess.run([sys.executable, str(SCRIPT), "--project-dir", str(self.pdir), "--json", *args],
+                             capture_output=True, text=True, check=True).stdout
+        return json.loads(out)
+
+    def test_baseline_matches_cost(self):
+        t = "2026-11-09T10:{:02d}:00Z".format
+        write(self.pdir / "base.jsonl", [
+            user("build", t(12)),
+            assistant("a", "claude-opus-5-5", usage(2, 20862, 25156, 169), t(12)),
+            assistant("a", "claude-opus-5-5", usage(2, 20862, 25156, 169), t(12)),   # same reply, 2nd line
+            assistant("b", "claude-opus-5-5", usage(28, 16003, 672643, 12692), t(17)),
+            cost_state(0.204, {"claude-opus-5-5": usage(510, 21311, 117430, 398)}),  # earlier snapshot
+            cost_state(0.758604, {"claude-haiku-5-5": usage(1238, 0, 0, 136),
+                                  "claude-opus-5-5": usage(1159, 38308, 932061, 13045)}),
+        ])
+        r = self.report("--session", "base")
+        self.assertAlmostEqual(r["cost_usd"], 0.7586, places=4)
+        self.assertTrue(r["cost_complete"])
+        self.assertEqual(r["by_model"]["claude-opus-5-5"], usage(1159, 38308, 932061, 13045))
+        self.assertEqual(r["all_tokens"], 1159 + 38308 + 932061 + 13045 + 1238 + 136)
+        self.assertEqual(r["by_agent"]["main session"], usage(30, 36865, 697799, 12861))
+        self.assertEqual(r["background"], usage(1159 - 30 + 1238, 38308 - 36865, 932061 - 697799, 13045 - 12861 + 136))
+        self.assertEqual(r["minutes"], round(609650 / 60000, 1))
+
+    def test_cost_state_covering_subagents(self):
+        t = "2026-11-09T11:{:02d}:00Z".format
+        write(self.pdir / "s.jsonl", [user("x", t(0)), assistant("m", "opus", usage(1, 10, 100, 5), t(1)),
+                                      cost_state(1.0, {"opus": usage(5, 60, 700, 50)})])
+        write(self.pdir / "s" / "subagents" / "agent-1.jsonl", [
+            user("BRIEF · T-01 · tester · test", t(2)), assistant("n", "opus", usage(2, 40, 500, 30), t(3))])
+        r = self.report("--session", "s")
+        self.assertEqual(r["totals"], usage(5, 60, 700, 50))          # cost-state already includes the subagent
+        self.assertEqual(r["by_agent"]["tester"], usage(2, 40, 500, 30))
+        self.assertEqual(r["background"], usage(2, 10, 100, 15))
+        self.assertTrue(r["cost_complete"])
+
+    def test_cost_state_excluding_subagents(self):
+        t = "2026-11-09T12:{:02d}:00Z".format
+        write(self.pdir / "s.jsonl", [user("x", t(0)), assistant("m", "opus", usage(1, 10, 100, 5), t(1)),
+                                      cost_state(1.0, {"opus": usage(1, 10, 100, 5)})])
+        write(self.pdir / "s" / "subagents" / "agent-1.jsonl", [
+            user("BRIEF · T-01 · tester · test", t(2)), assistant("n", "opus", usage(2, 40, 500, 30), t(3))])
+        r = self.report("--session", "s")
+        self.assertEqual(r["totals"], usage(3, 50, 600, 35))          # subagent replies added on top
+        self.assertFalse(r["cost_complete"])
+        self.assertTrue(any("excludes subagents" in n for n in r["notes"]))
+
+    def test_sessions_add_up(self):
+        t = "2026-11-09T13:{:02d}:00Z".format
+        for i, c in ((1, 0.5), (2, 0.25)):
+            write(self.pdir / f"m{i}.jsonl", [user("x", t(i)), assistant(f"r{i}", "opus", usage(1, 1, 1, 1), t(i)),
+                                              cost_state(c, {"opus": usage(2, 2, 2, 2)})])
+        r = self.report("--since", "2026-11-09T13:00:00+00:00")
+        self.assertAlmostEqual(r["cost_usd"], 0.75)
+        self.assertEqual(r["totals"], usage(4, 4, 4, 4))
+
+
 if __name__ == "__main__":
     unittest.main()

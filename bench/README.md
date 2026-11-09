@@ -73,6 +73,7 @@ Fill in `results.md` and send it to me (or paste it into a chat).
 ---
 
 **How tokens are counted:** `token_report.py` reads Claude Code's session logs in
-`~/.claude/projects/` (the main session plus every subagent's log), counts each model
-reply once, and splits totals by agent and model. Cache reads are much cheaper than
-normal input, so compare `/cost` too, not just token totals.
+`~/.claude/projects/`. Totals and cost come from Claude Code's own accounting (the
+`cost-state` entries, the same numbers `/cost` shows), so they include background calls
+such as summaries and titles. The split by agent comes from the logged replies of the
+main session and every subagent; whatever isn't in a reply is shown as "background calls".
