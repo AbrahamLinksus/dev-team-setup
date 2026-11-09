@@ -130,7 +130,7 @@ do_sync() {  # merge origin/main into wip/<id>, run check.sh; uses $id $wt
   if gw merge-base --is-ancestor "origin/$main" HEAD; then
     echo "sync: wip/$id already contains main@$(g rev-parse --short "origin/$main")"
   else
-    if ! gw merge -q --no-edit "origin/$main" >/dev/null 2>&1; then
+    if ! gw merge -q --no-edit --no-verify "origin/$main" >/dev/null 2>&1; then
       local conflicts other
       conflicts=$(gw diff --name-only --diff-filter=U)
       other=$(echo "$conflicts" | grep -v -x -E "$(IFS='|'; echo "${SHARED[*]}|$PROGRESS")" || true)
@@ -148,7 +148,7 @@ do_sync() {  # merge origin/main into wip/<id>, run check.sh; uses $id $wt
         fi
         gw add -- "$f"
       done
-      gw commit -q --no-edit || { gw merge --abort; die 4 "could not complete merge of main into wip/$id"; }
+      gw commit -q --no-edit --no-verify || { gw merge --abort; die 4 "could not complete merge of main into wip/$id"; }
     fi
     echo "sync: merged main@$(g rev-parse --short "origin/$main") into wip/$id"
   fi
@@ -201,7 +201,9 @@ case "$cmd" in
     revert_shared_in_wt
     gw add -A
     blocked_files "$wt"
-    gw commit -q --allow-empty -m "wip($id): $msg" || die 1 "commit failed"
+    # --no-verify: work in progress may not pass the project's pre-commit hooks yet (lint, auto-fixers
+    # that rewrite files mid-commit); approve runs scripts/check.sh before anything reaches main.
+    gw commit -q --no-verify --allow-empty -m "wip($id): $msg" || die 1 "commit failed"
     mark_step_base
     push_branch "$wt" "wip/$id" || die 7 "checkpoint committed locally but NOT pushed (see error above)"
     echo "checkpoint wip/$id: $msg"

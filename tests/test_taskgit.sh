@@ -220,6 +220,18 @@ if scenario start_installs_locked_deps; then
   check "a missing package manager is a warning, not an error" contains "$out" "npm not found"
 fi
 
+if scenario precommit_hook_does_not_block_checkpoints; then
+  # T2: env-setup installs pre-commit into .git/hooks (shared by every worktree); WIP code fails it.
+  new_repo hook; printf '#!/bin/sh\necho "lint failed" >&2\nexit 1\n' > "$R/.git/hooks/pre-commit"; chmod +x "$R/.git/hooks/pre-commit"
+  cp "$R/.git/hooks/pre-commit" "$R/.git/hooks/pre-merge-commit"
+  H=$(tg start "$R" T-16); echo "half_done = (" > "$H/wip.py"
+  check "checkpoint succeeds despite a failing pre-commit hook" expect_exit 0 tg checkpoint "$R" T-16 "coder halfway"
+  check "the WIP commit is on origin" test -n "$(git -C "$R" ls-remote origin wip/T-16)"
+  echo "y = 2" > "$R/other.py"; git -C "$R" add other.py; git -C "$R" commit -q --no-verify -m other; git -C "$R" push -q 2>/dev/null
+  echo "half_done = 1" > "$H/wip.py"; tgq checkpoint "$R" T-16 "coder done"
+  check "sync merges main despite the hook" expect_exit 0 tg sync "$R" T-16
+fi
+
 # ---- summary ---------------------------------------------------------------------------
 echo
 echo "taskgit scenarios: $PASS passed, $FAIL failed"
