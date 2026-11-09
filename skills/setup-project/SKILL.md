@@ -56,8 +56,8 @@ architect, env-setup, git-pr. The **build team** is picked in stage 3 from the H
 ## Step protocol (every agent step on branch `<id>`)
 
 1. Mark the step ⏳ in the worktree's `TASK_PROGRESS.md`; `$TASKGIT checkpoint <repo> <id> "<step> started"`.
-2. Spawn the agent **fresh** (`subagent_type: "dev-team-setup:<agent>"`, or the bare name if
-   that's how the agent list shows it) with a brief from `brief-template.md`: `Read:` built from
+2. Spawn the agent **fresh** (always `subagent_type: "dev-team-setup:<agent>"`: the scope guard
+   only recognises the prefixed name, so a bare name would run unguarded) with a brief from `brief-template.md`: `Read:` built from
    the role default + the task's `Context:` + STATE.md "Context additions", and
    `Write full report to: <wt>/.results/<id>/<step>-<agent>.md`. Every path in a brief is
    absolute (`<wt>` = the worktree path `start` printed): subagents don't start in the worktree. Rework is the only exception

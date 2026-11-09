@@ -103,6 +103,11 @@ class GuardTest(unittest.TestCase):
         self.assertIsNone(hook(None, "Write", {"file_path": str(self.repo / "TASKS.md")}, str(self.repo)))
         self.assertIsNone(hook("other-plugin:tester", "Write", {"file_path": str(self.repo / "src/a.py")}, str(self.repo)))
         self.assertIsNone(hook("Explore", "Bash", {"command": "git push -f"}, str(self.repo)))
+        # S6: bare names are other agents (the user's own "reviewer", or `claude --agent tester`)
+        self.assertIsNone(hook("reviewer", "Bash", {"command": "npm test"}, str(self.repo)))
+        self.assertIsNone(hook("tester", "Write", {"file_path": str(self.repo / "src/a.py")}, str(self.repo)))
+        self.assertIsNone(hook("my-plugin:dev-team-setup:tester", "Write", {"file_path": str(self.repo / "src/a.py")}, str(self.repo)))
+        self.assertIsNotNone(hook("dev-team-setup:tester", "Write", {"file_path": str(self.repo / "src/a.py")}, str(self.repo)))
 
     # ---- git-pr allowlist --------------------------------------------------------
     def test_git_pr_allowed(self):

@@ -5,8 +5,10 @@ Two modes, one source of truth (skills/setup-project/scopes.json + optional
 <project>/.devteam/scopes.json overrides written by the Architect):
 
 1. PreToolUse hook (default): reads the hook JSON from stdin. Acts only when the tool
-   call comes from one of this plugin's agents (agent_type "dev-team-setup:<name>" or a
-   bare <name> listed in scopes.json); everything else passes untouched.
+   call comes from one of this plugin's agents (agent_type "dev-team-setup:<name>" with <name>
+   listed in scopes.json); everything else passes untouched. A bare "<name>" is NOT ours: users
+   and other plugins have agents called reviewer, tester, docs …, and `claude --agent tester`
+   sets agent_type on the main thread too.
    - Write/Edit/NotebookEdit: the target path must match the agent's `write` globs and
      not its `deny` globs.
    - Bash: checked against the agent's bash mode (none | readonly | code | full | git).
@@ -64,12 +66,9 @@ def load_scopes(project_root: Path | None) -> dict:
 def agent_name(agent_type: str | None, scopes: dict) -> str | None:
     if not agent_type:
         return None
-    if ":" in agent_type:
-        prefix, _, name = agent_type.rpartition(":")
-        if prefix.split(":")[0] != PLUGIN:
-            return None
-    else:
-        name = agent_type
+    prefix, sep, name = agent_type.rpartition(":")
+    if not sep or prefix.split(":")[0] != PLUGIN:
+        return None  # bare names belong to the user or other plugins
     return name if name in scopes["agents"] else None
 
 
