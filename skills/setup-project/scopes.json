@@ -74,7 +74,8 @@
     },
     "researcher": {
       "write": [
-        "docs/research.md"
+        "docs/research.md",
+        ".results/**"
       ],
       "bash": "none"
     },
@@ -131,7 +132,9 @@
       "bash": "code"
     },
     "reviewer": {
-      "write": [],
+      "write": [
+        ".results/**"
+      ],
       "bash": "none"
     },
     "debugger": {
@@ -175,7 +178,9 @@
       "bash": "code"
     },
     "git-pr": {
-      "write": [],
+      "write": [
+        ".results/**"
+      ],
       "bash": "git"
     },
     "trainer": {

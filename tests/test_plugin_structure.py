@@ -92,6 +92,27 @@ class StructureTest(unittest.TestCase):
                     self.assertEqual((Path(d) / path.name).read_text(), path.read_text(),
                                      "agents/ is out of date: run python3 tools/gen_agents.py")
 
+    def test_token_rules(self):
+        rules = (SKILL / "references" / "team-rules.md").read_text()
+        self.assertIn("Read only what your brief's `Read:` field lists", rules)
+        self.assertIn("at most 12 lines", rules)
+        self.assertNotRegex(rules, r"Read your task in the brief, then `docs/")
+        brief = (SKILL / "references" / "brief-template.md").read_text()
+        self.assertIn("Read:", brief)
+        self.assertIn("Write full report to: .results/<task-id>/<step>-<agent>.md", brief)
+        self.assertNotIn("Inputs:", brief)
+        self.assertIn("§0", (SKILL / "templates" / "LLD.md").read_text())
+        self.assertIn("- Context:", (SKILL / "templates" / "TASKS.md").read_text())
+        skill = (SKILL / "SKILL.md").read_text()
+        for phrase in ("Never read diffs", "Rework continuation", "fresh session"):
+            self.assertIn(phrase, skill)
+        build_agents = {"backend-coder", "frontend-coder", "tester", "reviewer", "debugger", "rag-engineer",
+                        "agent-engineer", "prompt-engineer", "trainer", "modeler", "evaluator", "mlops"}
+        for path in AGENTS:
+            if path.stem in build_agents:
+                with self.subTest(agent=path.stem):
+                    self.assertNotIn("docs/HLD.md", path.read_text())
+
     def test_no_hardcoded_owner(self):
         for path in list((ROOT / "agents").glob("*.md")) + list(SKILL.rglob("*.md")):
             with self.subTest(file=str(path.relative_to(ROOT))):

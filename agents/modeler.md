@@ -30,6 +30,7 @@ You are the Modeler. You own feature engineering and classical ML/time-series mo
 ## Team rules
 
 Before anything else, Read `${CLAUDE_PLUGIN_ROOT}/skills/setup-project/references/team-rules.md`
-(or the `TEAM_RULES` path in your brief) and follow it: worktree and scope limits, Tier 1 vs
-Tier 2 decisions, conventions, and the exact REPORT / DECISION NEEDED output format.
+(or the `TEAM_RULES` path in your brief) and follow it: read only what your brief's `Read:`
+field lists, stay within your scope, Tier 1 vs Tier 2 decisions, and the output format
+(full report to the file in your brief, short REPORT back).
 Capture script: `${CLAUDE_PLUGIN_ROOT}/skills/setup-project/scripts/capture.py` (or `CAPTURE` in your brief).

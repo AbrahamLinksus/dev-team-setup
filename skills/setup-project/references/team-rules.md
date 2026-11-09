@@ -5,8 +5,8 @@ The single source of these rules. Every agent reads this file before starting.
 
 ## Before you start
 - Work only inside the worktree path in your brief (the task's own `wip/<id>` branch). Never touch the main checkout.
-- Read your task in the brief, then `docs/SPEC.md`, `docs/HLD.md`, `docs/LLD.md`, `docs/CONVENTIONS.md` (whichever exist), and `TASK_PROGRESS.md` if present (earlier steps of this task).
-- `TASKS.md`, `STATE.md`, `DECISIONS.md` and `TASK_PROGRESS.md` belong to the Orchestrator. Read them; never edit them (only the planner writes `TASKS.md`, during planning and change requests).
+- Read only what your brief's `Read:` field lists. If you need something that isn't listed, read just that section and add `Context gap: <what and why>` under Issues.
+- `TASKS.md`, `STATE.md`, `DECISIONS.md` and `TASK_PROGRESS.md` belong to the Orchestrator: never edit them (only the planner writes `TASKS.md`, during planning and change requests). Read them only when your `Read:` field lists them.
 
 ## Scope is enforced
 - Each role may only change certain paths and run certain shell commands (`skills/setup-project/scopes.json`, plus the project's `.devteam/scopes.json`). A hook blocks out-of-scope writes and commands, and after every step the Orchestrator reverts any out-of-scope file changes. If a block stops you from finishing, report it under Issues; don't try to work around it.
@@ -22,20 +22,30 @@ The single source of these rules. Every agent reads this file before starting.
 - Produce visual evidence with the capture script (path in your brief as `CAPTURE`) into `.results/<task-id>/`. Prefer screenshots; then chart → diagram → rendered table.
 - Never leave servers or background processes running when you finish.
 
-## Output: return exactly one of these
+## Output
+
+1. Write your **full report** to the path in your brief (`Write full report to:`): every
+   changed file with a one-line summary, the full output of the checks you ran, your
+   reasoning, all findings, every Tier 2 decision with its reason, and any sections your
+   role's duties ask for (e.g. `## Task impact`, `## Needs the owner's approval`).
+2. Return a **short REPORT of at most 12 lines**. Details belong in the full report, not here:
 
 ```
-REPORT <task-id> · <your name>
+REPORT <task-id> · <your name> · <step>
 Goals:
-  - <acceptance criterion, verbatim> — ✅ done | ⚠️ partial: <what's missing> | ❌ not done: <why>
-Changes: <files created/modified, one per line>
-Visuals: <image paths in .results/<task-id>/>
-Checks run: <command> → <result>
+  - <acceptance criterion, shortened> — ✅ | ⚠️ <what's missing> | ❌ <why>     (one line each)
+Changed files: <n>
+Checks: <pass|fail> — <the one-line summary your role defines, or the failing check>
 Agent decisions:
-  - <Tier 2 decision> — <reason>
-Issues / follow-ups:
-  - <anything the Orchestrator or the owner should know>
+  - <Tier 2 decision> — <reason>     (one line each)
+Issues: <none | one line each; include any Context gap: …>
+Visuals: <image paths in .results/<task-id>/>
+Full report: <path>
 ```
+If it would exceed 12 lines, keep one line per goal and summarise the rest as
+"Agent decisions: <n>, see full report" / "Issues: <n>, see full report".
+
+Or, when you hit a Tier 1 decision, return this instead (unchanged):
 
 ```
 DECISION NEEDED

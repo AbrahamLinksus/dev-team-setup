@@ -24,7 +24,9 @@ Agent decisions: bcrypt for hashing (D-12)
 Rules:
 - Copy the GOAL bullets verbatim from the task's acceptance criteria in TASKS.md.
 - Mark each one ✅ done / ⚠️ partial (say what's missing) / ❌ not done (say why).
-- Copy the Conventions line from the tester's report and the SOLID counts from the reviewer's.
+- Copy the Conventions line from the tester's short REPORT (its Checks line) and the SOLID
+  counts from the reviewer's. Build the card from short REPORTs; open a full report only
+  for a detail the card needs.
 - Get the change summary from `$TASKGIT diffstat <repo> <id>`, and
   list the 3–5 most important changes in one line each.
 - If any goal is ⚠️ or ❌, put a line above the card: "⚠️ Not all goals met."
@@ -57,8 +59,16 @@ Next milestone: M3 · RAG pipeline (6 tasks)
 
 Visual: before/after of the whole project (e.g. app screenshot then vs now, or a
 metrics chart vs baseline, or an updated architecture diagram).
-Ask: Approve milestone / Request changes. Send the LLD "Changes since last milestone"
-section rendered as an image when there are changes.
+Ask (AskUserQuestion, header `M<n>`):
+- **Approve + continue in a fresh session (Recommended)**: update STATE.md "Next step",
+  `$TASKGIT record`, then tell the owner: "Start a new chat and run
+  `/setup-project resume <repo>`". A fresh session starts with an empty context, which keeps
+  later milestones as cheap as the first.
+- **Approve and continue here**
+- **Request changes**
+
+Send the LLD "Changes since last milestone" section rendered as an image when there are
+changes. Offer the same fresh-session choice after a change request merges.
 
 ## Handover card (project end)
 

@@ -61,6 +61,22 @@ Unmarked agents use Sonnet.
 `docs/CONVENTIONS.md`, and at handover `docs/ARCHITECTURE.md` + `docs/WALKTHROUGH.md`.
 `.results/` holds images (git-ignored).
 
+## Token use
+
+1. **Section-based context.** The LLD is written in numbered, self-contained sections
+   (`§2.1`…), kept stable at every as-built sync. Each task has a `Context:` line
+   (`SPEC US-03 · LLD §2.1, §4 · files: src/auth/*`) listing exactly what its agents need.
+2. **Briefs list exactly what to read.** Every brief has a `Read:` field built from a
+   per-role default plus the task's `Context:`. Agents read nothing else; a missing piece is
+   reported as a `Context gap` and added to the project's STATE.md "Context additions".
+3. **Short reports, details in files.** Agents write full reports to
+   `.results/<id>/<step>-<agent>.md` and return at most 12 lines. The Orchestrator never reads
+   diffs, logs or test output itself; it passes file paths to the next agent.
+4. **Fresh agents, fresh sessions.** Every step spawns a fresh agent, except rework on the
+   same task (the owner agent or debugger is continued, at most twice). At each milestone and
+   after a change request, the recommended option is to continue in a fresh chat with
+   `/setup-project resume <repo>`, which rebuilds state from the repo's files.
+
 ## Setup
 
 When you enable the plugin, it asks for:

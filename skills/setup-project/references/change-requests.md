@@ -21,7 +21,7 @@ offline", "add login", "drop the export feature", "use Postgres instead".
 3 Update     planner → SPEC.md (+ wireframes if screens change); HLD.md if modules/flows change
              architect → LLD.md / CONVENTIONS.md (+ .devteam/scopes.json) if design changes
              researcher first, if a new library/service is needed
-4 Impact     planner lists the impact on tasks (not yet applied):
+4 Impact     planner writes the impact on tasks to `## Task impact` in its full report (not yet applied):
                Done tasks needing rework · open tasks affected · tasks added / removed / changed
 5 Card ⏸     "What changes" card (below). Approve / Request changes / Cancel CR
 6 Re-plan    planner revises TASKS.md on the CR branch (rework tasks get new IDs, e.g. T-07b).
@@ -32,7 +32,9 @@ offline", "add login", "drop the export feature", "use Postgres instead".
              re-plan on top of current main (sync first), then approve again.
              After the merge: log the CR as a Tier 1 decision in DECISIONS.md and update
              STATE.md in the main checkout, then $TASKGIT record.
-8 Resume     approvals unblock. Queued cards: re-sync each task ($TASKGIT sync) and re-show
+8 Resume     offer "Continue in a fresh session (Recommended)" / "Continue here" (fresh session:
+             update STATE.md "Next step", record, tell the owner to run /setup-project resume <repo>).
+             approvals unblock. Queued cards: re-sync each task ($TASKGIT sync) and re-show
              the card if the CR affected it. Open task branches affected by the CR: sync them
              and brief their owner agent with the doc changes. Unaffected ones continue.
 ```

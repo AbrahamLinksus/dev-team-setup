@@ -52,7 +52,8 @@ class GuardTest(unittest.TestCase):
             ("backend-coder", "backend/src/app.py"), ("env-setup", "backend/.env.example"),
             ("docs", "README.md"), ("planner", "TASKS.md"), ("planner", "docs/SPEC.md"),
             ("planner", "docs/wireframes/home.html"), ("architect", "docs/ARCHITECTURE.md"),
-            ("architect", "docs/WALKTHROUGH.md"), ("data-cleaner", "data/processed/x.csv"),
+            ("architect", "docs/WALKTHROUGH.md"), ("reviewer", ".results/T-1/review-reviewer.md"),
+            ("git-pr", ".results/T-1/approve-git-pr.md"), ("researcher", ".results/plan/research-researcher.md"), ("data-cleaner", "data/processed/x.csv"),
         ]
         denied = [
             ("statistician", "src/x.py"), ("tester", "backend/src/app.py"), ("researcher", "README.md"),
@@ -60,7 +61,7 @@ class GuardTest(unittest.TestCase):
             ("backend-coder", "DECISIONS.md"), ("backend-coder", "docs/LLD.md"),
             ("frontend-coder", "backend/src/app.py"), ("data-cleaner", "data/raw/a.csv"),
             ("env-setup", "backend/.env"), ("docs", "docs/LLD.md"), ("docs", "docs/SPEC.md"),
-            ("reviewer", "anything.md"), ("debugger", "STATE.md"), ("tester", ".git/config"),
+            ("reviewer", "anything.md"), ("reviewer", "src/app.py"), ("git-pr", "README.md"), ("debugger", "STATE.md"), ("tester", ".git/config"),
         ]
         for agent, rel in allowed:
             with self.subTest(agent=agent, path=rel, expect="allow"):

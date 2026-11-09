@@ -119,6 +119,8 @@ if scenario check_fails_after_sync; then
   new_repo chk; E=$(tg start "$R" T-05); echo "BROKEN = 1" > "$E/e.py"; tgq checkpoint "$R" T-05 x
   before=$(git -C "$R" rev-parse origin/main)
   check "approve exits 5 when check.sh fails" expect_exit 5 tg approve "$R" T-05 "feat: e"
+  check "check output written to a file, not printed" test -s "$R-wt/T-05/.results/T-05/sync-check.txt"
+  check "stderr carries only the path" bash -c "! bash '$TG' approve '$R' T-05 x 2>&1 | grep -q BROKEN"
   git -C "$R" fetch -q
   check "main unchanged" test "$(git -C "$R" rev-parse origin/main)" = "$before"
 fi

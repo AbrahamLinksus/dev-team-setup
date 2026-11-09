@@ -28,5 +28,11 @@ uv sync            # python deps
 # uv run ...       # start commands
 ```
 
+## Context additions
+Context gaps agents reported (`Context gap:` in a REPORT). The Orchestrator adds these to the
+`Read:` field for that role on top of the per-role defaults in brief-template.md.
+| Role | Also read | Why (from gap report) |
+|---|---|---|
+
 ## Notes for the next session
 - 

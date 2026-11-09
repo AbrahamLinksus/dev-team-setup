@@ -19,19 +19,22 @@ Owner: backend-coder · Started: 2026-11-09 14:20 IST
 
 | Step | Agent | Status | Note |
 |---|---|---|---|
-| 1 Implement | backend-coder | ✅ | auth.py, routes.py |
-| 2 Tests + checks | tester | ✅ | 14/14, coverage 86% |
+| 1 Implement | backend-coder | ✅ | 3/3 goals ✅ · 4 files · checks pass · 1 decision |
+| 2 Tests + checks | tester | ✅ | checks pass · coverage 86% · 14 tests |
 | 3 Review | reviewer | ⏳ | |
 | 4 Visual | orchestrator | ⬜ | |
 | 5 Result card | orchestrator | ⬜ | |
 
+Agents: backend-coder=a1b2c3 (continued 0×), tester=d4e5f6
 Debugger rounds: 0/3
 Open decision: none
 <!-- or: Open decision: D-12 token expiry — options A) 15 min B) 1 h — asked 14:32 -->
 the owner's change requests: none
 ```
 
-Status: ⬜ pending · ⏳ in progress · ✅ done · ❌ failed.
+Status: ⬜ pending · ⏳ in progress · ✅ done · ❌ failed. The note is the one-line result
+from the agent's short REPORT; the full report's path is `.results/<id>/<step>-<agent>.md`.
+`Agents:` records each agent's ID and how often it was continued (max 2), for rework only.
 
 On `wip/plan`, TASK_PROGRESS.md also records the spec round (`Spec round: 3 · 9/12 complete`)
 and the last QUESTIONS block that hasn't been answered yet, so a resumed session re-asks
@@ -53,6 +56,13 @@ A step marked ⏳ on resume was interrupted: restart it from the beginning (its 
 files are on the branch; the agent reads them and continues).
 
 ## Resume algorithm
+
+Resume rebuilds everything from files: STATE.md, TASKS.md, DECISIONS.md and each branch's
+TASK_PROGRESS.md. Nothing is taken from the previous chat: no remembered reports, no agent
+IDs (every step after a resume spawns fresh), no assumptions about what was said. This is
+what makes "Approve + continue in a fresh session" safe at milestone ends and after change
+requests. Full reports in `.results/` are git-ignored, so after a resume on another
+machine only the TASK_PROGRESS.md notes remain; re-run a step if its details are needed.
 
 ```
 repo present locally?         → reuse; else clone (gh) or add_repo + clone

@@ -122,9 +122,9 @@ do_sync() {  # merge origin/main into wip/<id>, run check.sh; uses $id $wt
   if [[ -x "$wt/scripts/check.sh" || -f "$wt/scripts/check.sh" ]] && [[ "${TASKGIT_SKIP_CHECK:-0}" != 1 ]]; then
     local out
     if ! out=$(cd "$wt" && bash scripts/check.sh 2>&1); then
-      echo "$out" | tail -40 >&2
+      mkdir -p "$wt/.results/$id"; printf '%s\n' "$out" > "$wt/.results/$id/sync-check.txt"
       push_branch "$wt" "wip/$id" || true
-      die 5 "scripts/check.sh fails on wip/$id after syncing with main (output above). Not approved."
+      die 5 "scripts/check.sh fails on wip/$id after syncing with main. Output: $wt/.results/$id/sync-check.txt (give that path to the debugger). Not approved."
     fi
     echo "sync: scripts/check.sh ✅ on wip/$id + current main"
   fi
