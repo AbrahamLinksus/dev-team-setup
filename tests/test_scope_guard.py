@@ -169,6 +169,38 @@ class GuardTest(unittest.TestCase):
             with self.subTest(cmd=cmd):
                 self.assertIsNotNone(self.bash("statistician", cmd))
 
+    def test_capture_cmd_is_checked(self):
+        # S2: capture.py term --cmd runs its argument with shell=True
+        cap = "python3 /p/skills/setup-project/scripts/capture.py term /r/.results/T-1/o.png"
+        for agent, cmd in [
+            ("git-pr", f'{cap} --cmd "git push --force origin main"'),
+            ("git-pr", f'{cap} --cmd="git push --force origin main"'),
+            ("git-pr", f'{cap} --cm "git reset --hard HEAD~3"'),
+            ("git-pr", f'{cap} --cmd "rm -rf src"'),
+            ("backend-coder", f'{cap} --cmd "git push --force origin main"'),
+            ("backend-coder", f'{cap} --cmd "pip install requests"'),
+            ("statistician", f'{cap} --cmd "git push --force origin main"'),
+            ("statistician", f'{cap} --cmd "rm -r src"'),
+            ("statistician", "bash -c 'rm -r src'"),
+        ]:
+            with self.subTest(agent=agent, cmd=cmd):
+                self.assertIsNotNone(self.bash(agent, cmd))
+        for agent, cmd in [
+            ("git-pr", f'{cap} --cmd "git log --oneline -5"'),
+            ("backend-coder", f'{cap} --cmd "uv run pytest -q" --title tests'),
+            ("statistician", f'{cap} --cmd "uv run python /tmp/a.py"'),
+        ]:
+            with self.subTest(agent=agent, cmd=cmd, expect="allow"):
+                self.assertIsNone(self.bash(agent, cmd))
+
+    def test_capture_rejects_abbreviated_cmd(self):
+        # capture.py itself must refuse --cm (prefix of --cmd): the guard is not the only line of defence
+        cap = ROOT / "skills" / "setup-project" / "scripts" / "capture.py"
+        p = subprocess.run([sys.executable, str(cap), "term", "/tmp/never.png", "--cm", "echo x"],
+                           capture_output=True, text=True)
+        self.assertEqual(p.returncode, 2)
+        self.assertIn("unrecognized arguments", p.stderr)
+
     def test_no_shell_roles(self):
         for agent in ("reviewer", "researcher", "planner", "architect", "docs", "insights-reporter"):
             with self.subTest(agent=agent):

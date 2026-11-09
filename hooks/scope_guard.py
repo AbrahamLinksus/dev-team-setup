@@ -176,8 +176,22 @@ def git_sub(tok: list[str]) -> tuple[str, list[str]]:
     return (tok[i], tok[i + 1:]) if i < len(tok) else ("", [])
 
 
+def capture_cmds(tok: list[str]) -> list[str]:
+    """The shell commands `capture.py term --cmd "<cmd>"` would run (it uses shell=True)."""
+    idx = next((i for i, t in enumerate(tok) if os.path.basename(t) == "capture.py"), None)
+    if idx is None:
+        return []
+    out, args = [], tok[idx + 1:]
+    for i, a in enumerate(args):
+        if a in ("--cmd", "--cm") and i + 1 < len(args):
+            out.append(args[i + 1])
+        elif a.startswith(("--cmd=", "--cm=")):
+            out.append(a.split("=", 1)[1])
+    return out
+
+
 def inner_commands(tok: list[str]) -> list[str]:
-    """Commands hidden inside bash -c / sh -c / eval."""
+    """Commands hidden inside bash -c / sh -c / eval / capture.py --cmd."""
     if not tok:
         return []
     if tok[0] in ("bash", "sh", "zsh", "dash") and "-c" in tok:
@@ -185,7 +199,12 @@ def inner_commands(tok: list[str]) -> list[str]:
         return tok[i + 1:i + 2]
     if tok[0] == "eval":
         return [" ".join(tok[1:])]
-    return []
+    return capture_cmds(tok)
+
+
+def embedded_commands(command: str) -> list[str]:
+    """Every command nested one level inside `command` (bash -c, eval, capture.py --cmd)."""
+    return [c for seg in segments(command) or [] for c in inner_commands(strip_wrappers(seg))]
 
 
 def git_write_in(command: str, depth: int = 0) -> bool:
@@ -204,7 +223,7 @@ def git_write_in(command: str, depth: int = 0) -> bool:
     return False
 
 
-def git_mode_violation(command: str) -> str | None:
+def git_mode_violation(command: str, depth: int = 0) -> str | None:
     """git-pr: every simple command must be on the allowlist."""
     if "$(" in command or "`" in command:
         return "git-pr may not use command substitution ($(...) or backticks)"
@@ -223,6 +242,11 @@ def git_mode_violation(command: str) -> str | None:
         elif name == "taskgit.sh" or (name in ("bash", "sh") and len(tok) > 1 and os.path.basename(tok[1]) == "taskgit.sh"):
             ok = True
         elif name in ("python3", "python") and len(tok) > 1 and os.path.basename(tok[1]) == "capture.py":
+            # capture.py term --cmd runs its argument through a shell: it must pass the same allowlist
+            for inner in capture_cmds(tok):
+                why = git_mode_violation(inner, depth + 1) if depth < 3 else "nested too deep"
+                if why:
+                    return f"capture.py --cmd would run a blocked command: {why}"
             ok = True
         elif name == "git":
             sub, rest = git_sub(tok)
@@ -239,7 +263,7 @@ def git_mode_violation(command: str) -> str | None:
     return None
 
 
-def bash_violation(name: str, command: str, scopes: dict) -> str | None:
+def bash_violation(name: str, command: str, scopes: dict, depth: int = 0) -> str | None:
     mode = scopes["agents"][name].get("bash", "none")
     scratch = scopes.get("scratch", [])
     if mode == "none":
@@ -248,6 +272,11 @@ def bash_violation(name: str, command: str, scopes: dict) -> str | None:
         return "destructive rm on a root/home path blocked"
     if mode == "git":
         return git_mode_violation(command)
+    # commands nested in bash -c / eval / capture.py --cmd get the same checks as top-level ones
+    for inner in embedded_commands(command):
+        why = bash_violation(name, inner, scopes, depth + 1) if depth < 3 else "commands nested too deep"
+        if why:
+            return f"nested command blocked: {why}"
     if git_write_in(command):
         return "git history is managed by the Orchestrator (taskgit.sh) and git-pr; don't run git write commands"
     if mode != "full" and INSTALL.search(command):
