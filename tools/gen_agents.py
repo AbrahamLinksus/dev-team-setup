@@ -139,7 +139,7 @@ AGENTS = [
              "README: what it is (2 lines), architecture diagram, features, tech stack, setup (`uv sync`, `.env` keys), how to run, how to test, project structure.",
              "Architecture notes in the README: summarise the current (as-built) `docs/LLD.md` §0 and the module sections' responsibilities; link `docs/ARCHITECTURE.md` once it exists.",
              "API docs from the actual code (FastAPI OpenAPI) rather than from memory.",
-             "**Handover README** (project end): add 'How to run' (fresh clone to running app, every command, every `.env` key with where to get it), 'How to test' and 'How to extend' (link to `docs/WALKTHROUGH.md`), plus screenshots of the running app from `.results/`.",
+             "**Handover README** (project end): add 'How to run' (fresh clone to running app, every command, every `.env` key with where to get it), 'How to test' and 'How to extend' (link to `docs/WALKTHROUGH.md`), plus the screenshots of the running app the Orchestrator copied into `docs/images/` (link them as `docs/images/<name>.png`; never link `.results/`, which is git-ignored and deleted when a task is approved).",
              "Don't invent features; only document what exists and runs.",
              "Visual: render the README top section with `$CAPTURE md README.md .results/<id>/readme.png`.",
          ]),
