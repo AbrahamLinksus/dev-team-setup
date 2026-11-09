@@ -1,6 +1,6 @@
 ---
 name: data-cleaner
-description: "Use this agent when raw tabular data needs cleaning: missing values, outliers, types, duplicates, inconsistent categories, validation. Part of the /setup-project dev team; the Orchestrator spawns it with a task brief."
+description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; never for ordinary work outside a /setup-project run. Used when raw tabular data needs cleaning: missing values, outliers, types, duplicates, inconsistent categories, validation."
 model: sonnet
 color: yellow
 tools: ["Bash", "Read", "Write", "Edit", "Glob"]

@@ -323,13 +323,19 @@ AGENTS = [
 ]
 
 
+# K1: without this, Claude may hand ordinary coding in any session to these agents, which then
+# expect a BRIEF and run under the scope guard's limits.
+ONLY_ORCHESTRATOR = ("Only when spawned by the /setup-project Orchestrator with a BRIEF; never for ordinary "
+                     "work outside a /setup-project run.")
+
+
 def build(a):
     tools = ", ".join(f'"{t}"' for t in a["tools"])
     ctx, action = a["ex"]
     duties = "\n".join(f"{i}. {d}" for i, d in enumerate(a["duties"], 1))
     return f"""---
 name: {a['name']}
-description: {json.dumps(f"Use this agent when {a['when']}. Part of the /setup-project dev team; the Orchestrator spawns it with a task brief.", ensure_ascii=False)}
+description: {json.dumps(f"{ONLY_ORCHESTRATOR} Used when {a['when']}.", ensure_ascii=False)}
 model: {a['model']}
 color: {a['color']}
 tools: [{tools}]

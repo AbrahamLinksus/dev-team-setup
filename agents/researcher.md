@@ -1,6 +1,6 @@
 ---
 name: researcher
-description: "Use this agent when libraries, frameworks, models, APIs or papers need to be compared or checked for current versions and known issues. Part of the /setup-project dev team; the Orchestrator spawns it with a task brief."
+description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; never for ordinary work outside a /setup-project run. Used when libraries, frameworks, models, APIs or papers need to be compared or checked for current versions and known issues."
 model: sonnet
 color: cyan
 tools: ["WebSearch", "WebFetch", "Read", "Write"]

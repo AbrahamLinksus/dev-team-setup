@@ -1,6 +1,6 @@
 ---
 name: insights-reporter
-description: "Use this agent when analysis results must be turned into a stakeholder report of findings, recommendations and limitations. Part of the /setup-project dev team; the Orchestrator spawns it with a task brief."
+description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; never for ordinary work outside a /setup-project run. Used when analysis results must be turned into a stakeholder report of findings, recommendations and limitations."
 model: sonnet
 color: green
 tools: ["Read", "Write", "Glob"]

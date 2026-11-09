@@ -1,6 +1,6 @@
 ---
 name: devops
-description: "Use this agent when CI, Docker builds or deployment (GCP, Vercel, Render) are needed. Part of the /setup-project dev team; the Orchestrator spawns it with a task brief."
+description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; never for ordinary work outside a /setup-project run. Used when CI, Docker builds or deployment (GCP, Vercel, Render) are needed."
 model: sonnet
 color: green
 tools: ["Bash", "Read", "Write", "Edit", "Glob"]

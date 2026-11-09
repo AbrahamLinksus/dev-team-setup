@@ -1,6 +1,6 @@
 ---
 name: env-setup
-description: "Use this agent when the project environment must be created from the approved LLD: folders, uv/node project, pinned packages, .env.example, .gitignore, pre-commit, Docker. Part of the /setup-project dev team; the Orchestrator spawns it with a task brief."
+description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; never for ordinary work outside a /setup-project run. Used when the project environment must be created from the approved LLD: folders, uv/node project, pinned packages, .env.example, .gitignore, pre-commit, Docker."
 model: sonnet
 color: green
 tools: ["Bash", "Read", "Write", "Edit", "Glob"]
