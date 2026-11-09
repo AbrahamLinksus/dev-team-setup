@@ -59,7 +59,8 @@ architect, env-setup, git-pr. The **build team** is picked in stage 3 from the H
 2. Spawn the agent **fresh** (`subagent_type: "dev-team-setup:<agent>"`, or the bare name if
    that's how the agent list shows it) with a brief from `brief-template.md`: `Read:` built from
    the role default + the task's `Context:` + STATE.md "Context additions", and
-   `Write full report to: .results/<id>/<step>-<agent>.md`. Rework is the only exception
+   `Write full report to: <wt>/.results/<id>/<step>-<agent>.md`. Every path in a brief is
+   absolute (`<wt>` = the worktree path `start` printed): subagents don't start in the worktree. Rework is the only exception
    (see **Rework continuation**). Record the returned agent ID in TASK_PROGRESS.md
    (`Agents: backend-coder=<id>, debugger=<id>`).
 3. `$TASKGIT scope <repo> <id> <agent>`: reverts files outside the agent's scope. If anything

@@ -105,7 +105,13 @@ class StructureTest(unittest.TestCase):
         self.assertNotRegex(rules, r"Read your task in the brief, then `docs/")
         brief = (SKILL / "references" / "brief-template.md").read_text()
         self.assertIn("Read:", brief)
-        self.assertIn("Write full report to: .results/<task-id>/<step>-<agent>.md", brief)
+        self.assertIn("Write full report to: <wt>/.results/<task-id>/<step>-<agent>.md", brief)
+        # K2: subagents don't start in the worktree, so no path in the brief block may be relative
+        block = brief.split("```")[1]
+        for line in block.splitlines():
+            for path in re.findall(r"(?<![\w<>/.-])((?:docs|src|\.results)/\S*|TASK_PROGRESS\.md)", line):
+                self.fail(f"relative path in the brief template: {path!r} in {line!r}")
+        self.assertIn("cd <worktree> &&", rules)
         self.assertNotIn("Inputs:", brief)
         self.assertIn("§0", (SKILL / "templates" / "LLD.md").read_text())
         self.assertIn("- Context:", (SKILL / "templates" / "TASKS.md").read_text())
