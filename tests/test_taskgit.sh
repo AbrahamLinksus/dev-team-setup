@@ -188,6 +188,21 @@ if scenario scope_reverts_out_of_scope_files; then
   check "untracked out-of-scope file removed" test ! -e "$W/src/sneaky.py"
 fi
 
+if scenario scope_catches_committed_changes; then
+  # S1: an agent that committed its own out-of-scope edit used to keep it ("scope: no changes").
+  new_repo scopec; W=$(tg start "$R" T-12); tgq checkpoint "$R" T-12 "started"
+  base=$(git -C "$W" rev-parse HEAD); mkdir -p "$W/tests"
+  echo "hacked" >> "$W/shared_code.py"; echo "def test(): pass" > "$W/tests/test_y.py"
+  git -C "$W" add -A && git -C "$W" commit -qm "agent commit"
+  out=$(tg scope "$R" T-12 tester 2>&1)
+  check "reports the committed out-of-scope file" contains "$out" "REVERTED 1"
+  check "agent's commit undone" test "$(git -C "$W" rev-parse HEAD)" = "$base"
+  check "committed edit reverted" test "$(cat "$W/shared_code.py")" = "x = 1"
+  check "in-scope file kept" test -f "$W/tests/test_y.py"
+  tgq checkpoint "$R" T-12 "tester done"
+  check "checkpoint pushes only the in-scope change" test "$(git -C "$R" show "origin/wip/T-12:shared_code.py")" = "x = 1"
+fi
+
 # ---- summary ---------------------------------------------------------------------------
 echo
 echo "taskgit scenarios: $PASS passed, $FAIL failed"
