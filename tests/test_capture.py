@@ -20,6 +20,29 @@ def run(*args: str, env: dict | None = None) -> subprocess.CompletedProcess:
                           env={**os.environ, **(env or {})}, timeout=120)
 
 
+def load_capture():
+    """Import capture.py as a module (it needs no third-party packages at import time)."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("capture", CAP)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+class CaptureHelpersTest(unittest.TestCase):
+    def test_term_cmd_times_out(self):
+        # C4: a command that never ends (a server) hung `term --cmd` forever
+        import time
+        cap = load_capture()
+        slow = f'"{sys.executable}" -c "import time; print(\'started\', flush=True); time.sleep(60)"'
+        t0 = time.time()
+        text = cap.run_cmd(slow, None, 2)
+        self.assertLess(time.time() - t0, 30)
+        self.assertIn("timed out after 2s", text)
+        self.assertIn("started", text)            # output before the timeout is kept
+        self.assertIn("[exit 0]", cap.run_cmd(f'"{sys.executable}" -c "print(1)"', None, 30))
+
+
 class CaptureCliTest(unittest.TestCase):
     def test_help_lists_doctor(self):
         p = run("--help")
