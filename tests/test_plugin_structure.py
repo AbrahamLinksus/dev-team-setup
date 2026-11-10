@@ -158,6 +158,13 @@ class StructureTest(unittest.TestCase):
         self.assertNotIn("screenshots of the running app from `.results/`", docs)
         self.assertIn("docs/images/", (SKILL / "SKILL.md").read_text(encoding="utf-8"))
 
+    def test_project_lives_in_session_folder(self):
+        # K3: ~/projects is outside the session's folders: permission prompts, refused in remote sessions
+        for f in [SKILL / "SKILL.md", *SKILL.glob("references/*.md")]:
+            with self.subTest(file=f.name):
+                self.assertNotIn("Clone to `~/projects", f.read_text(encoding="utf-8"))
+        self.assertIn("<base>/<repo>-wt/", (SKILL / "SKILL.md").read_text(encoding="utf-8"))
+
     def test_no_hardcoded_owner(self):
         for path in list((ROOT / "agents").glob("*.md")) + list(SKILL.rglob("*.md")):
             with self.subTest(file=str(path.relative_to(ROOT))):

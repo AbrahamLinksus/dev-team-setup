@@ -102,7 +102,13 @@ Pushing `wip/*` branches is pre-approved. **main changes only through `$TASKGIT 
 3. Create `<github_owner>/<repo>`: `gh repo create` if `gh auth status` works; otherwise
    add_repo (`mcp__claude-code-remote__add_repo`, access `push`), and if the repo doesn't
    exist ask the owner to create an **empty** repo with that name and visibility, then retry.
-4. Clone to `~/projects/<repo>`. Copy templates: `STATE.md`, `TASKS.md`, `DECISIONS.md` at the
+4. Clone into the session's working folder: `<base>/<repo>`, where `<base>` is the folder this
+   session runs in (`pwd`). Task worktrees then live next to it in `<base>/<repo>-wt/`, so every
+   file the team writes is inside a folder Claude Code already trusts. Anywhere else (e.g.
+   `~/projects`) each edit asks for permission, and remote or phone sessions refuse outright.
+   If `<base>` is itself a git checkout (the session was started inside another project), ask
+   the owner for a folder, then add it with `/add-dir <folder>` before cloning there.
+   Record `<base>` in STATE.md. Copy templates: `STATE.md`, `TASKS.md`, `DECISIONS.md` at the
    root; `SPEC.md`, `HLD.md`, `LLD.md`, `CONVENTIONS.md` into `docs/`. `.gitignore`: `.env`,
    `.results/`, `.venv/`, `node_modules/`. Commit + push (covered by the visibility answer).
 5. `$TASKGIT start <repo> plan`: stages 1–6 run on `wip/plan`.
@@ -220,7 +226,10 @@ Design docs change only through this flow, the milestone as-built sync, or hando
 `/setup-project resume <repo>` or "continue" (details in `checkpointing.md`). Rebuild everything
 from STATE.md, TASKS.md, DECISIONS.md and TASK_PROGRESS.md; take nothing from a previous chat.
 Agent IDs from earlier sessions are not continued; every step after a resume spawns fresh.
-1. Reuse `~/projects/<repo>` or clone it.
+1. Reuse `<base>/<repo>` (the folder recorded in STATE.md, or `./<repo>` in this session's
+   folder) or clone it there. Resume from the folder that *holds* the repo, not from inside it:
+   the worktrees `<repo>-wt/` sit next to the repo. A repo outside this session's folders (e.g.
+   `~/projects/<repo>` from an older run) → `/add-dir` its parent first.
 2. Read STATE.md / TASKS.md / DECISIONS.md on main; `$TASKGIT list <repo>`.
 3. Per open wip branch (`plan`, `CR-n`, `T-xx`): `$TASKGIT start` (installs dependencies into a
    restored worktree), read TASK_PROGRESS.md, run `check.sh` once if code steps are ✅, re-ask any open decision

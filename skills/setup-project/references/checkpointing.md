@@ -65,7 +65,8 @@ requests. Full reports in `.results/` are git-ignored, so after a resume on anot
 machine only the TASK_PROGRESS.md notes remain; re-run a step if its details are needed.
 
 ```
-repo present locally?         → reuse; else clone (gh) or add_repo + clone
+repo present locally?         → reuse (<base>/<repo>, base from STATE.md); else clone into this
+                                session's folder (gh, or add_repo + clone)
 $TASKGIT list <repo>          → open wip branches (plan, T-xx…)
 for each branch:
     wt = $TASKGIT start <repo> <id>          # restores worktree from origin + installs locked deps
