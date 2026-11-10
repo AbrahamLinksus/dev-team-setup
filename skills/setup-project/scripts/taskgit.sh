@@ -293,7 +293,10 @@ case "$cmd" in
       push_branch "$repo" "$main" || die 7 "local $main still has unpushed approved commits; fix the push first"
       echo "note: pushed previously approved local commits" >&2
     fi
-    # 2. task branch must contain current main and pass check.sh
+    # 2. task branch must contain current main and pass check.sh. Nothing may be left uncommitted:
+    #    `worktree remove --force` below would delete it, untracked files included (T6).
+    left=$(gw status --porcelain --untracked-files=normal)
+    [[ -n "$left" ]] && die 3 "wip/$id has changes that aren't checkpointed (approve would delete them):\n$left\nCheckpoint first (after the scope check), or remove them."
     do_sync
     excl=(":(exclude)$PROGRESS"); for f in "${SHARED[@]}"; do is_owned "$f" || excl+=(":(exclude)$f"); done
     if g diff --quiet "$main" "$br" -- . "${excl[@]}"; then   # nothing left to merge: already on main
@@ -301,7 +304,6 @@ case "$cmd" in
       g push -q origin --delete "$br" 2>/dev/null || true; g worktree prune
       echo "approved: $id was already on $main ($(g log --oneline -1)); cleaned up"; exit 0
     fi
-    gw diff --quiet && gw diff --cached --quiet || die 3 "wip/$id has uncommitted changes; checkpoint first"
     # 3. squash into main
     if ! g merge -q --squash "$br" >/dev/null 2>&1; then
       g reset -q --merge 2>/dev/null || g reset -q --hard HEAD

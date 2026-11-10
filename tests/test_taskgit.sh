@@ -259,6 +259,17 @@ HOOK
   check "exactly one feat: h commit" test "$(git -C "$R" log --oneline origin/main | grep -c 'feat: h')" = 1
 fi
 
+if scenario approve_keeps_untracked_files; then
+  # T6: the dirty check ignored untracked files, then `worktree remove --force` deleted them
+  new_repo untr; U=$(tg start "$R" T-22); echo "u = 1" > "$U/u.py"; tgq checkpoint "$R" T-22 x
+  echo "not yet checkpointed" > "$U/notes.py"
+  check "approve refuses while a file isn't checkpointed (exit 3)" expect_exit 3 tg approve "$R" T-22 "feat: u"
+  check "the untracked file survives" test -f "$U/notes.py"
+  tgq checkpoint "$R" T-22 y
+  check "approve works once it's checkpointed" expect_exit 0 tg approve "$R" T-22 "feat: u"
+  check "the file reached main" test -n "$(on_main notes.py)"
+fi
+
 if scenario scope_handles_odd_file_names; then
   # S20: --porcelain quoted "my file.py" and "naïve.py", so scope checked and reverted the wrong names
   new_repo odd; echo "a = 1" > "$R/my code.py"; git -C "$R" add -A; git -C "$R" commit -qm odd; git -C "$R" push -q 2>/dev/null
