@@ -775,6 +775,14 @@ def plugin(enable: bool) -> None:
         say(f"  ! couldn't {'enable' if enable else 'disable'} the plugin: {out.strip()[:200]}")
 
 
+def plugin_enabled() -> bool:
+    """Whether the plugin is enabled now, so a run can put it back the way it found it."""
+    code, out = run([CLAUDE, "plugin", "list"], timeout=60)
+    after = out.split(PLUGIN, 1)[1] if PLUGIN in out else ""
+    status = re.search(r"Status:\s*(.*)", after)          # the first Status line under our entry
+    return code == 0 and bool(status) and "disabled" not in status.group(1).lower()
+
+
 def claude_p(prompt: str, cwd: Path, skip_permissions: bool) -> dict:
     cmd = [CLAUDE, "-p", prompt, "--output-format", "json"] + (["--dangerously-skip-permissions"] if skip_permissions else [])
     # Output goes to temporary files, not pipes: nothing reads a pipe until the session exits, and
@@ -961,6 +969,19 @@ def settings(state: dict) -> dict:
     return s
 
 
+def run_normal(folder: Path, s: dict) -> None:
+    if s["normal_unattended"]:
+        say("Running a normal Claude Code session headless (plugin off). This can take a while…")
+        result = claude_p(NORMAL_PROMPT, folder, s["skip_permissions"])
+        if result.get("is_error"):
+            say(f"  ! the session ended with an error: {str(result.get('result'))[:300]}")
+    else:
+        say("Opening a normal Claude Code session (plugin off). The prompt is already typed in.")
+        say("Don't help it; if it stops early you may say 'continue until every item in Quality bar is met' (max 3).")
+        say("When it's done: /exit")
+        claude_interactive(NORMAL_PROMPT, folder, s["skip_permissions"])
+
+
 def cmd_run(args) -> None:
     app, mode = args.app, args.mode
     key = f"{app}-{mode}"
@@ -978,17 +999,13 @@ def cmd_run(args) -> None:
     start = datetime.now(timezone.utc)
 
     if mode == "normal":
+        was_enabled = plugin_enabled()
         plugin(False)
-        if s["normal_unattended"]:
-            say("Running a normal Claude Code session headless (plugin off). This can take a while…")
-            result = claude_p(NORMAL_PROMPT, folder, s["skip_permissions"])
-            if result.get("is_error"):
-                say(f"  ! the session ended with an error: {str(result.get('result'))[:300]}")
-        else:
-            say("Opening a normal Claude Code session (plugin off). The prompt is already typed in.")
-            say("Don't help it; if it stops early you may say 'continue until every item in Quality bar is met' (max 3).")
-            say("When it's done: /exit")
-            claude_interactive(NORMAL_PROMPT, folder, s["skip_permissions"])
+        try:
+            run_normal(folder, s)
+        finally:   # put the owner's plugin back the way it was (it used to stay disabled)
+            if was_enabled:
+                plugin(True)
         project = folder
     else:
         plugin(True)

@@ -276,7 +276,8 @@ class EndToEndTest(unittest.TestCase):
         self.assertEqual(n["test"]["acceptance"], 8)
         self.assertTrue(n["test"]["persists"])
         self.assertEqual(n["quality"]["files"]["README"], "✅")
-        self.assertEqual((self.t / "plugin-state").read_text(), "disabled")   # plugin was off
+        self.assertEqual((self.t / "plugin-during-build").read_text(), "off")   # plugin was off for the build
+        self.assertEqual((self.t / "plugin-state").read_text(), "enabled")      # and switched back on after
 
         # plugin run: Enter to open, resume once, then done
         out = self.bench("run", "small", "plugin", stdin="\nr\nd\n")

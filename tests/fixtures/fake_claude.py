@@ -93,6 +93,7 @@ elif "-p" in args:
                       subagent=usage(10, 2000, 30000, 700))
         print(json.dumps({"is_error": False, "result": "done", "total_cost_usd": 2.5}))
     else:  # a normal build: "write" the app and log the session
+        STATE.with_name("plugin-during-build").write_text("on" if plugin_on() else "off")
         cwd = Path.cwd()
         for f in APP.iterdir():
             shutil.copy(f, cwd / f.name)
