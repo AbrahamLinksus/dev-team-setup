@@ -434,6 +434,49 @@ def git_mode_violation(command: str, depth: int = 0, cwd: str | None = None) -> 
     return None
 
 
+def destructive(command: str, cwd: str | None, scratch: list[str]) -> str | None:
+    """Recursive deletes outside the current worktree (whatever the flag spelling: -rf, -r -f,
+    --recursive --force, -R), and `kill … -1` (every process the user owns)."""
+    here = cwd or os.getcwd()
+    start_root = find_root(Path(here).resolve())  # the worktree the agent started in, before any `cd ..`
+    for seg in segments(command) or []:
+        tok = strip_wrappers(seg)
+        if not tok:
+            continue
+        name = os.path.basename(tok[0])
+        if name == "cd" and len(tok) == 2:
+            here = tok[1] if os.path.isabs(tok[1]) else os.path.join(here, tok[1])
+            continue
+        if name in ("kill", "pkill") and "-1" in tok[2:]:
+            return "kill -1 would signal every process you own: blocked"
+        if name != "rm":
+            continue
+        opts = [a for a in tok[1:] if a.startswith("-") and a != "--"]
+        if not any(a == "--recursive" or (not a.startswith("--") and set(a[1:]) & {"r", "R"}) for a in opts):
+            continue
+        root = find_root(Path(here).resolve())
+        for arg in (a for a in tok[1:] if not a.startswith("-")):
+            if arg.startswith(("~", "$")):
+                return f"recursive delete of {arg} (outside the worktree) blocked"
+            p = Path(arg if os.path.isabs(arg) else os.path.join(here, arg)).resolve()
+            if root is not None and root in p.parents:
+                continue  # inside the worktree
+            # Scratch dirs (/tmp/**) are fine only away from the project: a repo can itself live
+            # under /tmp, and then its root, main checkout and sibling worktrees must stay protected.
+            if match(p.as_posix(), scratch) and not in_project_area(p, root) and not in_project_area(p, start_root):
+                continue
+            return f"recursive delete outside the worktree blocked: {arg} → {p}"
+    return None
+
+
+def in_project_area(p: Path, root: Path | None) -> bool:
+    """True when p is the project's base folder (holding <repo> and <repo>-wt/), inside it, or above it."""
+    if root is None:
+        return False
+    base = root.parent.parent if root.parent.name.endswith("-wt") else root.parent
+    return p == base or base in p.parents or p in base.parents
+
+
 def bash_violation(name: str, command: str, scopes: dict, depth: int = 0, cwd: str | None = None) -> str | None:
     mode = scopes["agents"][name].get("bash", "none")
     scratch = scopes.get("scratch", [])
@@ -441,6 +484,9 @@ def bash_violation(name: str, command: str, scopes: dict, depth: int = 0, cwd: s
         return f"{name} has no shell access in this team. Use Read/Grep/Glob."
     if DESTRUCTIVE.search(command):
         return "destructive rm on a root/home path blocked"
+    why = destructive(command, cwd, scratch)
+    if why:
+        return why
     if mode == "git":
         return git_mode_violation(command, cwd=cwd)
     # commands nested in bash -c / eval / capture.py --cmd get the same checks as top-level ones

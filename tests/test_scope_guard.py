@@ -336,6 +336,18 @@ class GuardTest(unittest.TestCase):
                 self.assertIsNone(self.bash("backend-coder", cmd))
         self.assertIsNone(self.bash("env-setup", "poetry add requests"))   # full mode may install
 
+    def test_destructive_deletes(self):
+        # S10: only the exact `rm -rf /`, `~` and `$HOME` used to be caught
+        for cmd in ["rm -r -f /", "rm --recursive --force /", "rm -rf ~/projects", "rm -rf ..", "rm -Rf ../other",
+                    "rm -rf $HOME/x", "rm -rf .", "cd .. && rm -rf T-1", "sudo rm -fr /etc", "kill -9 -1",
+                    "kill -- -1", f"rm -rf {self.main.as_posix()}"]:
+            with self.subTest(cmd=cmd):
+                self.assertIsNotNone(self.bash("backend-coder", cmd))
+        for cmd in ["rm -rf build", "rm -r src/old", "rm -rf node_modules/.cache", "rm x.pyc", "kill -9 1234",
+                    "rm -rf /tmp/devteam-scratch-x"]:  # scratch away from the project stays allowed
+            with self.subTest(cmd=cmd, expect="allow"):
+                self.assertIsNone(self.bash("backend-coder", cmd))
+
     def test_no_shell_roles(self):
         for agent in ("reviewer", "researcher", "planner", "architect", "docs", "insights-reporter"):
             with self.subTest(agent=agent):
