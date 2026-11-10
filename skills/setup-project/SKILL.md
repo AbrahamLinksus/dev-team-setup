@@ -99,12 +99,17 @@ Pushing `wip/*` branches is pre-approved. **main changes only through `$TASKGIT 
 ## 0 · Intake + repo
 
 1. `/setup-project resume <repo>` or "continue" → **Resume** below.
-2. Restate the idea in one line. One AskUserQuestion call: repo name (2–3 kebab-case
+2. Run `python3 $CAPTURE doctor` (the plugin's own tooling for visuals: Playwright + Chromium,
+   Pillow, markdown, npm for Mermaid). If it reports anything missing, ask once (AskUserQuestion:
+   **Install the visual tools** into the plugin's private venv / **Skip visuals** = text cards),
+   then run `python3 $CAPTURE doctor --install`. It never touches the project's environment.
+   Record the answer in STATE.md.
+3. Restate the idea in one line. One AskUserQuestion call: repo name (2–3 kebab-case
    suggestions) and visibility (Private / Public). **Always ask visibility; never default it.**
-3. Create `<github_owner>/<repo>`: `gh repo create` if `gh auth status` works; otherwise
+4. Create `<github_owner>/<repo>`: `gh repo create` if `gh auth status` works; otherwise
    add_repo (`mcp__claude-code-remote__add_repo`, access `push`), and if the repo doesn't
    exist ask the owner to create an **empty** repo with that name and visibility, then retry.
-4. Clone into the session's working folder: `<base>/<repo>`, where `<base>` is the folder this
+5. Clone into the session's working folder: `<base>/<repo>`, where `<base>` is the folder this
    session runs in (`pwd`). Task worktrees then live next to it in `<base>/<repo>-wt/`, so every
    file the team writes is inside a folder Claude Code already trusts. Anywhere else (e.g.
    `~/projects`) each edit asks for permission, and remote or phone sessions refuse outright.
@@ -113,7 +118,7 @@ Pushing `wip/*` branches is pre-approved. **main changes only through `$TASKGIT 
    Record `<base>` in STATE.md. Copy templates: `STATE.md`, `TASKS.md`, `DECISIONS.md` at the
    root; `SPEC.md`, `HLD.md`, `LLD.md`, `CONVENTIONS.md` into `docs/`. `.gitignore`: `.env`,
    `.results/`, `.venv/`, `node_modules/`. Commit + push (covered by the visibility answer).
-5. `$TASKGIT start <repo> plan`: stages 1–6 run on `wip/plan`.
+6. `$TASKGIT start <repo> plan`: stages 1–6 run on `wip/plan`.
 
 ## 1 · Spec interview ⏸
 

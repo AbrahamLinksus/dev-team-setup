@@ -134,7 +134,8 @@ GIT_WRITE = re.compile(r"\bgit\b[^|;&\n]*?\s(" + "|".join(sorted(GIT_WRITE_SUBS,
                        r"|branch\s+-[dDmMcC]|remote\s+(add|remove|rm|set-url|rename))\b")
 INSTALL = re.compile(r"\b(pip3?|uv\s+pip|python3?\s+-m\s+pip)\s+(install|uninstall)\b|\buv\s+(add|remove|sync|lock)\b|"
                      r"\b(npm|pnpm|yarn|bun)\s+(install|i|add|remove|uninstall|ci|update|up)\b|\bnpx\s+-y\b|"
-                     r"\b(apt|apt-get|brew|conda|mamba)\s+install\b|\bcurl\b[^|]*\|\s*(ba)?sh\b")
+                     r"\b(apt|apt-get|brew|conda|mamba)\s+install\b|\bcurl\b[^|]*\|\s*(ba)?sh\b|"
+                     r"\bcapture\.py\s+doctor\b[^|;&\n]*--install\b")  # the plugin's own deps: Orchestrator only
 DESTRUCTIVE = re.compile(r"(^|[;&|\n]\s*)\s*(sudo\s+)?(rm\s+-[a-zA-Z]*r[a-zA-Z]*f|rm\s+-[a-zA-Z]*f[a-zA-Z]*r)\s+(/|~|\$HOME)(\s|$)")
 WRITE_CMDS = re.compile(r"(^|[;&|(\n]\s*)(rm|mv|cp|tee|touch|mkdir|rmdir|truncate|chmod|chown|ln|install|dd)\b|\bsed\s+(-[a-zA-Z]*i|--in-place)")
 WRITE_NAMES = {"rm", "mv", "cp", "tee", "touch", "mkdir", "rmdir", "truncate", "chmod", "chown", "ln", "install",
@@ -367,6 +368,8 @@ def git_mode_violation(command: str, depth: int = 0, cwd: str | None = None) -> 
                 name in ("bash", "sh") and len(tok) > 1 and is_plugin_script(tok[1], "taskgit.sh", cwd)):
             ok = True
         elif name in ("python3", "python") and len(tok) > 1 and is_plugin_script(tok[1], "capture.py", cwd):
+            if INSTALL.search(shlex.join(tok)):
+                return "git-pr may not install the capture dependencies (capture.py doctor --install is the Orchestrator's)"
             # capture.py term --cmd runs its argument through a shell: it must pass the same allowlist
             for inner in capture_cmds(tok):
                 why = git_mode_violation(inner, depth + 1, cwd) if depth < 3 else "nested too deep"
