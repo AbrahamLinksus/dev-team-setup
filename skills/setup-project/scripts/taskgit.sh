@@ -77,8 +77,8 @@ blocked_files() {
 owned_shared() {  # shared files this branch may change
   case "$id" in plan) echo "${SHARED[@]}" ;; CR-*) echo TASKS.md ;; *) echo "" ;; esac
 }
-is_owned() { [[ " $(owned_shared) " == *" $1 "* ]]; }
-is_shared() { [[ " ${SHARED[*]} " == *" $1 "* ]]; }
+is_owned() { local s; for s in $(owned_shared); do [[ "$s" == "$1" ]] && return 0; done; return 1; }
+is_shared() { local s; for s in "${SHARED[@]}"; do [[ "$s" == "$1" ]] && return 0; done; return 1; }
 open_crs() {  # open change-request branches (local or on origin)
   { g for-each-ref --format='%(refname:short)' 'refs/heads/wip/CR-*'
     g ls-remote --heads origin 'wip/CR-*' 2>/dev/null | sed 's#.*refs/heads/##'; } | sort -u
@@ -158,14 +158,20 @@ do_sync() {  # merge origin/main into wip/<id>, run check.sh; uses $id $wt
     echo "sync: wip/$id already contains main@$(g rev-parse --short "origin/$main")"
   else
     if ! gw merge -q --no-edit --no-verify "origin/$main" >/dev/null 2>&1; then
-      local conflicts other
-      conflicts=$(gw diff --name-only --diff-filter=U)
-      other=$(echo "$conflicts" | grep -v -x -E "$(IFS='|'; echo "${SHARED[*]}|$PROGRESS")" || true)
-      if [[ -n "$other" ]]; then
+      # T9: NUL-separated names in an array (names may contain spaces), and exact string
+      # comparisons instead of the shared-file names used as a regex (TASKS.md matched TASKSxmd)
+      local conflicts=() other=() f
+      while IFS= read -r -d '' f; do conflicts+=("$f"); done < <(gw diff -z --name-only --diff-filter=U)
+      if (( ${#conflicts[@]} == 0 )); then
         gw merge --abort 2>/dev/null
-        die 4 "wip/$id conflicts with main in: $(echo $other). Merge aborted; the task branch is unchanged. Send it to the owner agent/debugger to rebase onto main."
+        die 4 "merging main into wip/$id failed without a content conflict (e.g. an untracked file would be overwritten). Merge aborted; the task branch is unchanged."
       fi
-      for f in $conflicts; do
+      for f in "${conflicts[@]}"; do [[ "$f" == "$PROGRESS" ]] || is_shared "$f" || other+=("$f"); done
+      if (( ${#other[@]} )); then
+        gw merge --abort 2>/dev/null
+        die 4 "wip/$id conflicts with main in: ${other[*]}. Merge aborted; the task branch is unchanged. Send it to the owner agent/debugger to rebase onto main."
+      fi
+      for f in "${conflicts[@]}"; do
         if [[ "$f" == "$PROGRESS" ]]; then gw checkout -q --ours -- "$f"
         elif is_shared "$f" && ! is_owned "$f"; then gw checkout -q --theirs -- "$f"   # main's records win
         elif [[ "$id" == plan ]]; then gw checkout -q --ours -- "$f"
@@ -344,7 +350,8 @@ case "$cmd" in
     present=(); for f in "${SHARED[@]}"; do [[ -e "$repo/$f" ]] || g cat-file -e "HEAD:$f" 2>/dev/null && present+=("$f"); done
     (( ${#present[@]} )) || { echo "record: no shared files present"; exit 0; }
     SHARED=("${present[@]}")
-    other=$(g status --porcelain --untracked-files=no | sed -E 's/^.. //' | grep -v -x -E "$(IFS='|'; echo "${SHARED[*]}")" || true)
+    other=$(g -c core.quotepath=off status --porcelain --untracked-files=no | sed -E 's/^.. //' \
+            | grep -v -x -F -f <(printf '%s\n' "${SHARED[@]}") || true)
     [[ -n "$other" ]] && die 3 "record only commits ${SHARED[*]}; other files are modified on $main: $other"
     g diff --quiet -- "${SHARED[@]}" && { echo "record: nothing to record"; exit 0; }
     g fetch -q origin "$main" || die 3 "fetch failed"
