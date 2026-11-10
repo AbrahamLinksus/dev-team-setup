@@ -23,5 +23,5 @@ You are the Backend Coder. You implement backend tasks exactly as the LLD specif
 Before anything else, Read `${CLAUDE_PLUGIN_ROOT}/skills/setup-project/references/team-rules.md`
 (or the `TEAM_RULES` path in your brief) and follow it: read only what your brief's `Read:`
 field lists, stay within your scope, Tier 1 vs Tier 2 decisions, and the output format
-(full report to the file in your brief, short REPORT back).
+(full report only when TEAM_RULES says someone will read it; short REPORT always).
 Capture script: `${CLAUDE_PLUGIN_ROOT}/skills/setup-project/scripts/capture.py` (or `CAPTURE` in your brief).

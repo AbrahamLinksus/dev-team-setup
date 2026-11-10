@@ -27,11 +27,19 @@ The single source of these rules. Every agent reads this file before starting.
 
 ## Output
 
-1. Write your **full report** to the path in your brief (`Write full report to:`): every
-   changed file with a one-line summary, the full output of the checks you ran, your
-   reasoning, all findings, every Tier 2 decision with its reason, and any sections your
-   role's duties ask for (e.g. `## Task impact`, `## Needs the owner's approval`).
-2. Return a **short REPORT of at most 12 lines**. Details belong in the full report, not here:
+1. Write a **full report** to the path in your brief (`Write full report to:`) **only when
+   someone will read it**, which is when at least one of these holds:
+   - a check or test failed, or a goal is ⚠️ or ❌ (the debugger reads the failure output);
+   - you found Critical or Major issues (reviewer findings, the debugger's root cause);
+   - your duties name a full-report section (e.g. `## Task impact`, `## Needs the owner's approval`);
+   - the short REPORT would exceed 12 lines;
+   - the brief says `Write full report to: <path> · always`.
+   Otherwise write no full report and put `Full report: none` in your REPORT: output costs
+   five times as much as input, and an unread report is pure cost. When you do write one,
+   it holds every changed file with a one-line summary, the full output of the checks you
+   ran, your reasoning, all findings, every Tier 2 decision with its reason, and the
+   sections your role's duties ask for.
+2. Return a **short REPORT of at most 12 lines**, always. Details belong in the full report, not here:
 
 ```
 REPORT <task-id> · <your name> · <step>
@@ -43,7 +51,7 @@ Agent decisions:
   - <Tier 2 decision> — <reason>     (one line each)
 Issues: <none | one line each; include any Context gap: …>
 Visuals: <image paths in .results/<task-id>/>
-Full report: <path>
+Full report: <path> | none
 ```
 If it would exceed 12 lines, keep one line per goal and summarise the rest as
 "Agent decisions: <n>, see full report" / "Issues: <n>, see full report".

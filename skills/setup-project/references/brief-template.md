@@ -34,7 +34,7 @@ Read:         <exact files and sections, one per line, e.g.>
               <review only> <wt>/.results/<task-id>/changes.diff
               <debug only>  <wt>/.results/<task-id>/<failing step>-<agent>.md (failure output) + the changed files
 Rework:       <rework only> previous REPORT (verbatim, ≤12 lines) + owner's change request (verbatim)
-Write full report to: <wt>/.results/<task-id>/<step>-<agent>.md
+Write full report to: <wt>/.results/<task-id>/<step>-<agent>.md   (only when TEAM_RULES' Output rule 1 applies; add ` · always` to require one)
 Port:         <8000 + task number, e.g. T-07 → 8007>     (servers this step starts listen here; second server: 9000 + n)
 ```
 
