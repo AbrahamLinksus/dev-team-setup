@@ -103,6 +103,21 @@ class SandboxTest(unittest.TestCase):
         self.assertNotIn('launch(args=["--no-sandbox"])', CAP.read_text(encoding="utf-8"))
 
 
+class TruncateTest(unittest.TestCase):
+    def test_max_lines_is_exact(self):
+        # C9: an odd --max-lines showed one line fewer than asked (half * 2)
+        cap = load_capture()
+        lines = [str(i) for i in range(100)]
+        for n in (1, 2, 7, 60, 99):
+            with self.subTest(max_lines=n):
+                out = cap.truncate_lines(lines, n)
+                kept = [ln for ln in out if not ln.startswith("...")]
+                self.assertEqual(len(kept), n)
+                self.assertEqual(kept[0], "0")
+                self.assertIn(f"({100 - n} lines omitted)", out[(n + 1) // 2])
+        self.assertEqual(cap.truncate_lines(lines[:5], 7), lines[:5])
+
+
 class CaptureCliTest(unittest.TestCase):
     def test_help_lists_doctor(self):
         p = run("--help")
