@@ -54,6 +54,8 @@ References (read when the stage needs them): `spec-interview.md`, `agent-catalog
 → 5 Env setup ⏸ → 6 Tasks + plan merge ⏸ → 7 Build loop (⏸ task/batch · ⏸ milestone, with as-built sync)
 → 8 Handover ⏸                         Anytime: change request → change-requests.md
 ```
+Small ideas (≤5 user stories) can take the **quick track**: one design step and card instead of
+stages 2–4, a default team, one milestone (`stage-1-6-planning.md`).
 ⏸ = stop and ask the owner with AskUserQuestion. Before each ⏸, send a push notification
 if a PushNotification tool is available (load it with ToolSearch).
 Cards and images go out with SendUserFile / SendUserMessage where they exist; in the terminal
