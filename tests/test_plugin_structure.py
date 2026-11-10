@@ -220,6 +220,14 @@ class StructureTest(unittest.TestCase):
             self.assertIn(pattern, env)
         self.assertIn("DVC", (SKILL / "references" / "decision-policy.md").read_text(encoding="utf-8"))
 
+    def test_handover_commands_run_by_a_role_with_bash(self):
+        # K7: the reviewer (no Bash) was asked to confirm that every documented command works
+        skill = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+        handover = skill[skill.index("## 8 · Handover"):skill.index("## Change requests")]
+        self.assertNotIn("checks that every path, command and function", handover)
+        self.assertIn("**tester** (it has Bash): runs every command", handover)
+        self.assertIn("Bash", frontmatter(ROOT / "agents" / "tester.md")["tools"])
+
     def test_no_hardcoded_owner(self):
         for path in list((ROOT / "agents").glob("*.md")) + list(SKILL.rglob("*.md")):
             with self.subTest(file=str(path.relative_to(ROOT))):
