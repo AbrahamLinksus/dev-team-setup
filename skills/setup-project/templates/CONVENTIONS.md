@@ -59,3 +59,4 @@ threshold, since tests are the Tester's job); the Tester runs the full script an
 | Complexity / size | ruff `C901` (max 10), `PLR0913` (max 5 args), `PLR0915`; `radon cc -n C` | eslint `complexity: 10`, `max-lines-per-function: 40`, `max-params: 5` |
 | Layer rules | `lint-imports` (import-linter contracts for section 2) | `depcruise` (dependency-cruiser rules for section 2) |
 | Tests + coverage | `pytest --cov --cov-fail-under={{80}}` | `vitest run --coverage` |
+| Secrets in code | `gitleaks detect --no-git --redact` (or `detect-secrets scan` against a baseline) | same |

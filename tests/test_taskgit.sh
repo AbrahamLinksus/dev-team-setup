@@ -170,6 +170,18 @@ if scenario secrets_blocked; then
   check ".env.example is fine" expect_exit 0 tg checkpoint "$R" T-10 x
 fi
 
+if scenario more_secret_files_blocked; then
+  # T7: only .env/.pem/.key were blocked by name
+  new_repo sec2; S2=$(tg start "$R" T-23)
+  for f in credentials.json gcp/service-account-prod.json cert.p12 .ssh/id_ed25519 .npmrc kaggle.json .envrc .pypirc; do
+    mkdir -p "$(dirname "$S2/$f")"; echo secret > "$S2/$f"
+    check "checkpoint refuses $f (exit 2)" expect_exit 2 tg checkpoint "$R" T-23 x
+    rm -f "$S2/$f"
+  done
+  echo '{}' > "$S2/package.json"; echo 'x' > "$S2/id_rsa.pub"
+  check "ordinary files still commit" expect_exit 0 tg checkpoint "$R" T-23 x
+fi
+
 if scenario plan_owns_all_shared; then
   new_repo plan; P=$(tg start "$R" plan)
   printf '# Tasks\n- T-01: Backlog\n- T-02: Backlog\n- T-03: Backlog\n' > "$P/TASKS.md"; echo "- D-01 stack" >> "$P/DECISIONS.md"
