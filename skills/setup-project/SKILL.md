@@ -55,7 +55,9 @@ Cards and images go out with SendUserFile / SendUserMessage where they exist; in
 CLI they don't, so follow the fallback in `result-card.md` (card file + printed image paths).
 
 **Planning crew** (always used, never part of the team pick): planner, researcher,
-architect, env-setup, git-pr. The **build team** is picked in stage 3 from the HLD.
+architect, env-setup. The **build team** is picked in stage 3 from the HLD. Approve, reject and
+record are one script call each, so you run `$TASKGIT` yourself rather than spawning an agent
+for them (git-pr stays available for a task whose commit message needs real summarising).
 
 ## Step protocol (every agent step on branch `<id>`)
 
@@ -169,7 +171,7 @@ check with terminal images.
 ## 6 · Tasks + plan merge ⏸
 
 **planner** → `TASKS.md`. Planning card (spec, HLD, team, LLD, env, task count per milestone).
-On approval **git-pr**: `$TASKGIT approve <repo> plan "chore: spec, design, environment and tasks"`.
+On approval run `$TASKGIT approve <repo> plan "chore: spec, design, environment and tasks"` yourself.
 Mirror the current milestone in the task widget.
 
 ## 7 · Build loop
@@ -194,12 +196,13 @@ Take every `Backlog` task whose dependencies are `Done`; run independent tasks i
    → debugger, back to step 3.
 5. Classify risk (`approval-modes.md`); produce visuals (`visual-capture.md`, screenshots first).
 6. Result card now or queued for a batch, per approval mode. Then:
-   - **Approve** → **git-pr** `$TASKGIT approve <repo> T-xx "<msg>"`; then update `TASKS.md`,
+   - **Approve** → run `$TASKGIT approve <repo> T-xx "<msg>"` yourself, with a conventional-commit
+     message built from the card (`feat(auth): add login endpoint [T-07]`); then update `TASKS.md`,
      `DECISIONS.md`, `STATE.md` in the main checkout and `$TASKGIT record <repo> "chore: record T-xx"`.
    - **Request changes** that stays within the task's acceptance criteria → back to step 2,
      continuing the owner agent (see **Rework continuation**). Anything wider is a
      **change request** (below).
-   - **Reject** → **git-pr** `$TASKGIT reject`; Backlog + reason; `record`.
+   - **Reject** → run `$TASKGIT reject <repo> T-xx` yourself; Backlog + reason; `record`.
    - approve exits non-zero: 4/5 → debugger, then a new card; 7 → report the push problem;
      8 → a change request is open: keep the card queued until it merges.
 
