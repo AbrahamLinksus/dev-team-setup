@@ -573,6 +573,22 @@ class StructureTest(unittest.TestCase):
         for must in ("Waiting on you:", "Recent decisions:", "Spent:", "Next:"):
             self.assertIn(must, block)
 
+    def test_guardrails_page_is_generated_and_complete(self):
+        # D28: the least-privilege page is generated (can't drift from scopes.json) and lists
+        # every closed bypass, each of which must still have its test
+        sys.path.insert(0, str(ROOT / "tools"))
+        import gen_agents
+        with tempfile.TemporaryDirectory() as d:
+            fresh = Path(d) / "g.md"
+            gen_agents.write_guardrails(fresh)
+            page = (ROOT / "docs" / "guardrails.md").read_text(encoding="utf-8")
+            self.assertEqual(page, fresh.read_text(encoding="utf-8"), "run python3 tools/gen_agents.py")
+        for n in range(1, 21):
+            self.assertIn(f"| S{n} |", page)
+        for _, _, test_file in gen_agents.BYPASSES:
+            self.assertTrue((ROOT / "tests" / test_file).exists())
+        self.assertIn("docs/guardrails.md", (ROOT / "README.md").read_text(encoding="utf-8"))
+
     def test_every_known_hole_keeps_its_regression_test(self):
         # M1: each problem fixed in code got a test that names it (S = scope guard, T = taskgit,
         # C = capture.py, G = gen_agents.py). Removing one of those tests should be a conscious act.
