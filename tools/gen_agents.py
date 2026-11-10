@@ -8,8 +8,15 @@ OUT = Path(__file__).resolve().parent.parent / "agents"
 
 R, W, E, B, G, GL = "Read", "Write", "Edit", "Bash", "Grep", "Glob"
 WS, WF = "WebSearch", "WebFetch"
-GDRIVE = ["mcp__Google_Drive__search_files", "mcp__Google_Drive__read_file_content",
-          "mcp__Google_Drive__download_file_content"]
+# G3: MCP tool names include the server's name, so these only exist when the user's Google Drive
+# server is called exactly DRIVE_SERVER. Drive access is optional (see the data-acquisition duty);
+# to match a differently named server, regenerate with `--drive-server <name>`.
+DRIVE_SERVER = "Google_Drive"
+DRIVE_TOOLS = ("search_files", "read_file_content", "download_file_content")
+
+
+def gdrive(server: str) -> list[str]:
+    return [f"mcp__{server}__{t}" for t in DRIVE_TOOLS] if server else []
 
 SHARED = """
 ## Team rules
@@ -236,7 +243,7 @@ AGENTS = [
              "Visuals: `/docs` screenshot + a real prediction request via `$CAPTURE term`; drift report image.",
          ]),
     # ---------------- Data science ----------------
-    dict(name="data-acquisition", model="sonnet", color="cyan", tools=[B, R, W, GL, WF] + GDRIVE,
+    dict(name="data-acquisition", model="sonnet", color="cyan", tools=[B, R, W, GL, WF], drive=True,
          when="data must be pulled from SQL, APIs, Kaggle/HF datasets, CSVs, Google Drive or public web pages",
          ex=("T-02 'Load the transactions dataset' is ready", "Spawn data-acquisition with the task brief"),
          role="You are Data Acquisition. You bring data into the project, untouched and documented.",
@@ -245,6 +252,7 @@ AGENTS = [
              "Write `data/SOURCES.md`: source, access method, date pulled, licence/terms, row/column counts, schema (column · type · meaning).",
              "Web scraping (requests/BeautifulSoup): respect robots.txt and the site's terms, rate-limit requests, and identify only with a generic client name. Scraping a new site is Tier 1.",
              "Credentials come from `.env`; never hard-code them.",
+             "Google Drive access is optional: it needs the owner's Google Drive MCP server. If the brief needs Drive files and the Drive tools aren't available to you, don't work around it; return `DECISION NEEDED` with two options: the owner downloads the files into `data/raw/`, or connects a Google Drive server.",
              "Visuals: schema + sample rows rendered with `$CAPTURE md`.",
          ]),
     dict(name="data-cleaner", model="sonnet", color="yellow", tools=[B, R, W, E, GL],
@@ -331,8 +339,8 @@ ONLY_ORCHESTRATOR = ("Only when spawned by the /setup-project Orchestrator with 
                      "work outside a /setup-project run.")
 
 
-def build(a):
-    tools = ", ".join(f'"{t}"' for t in a["tools"])
+def build(a, drive_server: str = DRIVE_SERVER):
+    tools = ", ".join(f'"{t}"' for t in a["tools"] + (gdrive(drive_server) if a.get("drive") else []))
     ctx, action = a["ex"]
     duties = "\n".join(f"{i}. {d}" for i, d in enumerate(a["duties"], 1))
     return f"""---
@@ -351,7 +359,7 @@ tools: [{tools}]
 {SHARED}"""
 
 
-def write_agents(out: Path) -> None:
+def write_agents(out: Path, drive_server: str = DRIVE_SERVER) -> None:
     out.mkdir(parents=True, exist_ok=True)
     # G2: an agent removed from the spec must disappear, or Claude Code keeps loading it.
     # Only files this generator wrote are removed (they all point at the shared team rules).
@@ -362,15 +370,17 @@ def write_agents(out: Path) -> None:
             print("removed stale agent", old.name)
     for a in AGENTS:
         with open(out / f"{a['name']}.md", "w", encoding="utf-8", newline="\n") as f:   # LF on every OS
-            f.write(build(a))
+            f.write(build(a, drive_server))
 
 
 def main(argv: list[str] | None = None) -> None:
     import argparse
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--out", type=Path, default=OUT, help=f"output folder (default: {OUT})")
+    ap.add_argument("--drive-server", default=DRIVE_SERVER,
+                    help=f"name of your Google Drive MCP server (default {DRIVE_SERVER}; '' for none)")
     args = ap.parse_args(argv)   # G1: `--help` used to create a folder named --help
-    write_agents(args.out)
+    write_agents(args.out, args.drive_server)
     print(len(AGENTS), "agents written to", args.out)
 
 

@@ -110,6 +110,20 @@ class StructureTest(unittest.TestCase):
             self.assertEqual(sorted(p.name for p in AGENTS), sorted(p.name for p in Path(d).glob("*.md")),
                              "agents/ has files the spec doesn't generate: run python3 tools/gen_agents.py")
 
+    def test_drive_is_optional_and_configurable(self):
+        # G3: Drive tool names were hard-coded to a server called Google_Drive
+        text = (ROOT / "agents" / "data-acquisition.md").read_text(encoding="utf-8")
+        self.assertIn("Google Drive access is optional", text)
+        with tempfile.TemporaryDirectory() as d:
+            subprocess.run([sys.executable, str(ROOT / "tools" / "gen_agents.py"), "--out", d, "--drive-server", "gdrive"],
+                           check=True, capture_output=True)
+            tools = frontmatter(Path(d) / "data-acquisition.md")["tools"]
+            self.assertIn("mcp__gdrive__read_file_content", tools)
+            self.assertFalse(any("Google_Drive" in t for t in tools))
+            subprocess.run([sys.executable, str(ROOT / "tools" / "gen_agents.py"), "--out", d, "--drive-server", ""],
+                           check=True, capture_output=True)
+            self.assertFalse(any(t.startswith("mcp__") for t in frontmatter(Path(d) / "data-acquisition.md")["tools"]))
+
     def test_gen_agents_removes_stale_agents(self):
         with tempfile.TemporaryDirectory() as d:
             stale = Path(d) / "old-agent.md"
