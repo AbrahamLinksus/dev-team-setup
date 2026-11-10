@@ -89,8 +89,35 @@ def expand(globs: list[str], scopes: dict) -> list[str]:
     return out
 
 
+# S13: .env, .env.local, .env.production, .envrc … hold secrets; only .env.example is documentation
+SECRET_FILE = re.compile(r"(^|/)\.env(\.[^/]+)?$|(^|/)\.envrc$")
+
+
+def is_secret_file(path: str) -> bool:
+    p = path.replace("\\", "/")
+    return bool(SECRET_FILE.search(p)) and not p.endswith(".env.example")
+
+
+def secret_in_command(command: str) -> str | None:
+    """A shell command that names a secret file (cat .env, cp .env.local x, source .envrc …).
+    `--env-file .env` is fine: it loads the values into a process without printing them."""
+    for seg in segments(command) or []:
+        for i, t in enumerate(seg):
+            if t.startswith("--env-file=") or (i and seg[i - 1] == "--env-file"):
+                continue
+            if is_secret_file(t.strip("'\"")):
+                return t
+    if segments(command) is None:
+        m = re.search(r"\S*\.env(rc|\.[A-Za-z0-9_-]+)?\b", command)
+        if m and is_secret_file(m.group(0)) and "--env-file" not in command:
+            return m.group(0)
+    return None
+
+
 def path_violation(name: str, rel: str, scopes: dict) -> str | None:
     """Return a reason if `name` may not write repo-relative path `rel`, else None."""
+    if is_secret_file(rel):
+        return f"{name} may not write {rel}: it holds secrets (document keys in .env.example instead)"
     spec = scopes["agents"][name]
     deny = expand(spec.get("deny", []), scopes) + expand(scopes.get("deny_all", []), scopes)
     allow = expand(spec.get("write", []), scopes)
@@ -579,6 +606,16 @@ def hook_main() -> None:
 
 def evaluate(name: str, event: dict, scopes: dict) -> str | None:
     tool, inp, cwd = event.get("tool_name", ""), event.get("tool_input") or {}, event.get("cwd") or os.getcwd()
+    if tool in ("Read", "Grep"):
+        fp = inp.get("file_path") or inp.get("path") or ""
+        if isinstance(fp, str) and is_secret_file(fp):
+            return f"{name} may not read {fp}: it holds secrets. Key names are documented in .env.example."
+        return None
+    if tool == "Bash" and isinstance(inp.get("command"), str):
+        secret = secret_in_command(inp["command"])
+        if secret:
+            return (f"{name} may not read or change {secret}: it holds secrets. Use .env.example for key names, "
+                    f"or load the values into a process with --env-file.")
     if tool in ("Write", "Edit", "MultiEdit", "NotebookEdit"):
         fp = inp.get("file_path") or inp.get("notebook_path")
         if not isinstance(fp, str) or not fp:

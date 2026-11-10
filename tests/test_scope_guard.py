@@ -378,6 +378,28 @@ class GuardTest(unittest.TestCase):
         self.assertIsNotNone(bg("npm run dev"))
         self.assertIsNone(bg("timeout 300 npm run dev"))
 
+    def test_secret_files(self):
+        # S13: `cat .env` and the Read tool weren't checked; .env.local and .envrc were writable
+        read = lambda tool, inp: hook("dev-team-setup:backend-coder", tool, inp, str(self.repo))
+        for rel in (".env", "backend/.env", ".env.local", "frontend/.env.production", ".envrc"):
+            with self.subTest(read=rel):
+                self.assertIsNotNone(read("Read", {"file_path": str(self.repo / rel)}))
+            with self.subTest(write=rel):
+                self.assertIsNotNone(self.write("env-setup", rel))
+        self.assertIsNotNone(read("Grep", {"pattern": "KEY", "path": str(self.repo / ".env")}))
+        for cmd in ["cat .env", "head -5 backend/.env.local", "cp .env /tmp/x", "grep KEY .env",
+                    "echo KEY=1 >> .env.local", "less .envrc"]:
+            with self.subTest(cmd=cmd):
+                self.assertIsNotNone(self.bash("backend-coder", cmd))
+        self.assertIsNone(read("Read", {"file_path": str(self.repo / ".env.example")}))
+        self.assertIsNone(read("Read", {"file_path": str(self.repo / "src" / "environment.py")}))
+        self.assertIsNone(self.write("env-setup", "backend/.env.example"))
+        for cmd in ["cat .env.example", "uv run --env-file .env uvicorn app:app --help", "docker run --env-file=.env img"]:
+            with self.subTest(cmd=cmd, expect="allow"):
+                self.assertIsNone(self.bash("backend-coder", cmd))
+        # other agents and the main thread are untouched
+        self.assertIsNone(hook(None, "Read", {"file_path": str(self.repo / ".env")}, str(self.repo)))
+
     def test_no_shell_roles(self):
         for agent in ("reviewer", "researcher", "planner", "architect", "docs", "insights-reporter"):
             with self.subTest(agent=agent):
