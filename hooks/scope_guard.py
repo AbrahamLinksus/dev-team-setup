@@ -527,6 +527,8 @@ def bash_violation(name: str, command: str, scopes: dict, depth: int = 0, cwd: s
     why = destructive(command, cwd, scratch)
     if why:
         return why
+    if mode != "git" and unbounded_background(command):
+        return UNBOUNDED_BACKGROUND
     if mode == "git":
         return git_mode_violation(command, cwd=cwd)
     # commands nested in bash -c / eval / capture.py --cmd get the same checks as top-level ones
@@ -598,8 +600,50 @@ def evaluate(name: str, event: dict, scopes: dict) -> str | None:
         cmd = inp.get("command", "")
         if not isinstance(cmd, str):
             raise ValueError("non-string command")
-        return bash_violation(name, cmd, load_scopes(find_root(Path(cwd).resolve())), cwd=cwd)
+        scopes = load_scopes(find_root(Path(cwd).resolve()))
+        why = bash_violation(name, cmd, scopes, cwd=cwd)
+        if why is None and inp.get("run_in_background") and scopes["agents"][name].get("bash", "none") != "none" \
+                and not starts_with_timeout(cmd):
+            why = UNBOUNDED_BACKGROUND
+        return why
     return None
+
+
+UNBOUNDED_BACKGROUND = ("background processes must end on their own so nothing outlives your step: start them "
+                        "with `timeout <seconds>` (e.g. `timeout 120 uvicorn app:app &`), stop them when done, "
+                        "and don't use nohup/setsid/disown")
+
+
+def starts_with_timeout(command: str) -> bool:
+    try:
+        tok = shlex.split(command)
+    except ValueError:
+        return False
+    tok = [t for t in tok if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*=.*", t)]
+    return bool(tok) and os.path.basename(tok[0]) == "timeout"
+
+
+def unbounded_background(command: str) -> bool:
+    """S12: `uvicorn app:app &` keeps running after the agent finishes. A backgrounded command must
+    start with `timeout N`; detaching tools (nohup, setsid, disown) are never allowed."""
+    lex = shlex.shlex(command.replace("2>&1", " "), posix=True, punctuation_chars="();<>|&\n")
+    lex.whitespace, lex.whitespace_split = " \t\r", True
+    try:
+        tokens = list(lex)
+    except ValueError:
+        return "&" in command
+    cur: list[str] = []
+    for t in tokens + [";"]:
+        if t in SEPARATORS or t == "&":
+            words = [w for w in cur if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*=.*", w)]
+            if words and os.path.basename(words[0]) in ("nohup", "setsid", "disown"):
+                return True
+            if t == "&" and words and os.path.basename(words[0]) != "timeout":
+                return True
+            cur = []
+        elif t not in ("(", ")"):
+            cur.append(t)
+    return False
 
 
 def check_main(argv: list[str]) -> None:

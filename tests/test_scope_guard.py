@@ -363,6 +363,22 @@ class GuardTest(unittest.TestCase):
                 self.assertIsNone(self.bash("backend-coder", cmd))
         self.assertIsNotNone(self.bash("env-setup", "gh repo edit --visibility public"))
 
+    def test_background_jobs_must_be_bounded(self):
+        # S12: `uvicorn app:app &` outlived the agent's step
+        for cmd in ["uvicorn app:app &", "uvicorn app:app & sleep 2; curl localhost:8000",
+                    "nohup python server.py", "setsid npm run dev", "npm run dev & disown",
+                    "cd backend && uv run uvicorn app:app &"]:
+            with self.subTest(cmd=cmd):
+                self.assertIsNotNone(self.bash("backend-coder", cmd))
+        for cmd in ["timeout 120 uvicorn app:app & sleep 2; curl -s localhost:8000/health; kill %1",
+                    "PORT=8001 timeout 60 npm run dev &", "uv run pytest -q && echo ok", "pytest 2>&1 | tail -5"]:
+            with self.subTest(cmd=cmd, expect="allow"):
+                self.assertIsNone(self.bash("backend-coder", cmd))
+        # Claude Code's own run_in_background flag counts too
+        bg = lambda c: hook("dev-team-setup:backend-coder", "Bash", {"command": c, "run_in_background": True}, str(self.repo))
+        self.assertIsNotNone(bg("npm run dev"))
+        self.assertIsNone(bg("timeout 300 npm run dev"))
+
     def test_no_shell_roles(self):
         for agent in ("reviewer", "researcher", "planner", "architect", "docs", "insights-reporter"):
             with self.subTest(agent=agent):
