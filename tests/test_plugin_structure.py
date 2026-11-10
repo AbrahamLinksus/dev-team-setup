@@ -368,6 +368,12 @@ class StructureTest(unittest.TestCase):
         self.assertNotIn("/plugin configure", readme)
         self.assertIn("`/config`", readme)
 
+    def test_example_says_how_old_it_is(self):
+        # M7: the only example is from v0.2 (no spec stage, no build); readers must know that
+        example = (ROOT / "examples" / "todo-app" / "README.md").read_text(encoding="utf-8")
+        self.assertIn("Dated example (plugin v0.2)", example)
+        self.assertIn("v0.2", (ROOT / "README.md").read_text(encoding="utf-8"))
+
     def test_no_hardcoded_owner(self):
         for path in list((ROOT / "agents").glob("*.md")) + list(SKILL.rglob("*.md")):
             with self.subTest(file=str(path.relative_to(ROOT))):

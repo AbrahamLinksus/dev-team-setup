@@ -88,7 +88,8 @@ Pick these when Claude Code asks after you enable the plugin, or change them lat
 ## Learn more
 
 - [How it works](docs/how-it-works.md): the agents, the guardrails, the files each project gets
-- [Example run](examples/todo-app/): real planning output for a small todo app
+- [Example run](examples/todo-app/): real planning output for a small todo app, from an early
+  version (v0.2: planning stages only)
 - **Benchmark:** `python3 bench.py all` compares a normal Claude Code session with the plugin
   (tokens, cost, your effort, and whether the app works). One file, no setup.
 
