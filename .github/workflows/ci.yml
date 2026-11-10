@@ -50,6 +50,14 @@ jobs:
         run: |
           npm install -g @anthropic-ai/claude-code >/dev/null
           claude plugin validate --strict .
+      - name: Always-on context cost under 2,000 tokens (claude plugin details)
+        run: |
+          out=$(claude --plugin-dir . plugin details dev-team-setup 2>&1) || true
+          echo "$out" | grep -iE "always-on|^dev-team|setup-project " || true
+          n=$(echo "$out" | sed -n 's/.*Always-on: *~\([0-9,]*\) tok.*/\1/p' | tr -d ,)
+          [ -n "$n" ] || { echo "couldn't read the always-on cost"; echo "$out" | head -20; exit 1; }
+          echo "always-on: $n tokens"
+          [ "$n" -lt 2000 ] || { echo "always-on cost $n >= 2000: the directory listing flags this"; exit 1; }
       - name: shellcheck
         run: shellcheck --severity=warning skills/setup-project/scripts/taskgit.sh hooks/scope_guard.sh tests/test_taskgit.sh
       - name: ruff
