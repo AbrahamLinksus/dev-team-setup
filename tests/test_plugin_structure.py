@@ -456,6 +456,17 @@ class StructureTest(unittest.TestCase):
         for specific in ("BRIEF ·", "Worktree:", "Task:", "Read:", "Port:", "Write full report to:"):
             self.assertLess(stable_end, block.index(specific), specific)
 
+    def test_full_reports_only_when_someone_reads_them(self):
+        # D13 (H4): output is the priciest token; a full report nobody opens is pure cost.
+        rules = (SKILL / "references" / "team-rules.md").read_text(encoding="utf-8")
+        self.assertIn("only when\n   someone will read it", rules)
+        self.assertIn("Full report: <path> | none", rules)
+        for reader_needs in ("a check or test failed", "Critical or Major", "`## Task impact`", "· always"):
+            self.assertIn(reader_needs, rules)
+        self.assertIn("· always", (SKILL / "references" / "brief-template.md").read_text(encoding="utf-8"))
+        reviewer = (ROOT / "agents" / "reviewer.md").read_text(encoding="utf-8")
+        self.assertIn("With only Minor findings, write no full report", reviewer)
+
     def test_every_known_hole_keeps_its_regression_test(self):
         # M1: each problem fixed in code got a test that names it (S = scope guard, T = taskgit,
         # C = capture.py, G = gen_agents.py). Removing one of those tests should be a conscious act.
