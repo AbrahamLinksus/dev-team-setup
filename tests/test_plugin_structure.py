@@ -151,6 +151,13 @@ class StructureTest(unittest.TestCase):
         self.assertNotIn("CHECK_NO_COVERAGE", (ROOT / "agents" / "tester.md").read_text(encoding="utf-8"))
         self.assertIn("CHECK_NO_COVERAGE=1 scripts/check.sh", (SKILL / "references" / "team-rules.md").read_text(encoding="utf-8"))
 
+    def test_readme_images_are_tracked(self):
+        # K6: .results/ is git-ignored and removed on approve, so README images must live in docs/images/
+        docs = (ROOT / "agents" / "docs.md").read_text(encoding="utf-8")
+        self.assertIn("docs/images/", docs)
+        self.assertNotIn("screenshots of the running app from `.results/`", docs)
+        self.assertIn("docs/images/", (SKILL / "SKILL.md").read_text(encoding="utf-8"))
+
     def test_no_hardcoded_owner(self):
         for path in list((ROOT / "agents").glob("*.md")) + list(SKILL.rglob("*.md")):
             with self.subTest(file=str(path.relative_to(ROOT))):
