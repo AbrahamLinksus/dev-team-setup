@@ -610,6 +610,20 @@ class StructureTest(unittest.TestCase):
         self.assertLess(intake.index("three-line opener"), intake.index("One AskUserQuestion call: repo name"))
         self.assertIn("Never state a cost that wasn't measured", intake)
 
+    def test_eval_suite_is_complete_and_runnable(self):
+        # D33: every case has a prompt and a grader, and run.sh covers every tag a case uses
+        cases = [p.parent for p in (ROOT / "evals").glob("*/prompt.md")]
+        self.assertGreaterEqual(len(cases), 4)
+        runner = (ROOT / "evals" / "run.sh").read_text(encoding="utf-8")
+        for case in cases:
+            with self.subTest(case=case.name):
+                self.assertTrue(list((case / "graders").glob("*.md")), "a case needs at least one grader")
+                meta = frontmatter(case / "prompt.md")
+                for tag in meta["tags"]:
+                    self.assertIn(f"--tag {tag}", runner)
+        self.assertIn("evals/results/", (ROOT / ".gitignore").read_text(encoding="utf-8"))
+        self.assertIn("workflow_dispatch", (ROOT / ".github" / "workflows" / "evals.yml").read_text(encoding="utf-8"))
+
     def test_every_known_hole_keeps_its_regression_test(self):
         # M1: each problem fixed in code got a test that names it (S = scope guard, T = taskgit,
         # C = capture.py, G = gen_agents.py). Removing one of those tests should be a conscious act.
