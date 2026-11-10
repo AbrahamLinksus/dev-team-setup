@@ -12,12 +12,23 @@ Take every `Backlog` task whose dependencies are `Done`; run independent tasks i
    write `TASK_PROGRESS.md`; widget → in progress.
 2. Owner agent (step protocol). `DECISION NEEDED` → record it in TASK_PROGRESS.md, checkpoint,
    ask the owner, resume with the answer.
-3. **tester** (`scripts/check.sh` must pass) → write the diff to a file without opening it
-   (`$TASKGIT diff <repo> T-xx > <wt>/.results/T-xx/changes.diff`) → **reviewer**.
-   Coverage below the threshold (everything else green) → back to the **tester** for more tests.
+3. **tester and reviewer in parallel.** Write the owner agent's diff to a file without opening it
+   (`$TASKGIT diff <repo> T-xx > <wt>/.results/T-xx/changes.diff`), mark both steps ⏳, checkpoint
+   `"test+review started"`, then spawn the **tester** (`scripts/check.sh` must pass) and the
+   **reviewer** in **one message** (two Agent calls), so they run at the same time. This is the
+   one exception to "only then spawn the next agent": the reviewer is read-only and the tester
+   only adds tests, so they can't step on each other. When both return: run
+   `$TASKGIT scope <repo> T-xx tester` **once**. It checks every change since the checkpoint, and
+   the reviewer can't have made any (the guard blocks its writes live; its report goes to the
+   git-ignored `.results/`). **Never run `scope` as reviewer after this step:** scope checks all
+   changes against one role, so it would revert the tester's new tests. Then mark both, checkpoint
+   `"test+review done"`, and put both REPORTs on the card.
+   Coverage below the threshold (everything else green) → back to the **tester** for more tests
+   (no new review: tests alone don't change what the reviewer read).
    Other failing checks or Critical/Major findings → **debugger** (`Read:` the failing step's full
    report or `sync-check.txt`, the changed files, the task's LLD sections) or the owner agent
-   (rounds per cost mode; later rounds continue the same debugger), then test + review again;
+   (rounds per cost mode; later rounds continue the same debugger), then test + review again
+   (in parallel, with a fresh `changes.diff`);
    rounds exhausted → decision card.
    ML/DS tasks: also **evaluator** where metrics apply.
 4. `$TASKGIT sync <repo> T-xx`. Exit 4 (conflict) / 5 (checks fail; output path in the error)
