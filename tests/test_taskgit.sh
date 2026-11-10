@@ -271,6 +271,25 @@ HOOK
   check "exactly one feat: h commit" test "$(git -C "$R" log --oneline origin/main | grep -c 'feat: h')" = 1
 fi
 
+if scenario conflicts_in_odd_names; then
+  # T9: `for f in $conflicts` split names with spaces; shared names were regexes (TASKS.md matched TASKSxmd)
+  new_repo odd2; printf 'a\n' > "$R/my notes.py"; printf 'a\n' > "$R/TASKSxmd"
+  git -C "$R" add -A; git -C "$R" commit -qm odd; git -C "$R" push -q 2>/dev/null
+  A=$(tg start "$R" T-24); printf 'mine\n' > "$A/my notes.py"; tgq checkpoint "$R" T-24 x
+  printf 'theirs\n' > "$R/my notes.py"; git -C "$R" commit -qam theirs; git -C "$R" push -q 2>/dev/null
+  out=$(bash "$TG" sync "$R" T-24 2>&1); code=$?
+  check "conflict in 'my notes.py' reported as one file (exit 4)" test "$code" = 4
+  check "the message names the whole file" contains "$out" "my notes.py"
+  check "worktree not left mid-merge" test ! -f "$(git -C "$A" rev-parse --git-dir)/MERGE_HEAD"
+  B=$(tg start "$R" T-25); printf 'b\n' > "$B/TASKSxmd"; tgq checkpoint "$R" T-25 x
+  printf 'c\n' > "$R/TASKSxmd"; git -C "$R" commit -qam c; git -C "$R" push -q 2>/dev/null
+  out=$(bash "$TG" sync "$R" T-25 2>&1)
+  check "TASKSxmd is reported as a code conflict, not as the shared TASKS.md" contains "$out" "conflicts with main in: TASKSxmd"
+  # record must refuse other modified files, including ones whose names the old regex matched
+  printf 'd\n' > "$R/TASKSxmd"; sedi 's/T-01: In progress/T-01: Done/' "$R/TASKS.md"
+  check "record refuses a modified TASKSxmd (exit 3)" expect_exit 3 tg record "$R" "chore: record"
+fi
+
 if scenario approve_keeps_untracked_files; then
   # T6: the dirty check ignored untracked files, then `worktree remove --force` deleted them
   new_repo untr; U=$(tg start "$R" T-22); echo "u = 1" > "$U/u.py"; tgq checkpoint "$R" T-22 x
