@@ -477,6 +477,17 @@ class StructureTest(unittest.TestCase):
         self.assertLess(len(skill) + agents, 4800,
                         "always-on text grew; shorten SHORT descriptions in tools/gen_agents.py")
 
+    def test_long_sessions_are_cut_between_tasks(self):
+        # D15 (H1): the Orchestrator's own context is the biggest cost on long builds; subagents
+        # can't spawn subagents, so it is cut by fresh sessions, not by a task-runner agent.
+        build = (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8")
+        self.assertIn("**Long session check (between tasks).**", build)
+        self.assertIn("6 or more tasks", build)
+        self.assertIn("SESSION DONE", (SKILL / "references" / "unattended.md").read_text(encoding="utf-8"))
+        sys.path.insert(0, str(ROOT))
+        import bench
+        self.assertIn("SESSION DONE", bench.MARKERS)
+
     def test_every_known_hole_keeps_its_regression_test(self):
         # M1: each problem fixed in code got a test that names it (S = scope guard, T = taskgit,
         # C = capture.py, G = gen_agents.py). Removing one of those tests should be a conscious act.

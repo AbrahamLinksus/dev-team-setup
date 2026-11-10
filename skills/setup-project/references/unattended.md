@@ -15,8 +15,9 @@ that path in STATE.md "Config" so a resumed session keeps the mode.
   lines as the owner's interventions.
 - Still produce every card and visual exactly as in an attended run (write it to
   `.results/<id>/card.md` as the CLI fallback says), so cost and time are comparable.
-- **Fresh session at a milestone:** after the milestone is approved and checkpointed, append
-  `MILESTONE DONE <n>` to `answers.log` and end your turn. The benchmark starts the next
+- **Fresh session at a milestone or long-session check:** after it is approved and checkpointed, append
+  `MILESTONE DONE <n>` (milestone) or `SESSION DONE` (long-session check, `stage-7-build.md`)
+  to `answers.log` and end your turn. The benchmark starts the next
   session with the resume prompt.
 - **Handover approved:** append `HANDOVER DONE` to `answers.log` and end your turn.
 - **Stopped for good** (the guard or a tool keeps failing, or a Tier 1 decision the answers

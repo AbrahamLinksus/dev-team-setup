@@ -40,3 +40,12 @@ README pass. Milestone card (includes the LLD changes): **Approve + continue in 
 session (Recommended)** / Approve and continue here / Request changes.
 Fresh session → update STATE.md "Next step", `$TASKGIT record <repo> "chore: milestone M<n>"`,
 then tell the owner: "Start a new chat and run `/setup-project resume <repo>`", and stop.
+
+**Long session check (between tasks).** Your own context grows with every task, and every call
+re-reads all of it, so a long session costs more per task the longer it runs. After you
+`record` an approved task, if **6 or more tasks** have been approved in this session, no task
+is mid-step (every open `TASK_PROGRESS.md` has no ⏳) and the milestone isn't about to end
+(its last task isn't next), ask once: **Continue in a fresh session (Recommended)** / Continue
+here. Fresh session: the same steps as at milestone end (STATE.md "Next step", `record`, tell
+the owner to resume, stop). Continue here: don't ask again until another 6 tasks are approved.
+In unattended mode this counts like a milestone: answer Recommended and log `SESSION DONE`.

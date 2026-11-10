@@ -774,8 +774,8 @@ def claude_interactive(prompt: str, cwd: Path, skip_permissions: bool) -> int:
     return subprocess.call(cmd, cwd=cwd)
 
 
-MAX_UNATTENDED_SESSIONS = 12
-MARKERS = ("MILESTONE DONE", "HANDOVER DONE", "STOPPED")
+MAX_UNATTENDED_SESSIONS = 20   # milestones plus a fresh session every 6 tasks (D15)
+MARKERS = ("MILESTONE DONE", "SESSION DONE", "HANDOVER DONE", "STOPPED")
 
 
 def answers_log(folder: Path) -> list[str]:
