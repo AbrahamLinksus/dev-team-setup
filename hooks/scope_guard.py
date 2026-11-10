@@ -639,8 +639,8 @@ def evaluate(name: str, event: dict, scopes: dict) -> str | None:
             raise ValueError("non-string command")
         # S16: a subagent's cwd is the session's folder; it reaches the worktree with a leading
         # `cd <worktree> &&` (team rules), so that worktree's .devteam/scopes.json is the one to use
-        cwd = command_cwd(cmd, cwd)
-        scopes = load_scopes(find_root(Path(cwd).resolve()))
+        # (only for picking the scopes: bash_violation replays those `cd`s itself, from the real cwd)
+        scopes = load_scopes(find_root(Path(command_cwd(cmd, cwd)).resolve()))
         why = bash_violation(name, cmd, scopes, cwd=cwd)
         if why is None and inp.get("run_in_background") and scopes["agents"][name].get("bash", "none") != "none" \
                 and not starts_with_timeout(cmd):
