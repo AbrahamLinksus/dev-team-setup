@@ -15,8 +15,15 @@ Part of the /setup-project Orchestrator (SKILL.md). Read this file when the stag
    then run `python3 $CAPTURE doctor --install`. It never touches the project's environment.
    Record the answer in STATE.md.
 3. Restate the idea in one line. One AskUserQuestion call: repo name (2–3 kebab-case
-   suggestions) and visibility (Private / Public). **Always ask visibility; never default it.**
-4. Create `<github_owner>/<repo>`: `gh repo create` if `gh auth status` works; otherwise
+   suggestions) and where it lives: **Private** / **Public** (a GitHub repo) / **Try locally (no
+   GitHub)**. **Always ask; never default it.** Offer *Try locally* first when `gh auth status`
+   fails, and say what it means: everything works, nothing leaves this computer, and the repo can
+   be put on GitHub later (`git remote set-url origin <url> && git push -u origin --all`).
+4. **Try locally** → no GitHub at all: `git init --bare -b main <base>/<repo>.git`, then clone it in
+   step 5 as usual. It's a real remote, so checkpoints, `approve` and `record` push to it the same
+   way; record `Repo: local (<base>/<repo>.git)` in STATE.md and skip the GitHub-only steps
+   (CI in handover becomes a local `scripts/check.sh` hook; say so on the handover card).
+   **Private / Public** → create `<github_owner>/<repo>`: `gh repo create` if `gh auth status` works; otherwise
    add_repo (`mcp__claude-code-remote__add_repo`, access `push`), and if the repo doesn't
    exist ask the owner to create an **empty** repo with that name and visibility, then retry.
 5. Clone into the session's working folder: `<base>/<repo>`, where `<base>` is the folder this

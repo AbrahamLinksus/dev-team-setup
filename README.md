@@ -15,7 +15,7 @@ You answer questions and approve each step, from your laptop or your phone.
 |---|---|
 | [Claude Code](https://claude.com/claude-code) 2.1.271 or later (terminal, desktop app, IDE or claude.ai/code) | runs the plugin (older versions can't load its settings' choice lists). Not claude.ai chat: it can't run agents or hooks, so the plugin stops there. Cowork loads both but is untested |
 | `git` | every task is a branch with checkpoints |
-| [GitHub CLI](https://cli.github.com) `gh`, signed in (`gh auth login`) | creates the project's repo and pushes to it |
+| [GitHub CLI](https://cli.github.com) `gh`, signed in (`gh auth login`) | creates the project's repo and pushes to it. Optional: pick **Try locally** to keep everything on this computer, no GitHub account needed |
 | Python 3.9 or newer (`python3`) | the guard that keeps each agent in its lane runs on it |
 | [uv](https://docs.astral.sh/uv/) | Python projects |
 | Node.js + npm | JavaScript projects and Mermaid diagrams |
@@ -70,7 +70,7 @@ no telemetry. It sends nothing anywhere except what is listed here.
 
 | What | When | Where it goes |
 |---|---|---|
-| Creates a GitHub repo (`gh repo create`), private or public as you choose | Once, at the start of a project | GitHub, under the account you set as `github_owner` |
+| Creates a GitHub repo (`gh repo create`), private or public as you choose | Once, at the start of a project (not with **Try locally**) | GitHub, under the account you set as `github_owner` |
 | Pushes commits: `main` and one `wip/<task>` branch per task, after every step | Throughout the build, so work survives a closed session | That repo |
 | Installs the project's own dependencies (`uv sync`, `npm ci`, …) | When a task starts in its own worktree | Package registries (PyPI, npm); files stay in the project folder |
 | Installs Playwright, Chromium, Pillow and `mermaid@11.4.1` for screenshots and diagrams | Only when you say yes to `capture.py doctor --install` | Into the plugin's private data folder, not your system Python |
