@@ -10,7 +10,15 @@ task's worktree: a relative `docs/LLD.md` would read main's stale copy, and a re
 `.results/…` would write into the main checkout. Below, `<wt>` stands for the worktree's
 absolute path (what `$TASKGIT start` printed, e.g. `/home/me/projects/todo-wt/T-03`).
 
+**Order matters for cost.** The model caches a prompt by its longest identical opening, so the
+lines that are the same in every brief come first, in this exact order and wording, and
+everything task-specific comes after the `BRIEF ·` line. Never move a task-specific value
+above it.
+
 ```
+TEAM_RULES:   <plugin root>/skills/setup-project/references/team-rules.md
+CAPTURE:      <plugin root>/skills/setup-project/scripts/capture.py
+Return:       short REPORT (≤12 lines) or DECISION NEEDED (format in TEAM_RULES)
 BRIEF · <task-id> · <agent-name> · <step>
 Worktree:     <wt>     (absolute; work only here; branch wip/<task-id>; every Bash call starts with `cd <wt> &&`)
 Task:         <title>
@@ -28,9 +36,6 @@ Read:         <exact files and sections, one per line, e.g.>
 Rework:       <rework only> previous REPORT (verbatim, ≤12 lines) + owner's change request (verbatim)
 Write full report to: <wt>/.results/<task-id>/<step>-<agent>.md
 Port:         <8000 + task number, e.g. T-07 → 8007>     (servers this step starts listen here; second server: 9000 + n)
-TEAM_RULES:   <plugin root>/skills/setup-project/references/team-rules.md
-CAPTURE:      <plugin root>/skills/setup-project/scripts/capture.py
-Return:       short REPORT (≤12 lines) or DECISION NEEDED (format in TEAM_RULES)
 ```
 
 Write files the agent reads before spawning it, e.g. for the reviewer:
