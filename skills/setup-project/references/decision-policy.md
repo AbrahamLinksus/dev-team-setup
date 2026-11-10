@@ -11,7 +11,8 @@
   (git-ignored, re-created by a script). Ask before the first data or model file is written;
   never commit them to git by default
 - Anything that costs money, uses an external account, or sends data outside
-- Deployment target and timing, repo visibility, any push
+- Deployment target and timing, repo visibility, and any push other than the pre-approved ones:
+  `wip/*` checkpoint pushes, and the push that approving a result card (or `record`) already covers
 - Anything irreversible or hard to undo
 - Changing an approved HLD, LLD, acceptance criterion or milestone
 - **Anything you're unsure about**

@@ -234,6 +234,12 @@ class StructureTest(unittest.TestCase):
         for fmt in ("REPORT <task-id>", "DECISION NEEDED", "QUESTIONS (round", "SPEC COMPLETE"):
             self.assertIn(fmt, rules)
 
+    def test_push_policy_is_consistent(self):
+        # K10: "any push" was Tier 1, contradicting pre-approved wip pushes and card approvals
+        policy = (SKILL / "references" / "decision-policy.md").read_text(encoding="utf-8")
+        self.assertNotIn("repo visibility, any push\n", policy)
+        self.assertIn("`wip/*` checkpoint pushes", policy)
+
     def test_no_hardcoded_owner(self):
         for path in list((ROOT / "agents").glob("*.md")) + list(SKILL.rglob("*.md")):
             with self.subTest(file=str(path.relative_to(ROOT))):
