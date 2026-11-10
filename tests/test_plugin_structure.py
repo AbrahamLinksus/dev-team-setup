@@ -252,6 +252,13 @@ class StructureTest(unittest.TestCase):
         self.assertIn("at most 6 rounds", interview)
         self.assertNotIn("There's no round limit", (SKILL / "SKILL.md").read_text(encoding="utf-8"))
 
+    def test_orchestrator_runs_taskgit_itself(self):
+        # K13: spawning git-pr for every approve/reject cost a whole agent start-up to run one script
+        skill = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+        self.assertNotIn("**git-pr** `$TASKGIT approve", skill)
+        self.assertNotIn("**git-pr** `$TASKGIT reject", skill)
+        self.assertIn("run `$TASKGIT approve <repo> T-xx", skill)
+
     def test_no_hardcoded_owner(self):
         for path in list((ROOT / "agents").glob("*.md")) + list(SKILL.rglob("*.md")):
             with self.subTest(file=str(path.relative_to(ROOT))):

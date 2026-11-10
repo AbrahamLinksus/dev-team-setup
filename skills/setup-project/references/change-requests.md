@@ -27,7 +27,7 @@ offline", "add login", "drop the export feature", "use Postgres instead".
 6 Re-plan    planner revises TASKS.md on the CR branch (rework tasks get new IDs, e.g. T-07b).
              The CR branch owns TASKS.md only; STATE.md and DECISIONS.md stay main's
              (checkpoint reverts any change to them).
-7 Merge      git-pr: $TASKGIT approve <repo> CR-<n> "docs: CR-<n> <title>"
+7 Merge      Orchestrator: $TASKGIT approve <repo> CR-<n> "docs: CR-<n> <title>"
              exit 4 = TASKS.md changed on main since the CR branched → planner redoes the
              re-plan on top of current main (sync first), then approve again.
              After the merge: log the CR as a Tier 1 decision in DECISIONS.md and update

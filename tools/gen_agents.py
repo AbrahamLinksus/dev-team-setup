@@ -164,7 +164,7 @@ AGENTS = [
              "Visuals: `$CAPTURE term` of `gh run list` / `gh run view`, and `$CAPTURE web` of the deployed URL.",
          ]),
     dict(name="git-pr", model="haiku", color="yellow", tools=[B, R, W],
-         when="an approved task must be squashed into main, a rejected task discarded, or the repo prepared",
+         when="the Orchestrator wants a summarised commit message for a large approved task, or asks it to run an approve/reject it would rather not do itself (normally it runs taskgit.sh directly)",
          ex=("The owner approved the result card for T-07", "Spawn git-pr to approve T-07"),
          role="You are Git/PR. You turn approved task branches into clean history on main. You only act on what the brief says the owner approved.",
          duties=[

@@ -1,7 +1,9 @@
 # Agent catalog
 
 **Planning crew (always used, not part of the team pick):** planner, researcher, architect,
-env-setup, git-pr. They run the spec, HLD, LLD and environment stages.
+env-setup. They run the spec, HLD, LLD and environment stages. The Orchestrator runs
+`taskgit.sh approve/reject/record` itself; git-pr is optional (only for a commit message that
+needs real summarising).
 
 **Team pick (after the HLD is approved):** map each HLD module to the agents that build it,
 using "Pick when" below. Recommend tester, reviewer, debugger and docs for any project with
@@ -22,7 +24,7 @@ code. Show the module → agent mapping on the team card so the owner sees why e
 | debugger | Opus | Read, Write, Edit, Bash, Glob, Grep | Always when code is written (on failures) |
 | docs | Haiku | Read, Write, Edit, Glob | Always (README, architecture notes) |
 | devops | Sonnet | Bash, Read, Write, Edit, Glob | CI needed, Docker, or deployment (GCP, Vercel, Render) |
-| git-pr | Haiku | Bash, Read | Planning crew (approve/reject via taskgit) |
+| git-pr | Haiku | Bash, Read, Write | Optional: drafts the squash commit message for a large task |
 
 ## AI/ML pack
 
@@ -50,7 +52,7 @@ code. Show the module → agent mapping on the team card so the owner sees why e
 
 ## Typical teams
 
-- **Full-stack web app**: planner, researcher, architect, env-setup, backend-coder, frontend-coder, tester, reviewer, debugger, docs, devops, git-pr
+- **Full-stack web app**: planner, researcher, architect, env-setup, backend-coder, frontend-coder, tester, reviewer, debugger, docs, devops
 - **RAG / LLM app**: core minus frontend (add it if there's a UI) + rag-engineer, prompt-engineer, evaluator; + agent-engineer if it uses tools/agents
-- **ML model project**: planner, researcher, architect, env-setup, data-acquisition, data-cleaner, eda, modeler, evaluator, explainer, tester, reviewer, debugger, docs, git-pr; + mlops if served
-- **Analysis / A-B test**: planner, env-setup, data-acquisition, data-cleaner, eda, statistician, visualizer, insights-reporter, reviewer, git-pr
+- **ML model project**: planner, researcher, architect, env-setup, data-acquisition, data-cleaner, eda, modeler, evaluator, explainer, tester, reviewer, debugger, docs; + mlops if served
+- **Analysis / A-B test**: planner, env-setup, data-acquisition, data-cleaner, eda, statistician, visualizer, insights-reporter, reviewer
