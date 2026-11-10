@@ -37,7 +37,8 @@ claude plugin install dev-team-setup@dev-team-setup
 ```
 
 **2. Add your details:** Claude Code asks for your name and GitHub username when the plugin is
-enabled. To change them later, open `/config`: each option has its own row there.
+enabled. To change them later, run `/plugin configure dev-team-setup@dev-team-setup`, or open
+`/config`, where each option has its own row.
 
 **3. Start a project**
 
