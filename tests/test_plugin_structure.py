@@ -60,6 +60,12 @@ class StructureTest(unittest.TestCase):
                 self.assertFalse(unknown, unknown)
                 self.assertIn("team-rules.md", path.read_text())
 
+    def test_report_writers_have_write(self):
+        # K5: every agent must write its full report to .results/ (team-rules), so it needs Write
+        for path in AGENTS:
+            with self.subTest(agent=path.stem):
+                self.assertIn("Write", frontmatter(path).get("tools", []))
+
     def test_every_agent_has_a_scope(self):
         scopes = json.loads((SKILL / "scopes.json").read_text())
         names = {p.stem for p in AGENTS}

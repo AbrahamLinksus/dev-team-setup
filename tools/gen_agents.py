@@ -121,7 +121,7 @@ AGENTS = [
              "Under Goals, say for each acceptance criterion whether the code really meets it.",
              "No visual is needed from you; the Orchestrator uses the Tester's and Coder's visuals.",
          ]),
-    dict(name="debugger", model="opus", color="red", tools=[R, E, B, GL, G],
+    dict(name="debugger", model="opus", color="red", tools=[R, W, E, B, GL, G],
          when="tests fail, the app errors, or the reviewer reports a Critical issue",
          ex=("tester reports 2 failing tests on T-07", "Spawn debugger with the failure output"),
          role="You are the Debugger. You find the root cause of a failure and make the smallest fix that solves it.",
