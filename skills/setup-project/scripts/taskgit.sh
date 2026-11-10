@@ -135,20 +135,20 @@ install_deps() {  # install locked dependencies into a new worktree; uses $id $w
   # install anything themselves. Lockfiles are already approved, so installing them is not Tier 1.
   [[ "${TASKGIT_SKIP_DEPS:-0}" == 1 ]] && return 0
   local log lock dir failed=""
-  local -a cmd
+  local -a run
   log="$(gw rev-parse --absolute-git-dir)/devteam-deps.log"; : > "$log"
   while IFS= read -r lock; do
     dir=$(dirname "$lock")
     case "$(basename "$lock")" in
-      uv.lock)           cmd=(uv sync --frozen) ;;
-      package-lock.json) cmd=(npm ci --no-audit --no-fund) ;;
-      pnpm-lock.yaml)    cmd=(pnpm install --frozen-lockfile) ;;
-      yarn.lock)         cmd=(yarn install --frozen-lockfile) ;;
+      uv.lock)           run=(uv sync --frozen) ;;
+      package-lock.json) run=(npm ci --no-audit --no-fund) ;;
+      pnpm-lock.yaml)    run=(pnpm install --frozen-lockfile) ;;
+      yarn.lock)         run=(yarn install --frozen-lockfile) ;;
       *) continue ;;
     esac
-    if ! command -v "${cmd[0]}" >/dev/null 2>&1; then failed+="$dir (${cmd[0]} not found) "; continue; fi
-    echo "\$ cd $dir && ${cmd[*]}" >> "$log"
-    (cd "$wt/$dir" && "${cmd[@]}") >> "$log" 2>&1 < /dev/null || failed+="$dir "
+    if ! command -v "${run[0]}" >/dev/null 2>&1; then failed+="$dir (${run[0]} not found) "; continue; fi
+    echo "\$ cd $dir && ${run[*]}" >> "$log"
+    (cd "$wt/$dir" && "${run[@]}") >> "$log" 2>&1 < /dev/null || failed+="$dir "
   done < <(cd "$wt" && find . -maxdepth 3 \( -name node_modules -o -name .venv -o -name .git \) -prune -o \
              \( -name uv.lock -o -name package-lock.json -o -name pnpm-lock.yaml -o -name yarn.lock \) -print | sort)
   [[ -n "$failed" ]] && echo "warning: installing dependencies failed in: $failed(log: $log). Checks will fail in this worktree until that's fixed; give the log to env-setup." >&2
