@@ -2,6 +2,7 @@
 import json, os, random, re, sqlite3, string
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, HTTPServer
+import socketserver
 from pathlib import Path
 
 db = sqlite3.connect(Path(__file__).with_name("links.db"), check_same_thread=False)
@@ -34,4 +35,12 @@ class H(BaseHTTPRequestHandler):
         db.execute("update l set clicks=clicks+1 where code=?", (code,)); db.commit(); self.send(307, loc=r[0])
 
 
-HTTPServer(("127.0.0.1", PORT), H).serve_forever()
+class Server(HTTPServer):
+    # No reverse-DNS lookup on start: HTTPServer.server_bind calls socket.getfqdn(), which can stall
+    # for seconds on CI machines (macOS) before the server starts listening.
+    def server_bind(self):
+        socketserver.TCPServer.server_bind(self)
+        self.server_name, self.server_port = "127.0.0.1", self.server_address[1]
+
+
+Server(("127.0.0.1", PORT), H).serve_forever()
