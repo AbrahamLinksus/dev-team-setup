@@ -424,6 +424,31 @@ if scenario timing_log; then
   check "lines are timestamp, id, event" bash -c "awk -F'\t' 'NF!=3 || \$1 !~ /^20[0-9-]+T[0-9:]+Z\$/ {exit 1}' '$LOG'"
 fi
 
+if scenario check_cache_by_tree; then
+  # D18: check.sh runs once per distinct tree, not again at approve on identical code
+  new_repo cache
+  T=$(tg start "$R" T-01); RUNS="$WORK/cache-runs"; : > "$RUNS"
+  printf '#!/bin/bash\necho run >> %q\n! grep -rq BROKEN --include=*.py .\n' "$RUNS" > "$T/scripts/check.sh"
+  echo ".results/" > "$T/.gitignore"   # as in every real project (stage 0)
+  echo "a = 1" > "$T/a.py"; tgq checkpoint "$R" T-01 "implement done"
+  tgq sync "$R" T-01
+  check "first sync runs check.sh" test "$(wc -l < "$RUNS" | tr -d ' ')" = 1
+  out=$(tg sync "$R" T-01 2>&1)
+  check "second sync on the same tree skips it" test "$(wc -l < "$RUNS" | tr -d ' ')" = 1
+  check "and says so" contains "$out" "not re-run"
+  echo "b = 2" > "$T/b.py"
+  tgq sync "$R" T-01
+  check "an uncommitted change forces a run" test "$(wc -l < "$RUNS" | tr -d ' ')" = 2
+  tgq checkpoint "$R" T-01 "more"; tgq sync "$R" T-01
+  check "a new commit forces a run" test "$(wc -l < "$RUNS" | tr -d ' ')" = 3
+  echo "x = BROKEN" > "$T/c.py"; tgq checkpoint "$R" T-01 "break"
+  check "a failing tree still fails (exit 5)" expect_exit 5 tg sync "$R" T-01
+  rm "$T/c.py"; tgq checkpoint "$R" T-01 "fix"; tgq sync "$R" T-01; n=$(wc -l < "$RUNS" | tr -d ' ')
+  tgq approve "$R" T-01 "feat: a"
+  check "approve after a passing sync on the same tree doesn't re-run" test "$(wc -l < "$RUNS" | tr -d ' ')" = "$n"
+  check "approved" contains "$(on_main a.py)" "a = 1"
+fi
+
 # ---- summary ---------------------------------------------------------------------------
 echo
 echo "taskgit scenarios: $PASS passed, $FAIL failed"

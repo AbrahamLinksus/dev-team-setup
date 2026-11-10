@@ -206,14 +206,25 @@ do_sync() {  # merge origin/main into wip/<id>, run check.sh; uses $id $wt
     echo "sync: merged main@$(g rev-parse --short "origin/$main") into wip/$id"
   fi
   mark_step_base
-  if [[ -x "$wt/scripts/check.sh" || -f "$wt/scripts/check.sh" ]] && [[ "${TASKGIT_SKIP_CHECK:-0}" != 1 ]]; then
+  # D18: check.sh already passed on this exact tree (same commit tree, nothing uncommitted)?
+  # Then skip it: sync before the card and sync inside approve otherwise run it twice on
+  # identical code. Kept in the worktree's private git dir, which agents can't write.
+  local pass_file tree="" clean=0
+  pass_file="$(gw rev-parse --absolute-git-dir)/devteam-check-pass"
+  if [[ -z "$(gw status --porcelain)" ]]; then clean=1; tree=$(gw rev-parse 'HEAD^{tree}'); fi
+  if (( clean )) && [[ -f "$pass_file" && "$(cat "$pass_file")" == "$tree" ]]; then
+    echo "sync: scripts/check.sh ✅ (passed earlier on this exact tree; not re-run)"
+  elif [[ -x "$wt/scripts/check.sh" || -f "$wt/scripts/check.sh" ]] && [[ "${TASKGIT_SKIP_CHECK:-0}" != 1 ]]; then
     local out
+    rm -f "$pass_file"
     if ! out=$(cd "$wt" && bash scripts/check.sh 2>&1); then
       mkdir -p "$wt/.results/$id"; printf '%s\n' "$out" > "$wt/.results/$id/sync-check.txt"
       push_branch "$wt" "wip/$id" || true
       die 5 "scripts/check.sh fails on wip/$id after syncing with main. Output: $wt/.results/$id/sync-check.txt (give that path to the debugger). Not approved."
     fi
     echo "sync: scripts/check.sh ✅ on wip/$id + current main"
+    # only a clean tree is cached: uncommitted files could have changed what passed
+    if (( clean )) && [[ -z "$(gw status --porcelain)" ]]; then printf '%s\n' "$tree" > "$pass_file"; fi
   fi
   push_branch "$wt" "wip/$id" || echo "warning: could not push wip/$id" >&2
 }
