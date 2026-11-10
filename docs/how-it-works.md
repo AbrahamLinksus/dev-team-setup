@@ -27,10 +27,16 @@ Approving a task squashes its branch into main and pushes it.
 - **Parallel tasks:** each task has its own worktree. Shared files (`TASKS.md`, `STATE.md`,
   `DECISIONS.md`) are only edited on main by the Orchestrator. Before a card is shown, the
   task is merged with current main and `scripts/check.sh` is re-run.
-- **Enforced roles:** a PreToolUse hook (`hooks/scope_guard.py`) blocks each agent from
-  writing outside its paths, running git write commands, or installing packages. After
-  every step, a scope check reverts anything written some other way. Limits live in
-  `skills/setup-project/scopes.json`; projects can override them in `.devteam/scopes.json`.
+- **Enforced roles:** a PreToolUse hook (`hooks/scope_guard.sh` → `scope_guard.py`) blocks each
+  agent from writing outside its paths or its own worktree, reading or writing `.env` files,
+  running git or `gh` write commands, installing packages, deleting recursively outside the
+  worktree, or leaving unbounded background jobs. It also inspects commands nested in
+  `bash -c`, `eval`, `$(…)`, `xargs`, `find -exec` and `capture.py --cmd`, and fails closed if
+  Python is missing. After every step, a scope check compares the worktree with the commit the
+  step started from, so it also catches files written through scripts and edits the agent
+  committed itself (it undoes those commits), and reverts anything out of scope. Limits live in
+  `skills/setup-project/scopes.json`; projects can add to them in `.devteam/scopes.json`
+  (`deny` only ever grows).
 - **Conventions:** the Architect writes `docs/CONVENTIONS.md` (layering, SOLID, limits);
   `scripts/check.sh` enforces lint, strict types, complexity, layer rules and coverage;
   the Reviewer checks SOLID on the task's diff.
@@ -105,6 +111,8 @@ python3 tools/gen_agents.py                 # regenerate agents/ after editing t
   Add a scenario before fixing the next one. `TASKGIT_UNDER_TEST=<path>` runs the suite
   against another copy of the script, e.g. to confirm a scenario fails on the old version.
 - `tests/test_scope_guard.py` feeds the hook real JSON events, including known bypass
-  attempts (chained commands, `bash -c`, `eval`, substitutions, newlines).
-- CI (`.github/workflows/ci.yml`) runs both on every push and PR.
+  attempts (chained commands, `bash -c`, `eval`, substitutions, newlines, wrappers, interpreter
+  one-liners, look-alike scripts). `tests/test_capture.py` covers capture.py without a browser.
+- CI (`.github/workflows/ci.yml`) runs all of it on every push and PR, on Linux and macOS
+  (bash 3.2) with Python 3.9 and 3.13.
 - `examples/todo-app/` shows real planning output from a dry run.
