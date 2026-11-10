@@ -7,6 +7,7 @@
 | Problem | {{one-line problem}} |
 | Repo | {{github_owner}}/{{repo}} ({{private/public}}) |
 | Local folder | {{base}}/{{repo}} (worktrees in {{base}}/{{repo}}-wt/; start sessions in {{base}}) |
+| Status | {{Active · Paused (reason) · Abandoned (reason) · Complete}} |
 | Stage | {{0 Intake · 1 Spec · 2 HLD · 3 Team pick · 4 LLD · 5 Env · 6 Tasks · 7 Build · 8 Handover}} |
 | Milestone | {{M2 · name}} ({{done}}/{{total}} tasks) |
 | Next step | {{T-08 · owner · what}} |
