@@ -318,7 +318,7 @@ AGENTS = [
              "One message per chart: a title that states the finding, labelled axes with units, no chart junk, colour-blind-safe palette.",
              "Static charts with matplotlib/seaborn or Plotly; interactive dashboards with Streamlit when the task asks for one.",
              "Dashboards must work on mobile width.",
-             "Visuals: chart PNGs; for Streamlit, run it and capture with `$CAPTURE web http://localhost:8501 <prefix> --mobile`, then stop it.",
+             "Visuals: chart PNGs; for Streamlit, run it on the brief's `Port:` (`streamlit run … --server.port $PORT`) and capture with `$CAPTURE web http://localhost:$PORT <prefix> --mobile`, then stop it.",
          ]),
     dict(name="insights-reporter", model="sonnet", color="green", tools=[R, W, GL],
          when="analysis results must be turned into a stakeholder report of findings, recommendations and limitations",

@@ -8,10 +8,15 @@ brief, as `CAPTURE`). Save images under `<project>/.results/<task-id>/`, which i
 Send them to the owner with SendUserFile where it exists (they open on the owner's phone);
 otherwise print their absolute paths (see `result-card.md`, "How to deliver it").
 
+**Ports:** tasks run in parallel, so never use a framework's default port. Each brief carries
+`Port: <n>` (8000 + the task number, e.g. T-07 → 8007; T-07's second server → 9007): start
+servers on it (`--port $PORT`, `PORT=$PORT npm run dev -- --port $PORT`) and capture from it,
+so a screenshot can never come from another task's server.
+
 | Task type | Visual | Command |
 |---|---|---|
-| Frontend / UI | App screenshots, desktop + mobile | start dev server in background → `python3 $CAPTURE web http://localhost:3000/<page> .results/T-07/ui --mobile --full-page --wait-for '<selector that means loaded>'` → stop server |
-| Backend / API | FastAPI `/docs` screenshot + a real request/response | `python3 $CAPTURE web http://localhost:8000/docs .results/T-07/docs` and `python3 $CAPTURE term .results/T-07/req.png --cmd "curl -s -X POST localhost:8000/login -d '...' \| python3 -m json.tool" --title "POST /login"` |
+| Frontend / UI | App screenshots, desktop + mobile | start dev server in background → `python3 $CAPTURE web http://localhost:$PORT/<page> .results/T-07/ui --mobile --full-page --wait-for '<selector that means loaded>'` → stop server |
+| Backend / API | FastAPI `/docs` screenshot + a real request/response | `python3 $CAPTURE web http://localhost:$PORT/docs .results/T-07/docs` and `python3 $CAPTURE term .results/T-07/req.png --cmd "curl -s -X POST localhost:$PORT/login -d '...' \| python3 -m json.tool" --title "POST /login"` |
 | CLI / scripts | Terminal output | `python3 $CAPTURE term out.png --cmd "<command>" --title "<what>"` |
 | Tests | Pass/fail + coverage | `python3 $CAPTURE term tests.png --cmd "uv run pytest -q --cov=src --cov-report=term" --title "tests"` |
 | Spec wireframes | Lo-fi screen mock-ups, mobile + desktop | `python3 $CAPTURE html docs/wireframes/<screen>.html docs/wireframes/<screen>.png --width 390` (and `--width 1280`) |
