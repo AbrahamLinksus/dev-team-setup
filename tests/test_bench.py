@@ -22,6 +22,13 @@ sys.path.insert(0, str(ROOT))
 import bench  # noqa: E402
 
 
+# The acceptance and end-to-end tests start HTTP apps and run the whole benchmark: ~8 of the macOS
+# job's 10 minutes. Nothing in them is macOS-specific (macOS CI exists for taskgit under bash 3.2,
+# BSD tools and Python 3.9), so CI runs them on Linux only. They still run locally on a Mac.
+SLOW_ON_MAC_CI = unittest.skipIf(sys.platform == "darwin" and os.environ.get("CI") == "true",
+                                 "benchmark flow runs on Linux CI; nothing macOS-specific in it")
+
+
 def free_port() -> int:
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0))
@@ -138,16 +145,20 @@ class MeasureTest(unittest.TestCase):
         self.assertEqual(json.loads(out)["all_tokens"], 10)
 
 
+@SLOW_ON_MAC_CI
 class AcceptanceTest(unittest.TestCase):
     def serve(self, script, env=None):
         port = free_port()
         p = subprocess.Popen([sys.executable, str(script)], cwd=Path(script).parent,
                              env={**os.environ, "PORT": str(port), **(env or {})})
-        for _ in range(50):
-            if bench.port_open(port):
-                break
-            time.sleep(0.1)
         self.addCleanup(lambda: (p.kill(), p.wait()))
+        deadline = time.time() + 30          # slow CI machines need more than the old 5s
+        while not bench.port_open(port):
+            if p.poll() is not None:
+                self.fail(f"{script} exited with code {p.returncode} before listening")
+            if time.time() > deadline:
+                self.fail(f"{script} wasn't listening on port {port} after 30s")
+            time.sleep(0.1)
         return f"http://127.0.0.1:{port}"
 
     def test_production_reference_passes(self):
@@ -173,6 +184,7 @@ class AcceptanceTest(unittest.TestCase):
             self.assertTrue(bench.persist_small(base, ctx))
 
 
+@SLOW_ON_MAC_CI
 class EndToEndTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
