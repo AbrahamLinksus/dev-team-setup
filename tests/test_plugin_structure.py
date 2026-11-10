@@ -42,7 +42,8 @@ class StructureTest(unittest.TestCase):
         h = json.loads((ROOT / "hooks" / "hooks.json").read_text())
         cmd = h["hooks"]["PreToolUse"][0]["hooks"][0]["command"]
         self.assertIn("${CLAUDE_PLUGIN_ROOT}", cmd)
-        self.assertIn("scope_guard.py", cmd)
+        self.assertIn("scope_guard.sh", cmd)   # S15: shell pre-filter in front of scope_guard.py
+        self.assertIn("scope_guard.py", (ROOT / "hooks" / "scope_guard.sh").read_text())
 
     def test_agents_frontmatter(self):
         self.assertEqual(len(AGENTS), 26)

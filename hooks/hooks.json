@@ -5,7 +5,7 @@
       {
         "matcher": "Write|Edit|MultiEdit|NotebookEdit|Bash|Read|Grep",
         "hooks": [
-          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}\"/hooks/scope_guard.py", "timeout": 10 }
+          { "type": "command", "command": "sh \"${CLAUDE_PLUGIN_ROOT}\"/hooks/scope_guard.sh", "timeout": 10 }
         ]
       }
     ]
