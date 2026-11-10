@@ -1,8 +1,16 @@
 name: tests
 
 on:
+  # PR commits run once (pull_request); push runs only for main. Both used to fire for every PR
+  # commit, so each push queued every job twice.
   push:
+    branches: [main]
   pull_request:
+
+# A newer push to the same PR cancels its older, still-running or queued run. main keeps every run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   test:
