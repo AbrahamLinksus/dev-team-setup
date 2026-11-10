@@ -79,9 +79,12 @@ owned_shared() {  # shared files this branch may change
 }
 is_owned() { local s; for s in $(owned_shared); do [[ "$s" == "$1" ]] && return 0; done; return 1; }
 is_shared() { local s; for s in "${SHARED[@]}"; do [[ "$s" == "$1" ]] && return 0; done; return 1; }
-open_crs() {  # open change-request branches (local or on origin)
+open_crs() {  # open change-request branches (local or on origin); fails if origin can't be asked
+  local remote
+  # T10: a failed ls-remote (offline, auth) used to look like "no CRs" and let approvals through
+  remote=$(g ls-remote --heads origin 'wip/CR-*' 2>&1) || { printf '%s\n' "$remote" >&2; return 1; }
   { g for-each-ref --format='%(refname:short)' 'refs/heads/wip/CR-*'
-    g ls-remote --heads origin 'wip/CR-*' 2>/dev/null | sed 's#.*refs/heads/##'; } | sort -u
+    printf '%s\n' "$remote" | sed -n 's#.*refs/heads/##p'; } | sort -u
 }
 
 clear_leftovers() {  # a merge or rebase left half-done in the main checkout (e.g. a session died mid-approve)
@@ -286,7 +289,8 @@ case "$cmd" in
   approve)
     id=${3:?id}; msg=${4:?commit message}; ensure_wt; br="wip/$id"
     if [[ "$id" != plan && "$id" != CR-* ]]; then
-      crs=$(open_crs | tr '\n' ' ')
+      crs=$(open_crs) || die 3 "can't reach origin to check for open change requests (see the error above); nothing was approved. Retry when origin is reachable."
+      crs=$(printf '%s' "$crs" | tr '\n' ' ')
       [[ -n "${crs// }" ]] && die 8 "approvals are held while a change request is open ($crs). Merge or cancel it first; $id stays queued."
     fi
     # 1. main checkout must be clean and on main
