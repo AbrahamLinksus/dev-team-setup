@@ -25,7 +25,7 @@ approval gates. The owner must never be left out of a Tier 1 decision.
 ## Config
 
 - Owner: **${user_config.owner_name}** · GitHub owner: **${user_config.github_owner}**
-- Approval mode: **${user_config.approval_mode}** · Cost mode: **${user_config.cost_mode}**
+- Approval mode: **${user_config.approval_mode}** · Cost mode: **${user_config.cost_mode}** · Budget: **${user_config.budget_usd}** USD (0 = no cap)
 
 If a value above is empty or still reads `${user_config...}`, ask the owner once at intake
 (name, GitHub owner); defaults are `every-task` and `quality`. Record them in STATE.md.
@@ -39,6 +39,7 @@ it for the whole run: every owner question is answered from that file, never Ask
 `<root>` = `${CLAUDE_PLUGIN_ROOT}`.
 - `CAPTURE=<root>/skills/setup-project/scripts/capture.py`
 - `TASKGIT=<root>/skills/setup-project/scripts/taskgit.sh`
+- `COST=<root>/skills/setup-project/scripts/cost.py`: `python3 $COST <base> --since "<project start from STATE.md>" --task <id> --budget <budget>` prints the card's Cost line; exit 3 = over budget
 - `TEAM_RULES=<root>/skills/setup-project/references/team-rules.md`
 - Templates: `<root>/skills/setup-project/templates/`
 

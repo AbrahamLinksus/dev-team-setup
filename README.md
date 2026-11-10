@@ -109,6 +109,7 @@ Pick these when Claude Code asks after you enable the plugin, or change them lat
 |---|---|---|
 | `approval_mode` | `every-task` | Set `batch-low-risk` to approve small, safe tasks together |
 | `cost_mode` | `quality` | Set `balanced` to use cheaper models where it's safe |
+| `budget_usd` | `0` (no cap) | Spend at which it pauses and asks. Every result also shows that task's cost and the total so far |
 
 ---
 

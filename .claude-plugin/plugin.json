@@ -47,6 +47,13 @@
         "quality",
         "balanced"
       ]
+    },
+    "budget_usd": {
+      "type": "number",
+      "title": "Budget (USD)",
+      "description": "Spend at which the Orchestrator pauses and asks before going on (0 = no cap). Each result card also shows the task's cost and the total so far.",
+      "default": 0,
+      "min": 0
     }
   }
 }
