@@ -224,6 +224,7 @@ if scenario start_installs_locked_deps; then
   D=$(PATH="$WORK/fakebin:$PATH" tg start "$R" T-13)
   check "start prints only the worktree path" test "$D" = "$R-wt/T-13"
   check "npm ci ran in frontend/" contains "$(cat "$D/frontend/node_modules/.installed" 2>/dev/null)" "ci"
+  check "npm uses its cache before the registry (D21)" contains "$(cat "$D/frontend/node_modules/.installed" 2>/dev/null)" "--prefer-offline"
   check "checkpoint still works after the install" expect_exit 0 tg checkpoint "$R" T-13 x
   D2=$(TASKGIT_SKIP_DEPS=1 PATH="$WORK/fakebin:$PATH" tg start "$R" T-14)
   check "TASKGIT_SKIP_DEPS=1 skips the install" test ! -e "$D2/frontend/node_modules"

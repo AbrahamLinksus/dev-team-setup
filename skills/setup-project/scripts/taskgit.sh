@@ -157,10 +157,14 @@ install_deps() {  # install locked dependencies into a new worktree; uses $id $w
   while IFS= read -r lock; do
     dir=$(dirname "$lock")
     case "$(basename "$lock")" in
+      # D21: every worktree installs the same lockfile, so the package managers' shared caches
+      # (uv's and pnpm's global cache/store, npm's and yarn's download cache) already hold
+      # everything after the first worktree; --prefer-offline uses them without asking the
+      # registry again. uv links from its cache by default and needs no flag.
       uv.lock)           run=(uv sync --frozen) ;;
-      package-lock.json) run=(npm ci --no-audit --no-fund) ;;
-      pnpm-lock.yaml)    run=(pnpm install --frozen-lockfile) ;;
-      yarn.lock)         run=(yarn install --frozen-lockfile) ;;
+      package-lock.json) run=(npm ci --prefer-offline --no-audit --no-fund) ;;
+      pnpm-lock.yaml)    run=(pnpm install --frozen-lockfile --prefer-offline) ;;
+      yarn.lock)         run=(yarn install --frozen-lockfile --prefer-offline) ;;
       *) continue ;;
     esac
     if ! command -v "${run[0]}" >/dev/null 2>&1; then failed+="$dir (${run[0]} not found) "; continue; fi
