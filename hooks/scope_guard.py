@@ -46,6 +46,24 @@ def _rx(glob: str) -> re.Pattern:
     return re.compile(rf"^{out}$")
 
 
+@lru_cache(maxsize=None)
+def _resolved_variants(glob: str) -> tuple[str, ...]:
+    """A scratch glob like /tmp/** plus the same glob under its real path: /tmp is a symlink to
+    /private/tmp on macOS (and maps to C:/tmp on Windows), and the paths we check are resolved."""
+    head = re.split(r"[*?\[]", glob, maxsplit=1)[0].rstrip("/")
+    if not head:
+        return (glob,)
+    try:
+        real = Path(head).resolve().as_posix()
+    except OSError:
+        return (glob,)
+    return (glob,) if real == head else (glob, real + glob[len(head):])
+
+
+def in_scratch(path: Path, scratch: list[str]) -> bool:
+    return match(path.as_posix(), [v for g in scratch for v in _resolved_variants(g)])
+
+
 def match(path: str, globs: list[str]) -> bool:
     return any(_rx(g).match(path) for g in globs)
 
@@ -160,7 +178,7 @@ def abs_violation(name: str, file_path: str, cwd: str, scopes: dict) -> str | No
             return (f"{name} may only write inside its task's worktree (<repo>-wt/<id>, the Worktree: path in its "
                     f"brief); {root} is not one (the main checkout?). Blocked: {p}")
         return path_violation(name, p.relative_to(root).as_posix(), load_scopes(root))
-    if match(str(p), scopes.get("scratch", [])):
+    if in_scratch(p, scopes.get("scratch", [])):
         return None
     return f"{name} may only write inside the project worktree or scratch dirs ({', '.join(scopes.get('scratch', []))}). Blocked: {p}"
 
@@ -544,7 +562,7 @@ def destructive(command: str, cwd: str | None, scratch: list[str]) -> str | None
                 continue  # inside the worktree
             # Scratch dirs (/tmp/**) are fine only away from the project: a repo can itself live
             # under /tmp, and then its root, main checkout and sibling worktrees must stay protected.
-            if match(p.as_posix(), scratch) and not in_project_area(p, root) and not in_project_area(p, start_root):
+            if in_scratch(p, scratch) and not in_project_area(p, root) and not in_project_area(p, start_root):
                 continue
             return f"recursive delete outside the worktree blocked: {arg} → {p}"
     return None
