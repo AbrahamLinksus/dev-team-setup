@@ -353,6 +353,13 @@ tools: [{tools}]
 
 def write_agents(out: Path) -> None:
     out.mkdir(parents=True, exist_ok=True)
+    # G2: an agent removed from the spec must disappear, or Claude Code keeps loading it.
+    # Only files this generator wrote are removed (they all point at the shared team rules).
+    keep = {f"{a['name']}.md" for a in AGENTS}
+    for old in out.glob("*.md"):
+        if old.name not in keep and "skills/setup-project/references/team-rules.md" in old.read_text(encoding="utf-8"):
+            old.unlink()
+            print("removed stale agent", old.name)
     for a in AGENTS:
         with open(out / f"{a['name']}.md", "w", encoding="utf-8", newline="\n") as f:   # LF on every OS
             f.write(build(a))

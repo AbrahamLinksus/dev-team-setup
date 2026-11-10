@@ -106,6 +106,19 @@ class StructureTest(unittest.TestCase):
                 with self.subTest(agent=path.name):
                     self.assertEqual((Path(d) / path.name).read_text(), path.read_text(),
                                      "agents/ is out of date: run python3 tools/gen_agents.py")
+            # G2: an agent in agents/ that the spec no longer generates is stale
+            self.assertEqual(sorted(p.name for p in AGENTS), sorted(p.name for p in Path(d).glob("*.md")),
+                             "agents/ has files the spec doesn't generate: run python3 tools/gen_agents.py")
+
+    def test_gen_agents_removes_stale_agents(self):
+        with tempfile.TemporaryDirectory() as d:
+            stale = Path(d) / "old-agent.md"
+            stale.write_text("---\nname: old-agent\n---\nRead skills/setup-project/references/team-rules.md\n")
+            mine = Path(d) / "my-notes.md"
+            mine.write_text("not generated\n")
+            subprocess.run([sys.executable, str(ROOT / "tools" / "gen_agents.py"), "--out", d], check=True, capture_output=True)
+            self.assertFalse(stale.exists())
+            self.assertTrue(mine.exists())   # only files the generator wrote are removed
 
     def test_gen_agents_cli(self):
         # G1: any first argument was taken as the output folder (`--help` wrote 26 files into ./--help/)
