@@ -317,6 +317,13 @@ class StructureTest(unittest.TestCase):
         desc = json.loads((ROOT / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))["description"]
         self.assertNotIn("'s Claude plugins", desc)
 
+    def test_typescript_coverage_has_a_threshold(self):
+        # K20: Python failed under 80% coverage, TypeScript had no threshold at all
+        conventions = (SKILL / "templates" / "CONVENTIONS.md").read_text(encoding="utf-8")
+        row = next(ln for ln in conventions.splitlines() if ln.startswith("| Tests + coverage"))
+        self.assertIn("coverage.thresholds", row)
+        self.assertIn("coverage.thresholds", (ROOT / "agents" / "env-setup.md").read_text(encoding="utf-8"))
+
     def test_no_hardcoded_owner(self):
         for path in list((ROOT / "agents").glob("*.md")) + list(SKILL.rglob("*.md")):
             with self.subTest(file=str(path.relative_to(ROOT))):
