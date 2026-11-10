@@ -180,25 +180,27 @@ def cmd_html(a):
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    # allow_abbrev=False: the scope guard inspects --cmd; a prefix like --cm must not slip past it
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter,
+                                 allow_abbrev=False)
     sub = ap.add_subparsers(dest="cmd_name", required=True)
 
-    w = sub.add_parser("web"); w.add_argument("url"); w.add_argument("out_prefix")
+    w = sub.add_parser("web", allow_abbrev=False); w.add_argument("url"); w.add_argument("out_prefix")
     w.add_argument("--mobile", action="store_true"); w.add_argument("--full-page", action="store_true")
     w.add_argument("--wait-for"); w.add_argument("--delay", type=int, default=500)
     w.set_defaults(fn=cmd_web)
 
-    t = sub.add_parser("term"); t.add_argument("out"); t.add_argument("--cmd"); t.add_argument("--file")
+    t = sub.add_parser("term", allow_abbrev=False); t.add_argument("out"); t.add_argument("--cmd"); t.add_argument("--file")
     t.add_argument("--title", default=""); t.add_argument("--max-lines", type=int, default=60)
     t.add_argument("--cwd"); t.set_defaults(fn=cmd_term)
 
-    m = sub.add_parser("mermaid"); m.add_argument("input"); m.add_argument("out")
+    m = sub.add_parser("mermaid", allow_abbrev=False); m.add_argument("input"); m.add_argument("out")
     m.add_argument("--width", type=int, default=1400); m.set_defaults(fn=cmd_mermaid)
 
-    d = sub.add_parser("md"); d.add_argument("input"); d.add_argument("out")
+    d = sub.add_parser("md", allow_abbrev=False); d.add_argument("input"); d.add_argument("out")
     d.add_argument("--width", type=int, default=900); d.set_defaults(fn=cmd_md)
 
-    h = sub.add_parser("html"); h.add_argument("input"); h.add_argument("out")
+    h = sub.add_parser("html", allow_abbrev=False); h.add_argument("input"); h.add_argument("out")
     h.add_argument("--width", type=int, default=1200); h.set_defaults(fn=cmd_html)
 
     a = ap.parse_args()

@@ -16,7 +16,8 @@
 #     and re-runs scripts/check.sh, so a task is always tested against current main.
 #
 # Usage:
-#   taskgit.sh start      <repo> <id>                    create/restore worktree; prints its path
+#   taskgit.sh start      <repo> <id>                    create/restore worktree, install locked deps
+#                                                        (uv/npm/pnpm/yarn; TASKGIT_SKIP_DEPS=1 skips); prints its path
 #   taskgit.sh checkpoint <repo> <id> "<step msg>"       commit all on wip/<id>, push
 #   taskgit.sh scope      <repo> <id> <agent>            revert files <agent> may not change (prints them)
 #   taskgit.sh sync       <repo> <id>                    merge origin/main into wip/<id>, run check.sh, push
@@ -37,7 +38,13 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 GUARD="$HERE/../../../hooks/scope_guard.py"
 
 die() { local code=$1; shift; printf 'TASKGIT ERROR: %b\n' "$*" >&2; exit "$code"; }
-usage() { sed -n '2,/^set -uo/p' "$0" | sed 's/^# \{0,1\}//' | head -n -1 >&2; exit 1; }
+usage() { sed -n '2,/^set -uo/p' "$0" | sed 's/^# \{0,1\}//' | sed '$d' >&2; exit 1; }
+# Portable to macOS: its /bin/bash is 3.2 (no mapfile) and its tools are BSD (no grep -P, stat -c).
+read_lines() {  # read_lines <array-name> < input: one array element per line
+  local __line; eval "$1=()"
+  while IFS= read -r __line || [[ -n "$__line" ]]; do eval "$1+=(\"\$__line\")"; done
+}
+file_size() { wc -c < "$1" | tr -d ' '; }
 
 cmd=${1:-}; [[ -z "$cmd" ]] && usage
 repo=${2:-}; [[ -z "$repo" ]] && usage
@@ -55,11 +62,12 @@ push_branch() {  # push_branch <dir> <branch>; quiet on success
 
 blocked_files() {
   local bad
-  bad=$(git -C "$1" diff --cached --name-only | grep -P '(^|/)\.env$|(^|/)\.env\.(?!example$)|\.pem$|\.key$|^\.results/' || true)
+  bad=$(git -C "$1" diff --cached --name-only | grep -E '(^|/)\.env(\..+)?$|\.pem$|\.key$|^\.results/' \
+        | grep -Ev '(^|/)\.env\.example$' || true)
   [[ -n "$bad" ]] && { git -C "$1" reset -q; die 2 "refusing to commit secrets/results: $bad"; }
   local f big=""
   while IFS= read -r f; do
-    [[ -f "$1/$f" ]] && (( $(stat -c %s "$1/$f") > 20971520 )) && big+="$f "
+    [[ -f "$1/$f" ]] && (( $(file_size "$1/$f") > 20971520 )) && big+="$f "
   done < <(git -C "$1" diff --cached --name-only)
   [[ -n "$big" ]] && { git -C "$1" reset -q; die 2 "files over 20MB staged: $big"; }
   return 0
@@ -99,12 +107,37 @@ revert_shared_in_wt() {  # branches may not change main-owned files they don't o
   return 0
 }
 
+install_deps() {  # install locked dependencies into a new worktree; uses $id $wt
+  # .venv and node_modules are git-ignored, so a fresh worktree has none, and coders may not
+  # install anything themselves. Lockfiles are already approved, so installing them is not Tier 1.
+  [[ "${TASKGIT_SKIP_DEPS:-0}" == 1 ]] && return 0
+  local log lock dir failed=""
+  local -a cmd
+  log="$(gw rev-parse --absolute-git-dir)/devteam-deps.log"; : > "$log"
+  while IFS= read -r lock; do
+    dir=$(dirname "$lock")
+    case "$(basename "$lock")" in
+      uv.lock)           cmd=(uv sync --frozen) ;;
+      package-lock.json) cmd=(npm ci --no-audit --no-fund) ;;
+      pnpm-lock.yaml)    cmd=(pnpm install --frozen-lockfile) ;;
+      yarn.lock)         cmd=(yarn install --frozen-lockfile) ;;
+      *) continue ;;
+    esac
+    if ! command -v "${cmd[0]}" >/dev/null 2>&1; then failed+="$dir (${cmd[0]} not found) "; continue; fi
+    echo "\$ cd $dir && ${cmd[*]}" >> "$log"
+    (cd "$wt/$dir" && "${cmd[@]}") >> "$log" 2>&1 < /dev/null || failed+="$dir "
+  done < <(cd "$wt" && find . -maxdepth 3 \( -name node_modules -o -name .venv -o -name .git \) -prune -o \
+             \( -name uv.lock -o -name package-lock.json -o -name pnpm-lock.yaml -o -name yarn.lock \) -print | sort)
+  [[ -n "$failed" ]] && echo "warning: installing dependencies failed in: $failed(log: $log). Checks will fail in this worktree until that's fixed; give the log to env-setup." >&2
+  return 0
+}
+
 do_sync() {  # merge origin/main into wip/<id>, run check.sh; uses $id $wt
   g fetch -q origin "$main" || die 3 "fetch failed"
   if gw merge-base --is-ancestor "origin/$main" HEAD; then
     echo "sync: wip/$id already contains main@$(g rev-parse --short "origin/$main")"
   else
-    if ! gw merge -q --no-edit "origin/$main" >/dev/null 2>&1; then
+    if ! gw merge -q --no-edit --no-verify "origin/$main" >/dev/null 2>&1; then
       local conflicts other
       conflicts=$(gw diff --name-only --diff-filter=U)
       other=$(echo "$conflicts" | grep -v -x -E "$(IFS='|'; echo "${SHARED[*]}|$PROGRESS")" || true)
@@ -122,7 +155,7 @@ do_sync() {  # merge origin/main into wip/<id>, run check.sh; uses $id $wt
         fi
         gw add -- "$f"
       done
-      gw commit -q --no-edit || { gw merge --abort; die 4 "could not complete merge of main into wip/$id"; }
+      gw commit -q --no-edit --no-verify || { gw merge --abort; die 4 "could not complete merge of main into wip/$id"; }
     fi
     echo "sync: merged main@$(g rev-parse --short "origin/$main") into wip/$id"
   fi
@@ -165,6 +198,7 @@ case "$cmd" in
       g worktree add -q -b "$br" "$wt" "origin/$main" 2>/dev/null || g worktree add -q -b "$br" "$wt" "$main" \
         || die 1 "worktree add failed"
     fi
+    install_deps
     mark_step_base
     echo "$wt"
     ;;
@@ -174,7 +208,9 @@ case "$cmd" in
     revert_shared_in_wt
     gw add -A
     blocked_files "$wt"
-    gw commit -q --allow-empty -m "wip($id): $msg" || die 1 "commit failed"
+    # --no-verify: work in progress may not pass the project's pre-commit hooks yet (lint, auto-fixers
+    # that rewrite files mid-commit); approve runs scripts/check.sh before anything reaches main.
+    gw commit -q --no-verify --allow-empty -m "wip($id): $msg" || die 1 "commit failed"
     mark_step_base
     push_branch "$wt" "wip/$id" || die 7 "checkpoint committed locally but NOT pushed (see error above)"
     echo "checkpoint wip/$id: $msg"
@@ -192,9 +228,9 @@ case "$cmd" in
       gw reset -q "$base" || die 1 "could not undo commits the agent made on wip/$id"
       echo "scope: undid $n commit(s) the agent made itself; their changes are checked below" >&2
     fi
-    mapfile -t changed < <(gw status --porcelain --untracked-files=all | sed -E 's/^.. //; s/.* -> //')
+    read_lines changed < <(gw status --porcelain --untracked-files=all | sed -E 's/^.. //; s/.* -> //')
     (( ${#changed[@]} == 0 )) && { echo "scope: no changes"; exit 0; }
-    mapfile -t bad < <(python3 "$GUARD" --check "$agent" "$wt" "${changed[@]}" | tr -d '\r')
+    read_lines bad < <(python3 "$GUARD" --check "$agent" "$wt" "${changed[@]}" | tr -d '\r')
     if (( ${#bad[@]} == 0 )); then echo "scope: ${#changed[@]} changed file(s), all within $agent's scope"; exit 0; fi
     for f in "${bad[@]}"; do
       if gw ls-files --error-unmatch -- "$f" >/dev/null 2>&1; then gw checkout -q HEAD -- "$f"; else rm -rf -- "$wt/$f"; fi

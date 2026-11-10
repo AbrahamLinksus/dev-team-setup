@@ -5,8 +5,10 @@ Two modes, one source of truth (skills/setup-project/scopes.json + optional
 <project>/.devteam/scopes.json overrides written by the Architect):
 
 1. PreToolUse hook (default): reads the hook JSON from stdin. Acts only when the tool
-   call comes from one of this plugin's agents (agent_type "dev-team-setup:<name>" or a
-   bare <name> listed in scopes.json); everything else passes untouched.
+   call comes from one of this plugin's agents (agent_type "dev-team-setup:<name>" with <name>
+   listed in scopes.json); everything else passes untouched. A bare "<name>" is NOT ours: users
+   and other plugins have agents called reviewer, tester, docs …, and `claude --agent tester`
+   sets agent_type on the main thread too.
    - Write/Edit/NotebookEdit: the target path must match the agent's `write` globs and
      not its `deny` globs.
    - Bash: checked against the agent's bash mode (none | readonly | code | full | git).
@@ -64,12 +66,9 @@ def load_scopes(project_root: Path | None) -> dict:
 def agent_name(agent_type: str | None, scopes: dict) -> str | None:
     if not agent_type:
         return None
-    if ":" in agent_type:
-        prefix, _, name = agent_type.rpartition(":")
-        if prefix.split(":")[0] != PLUGIN:
-            return None
-    else:
-        name = agent_type
+    prefix, sep, name = agent_type.rpartition(":")
+    if not sep or prefix.split(":")[0] != PLUGIN:
+        return None  # bare names belong to the user or other plugins
     return name if name in scopes["agents"] else None
 
 
@@ -103,6 +102,12 @@ def path_violation(name: str, rel: str, scopes: dict) -> str | None:
     return None
 
 
+def is_task_worktree(root: Path) -> bool:
+    """Agents work in linked worktrees at <repo>-wt/<id> (taskgit.sh start), never in a main checkout,
+    whose .git is a directory rather than a file."""
+    return (root / ".git").is_file() and root.parent.name.endswith("-wt")
+
+
 def abs_violation(name: str, file_path: str, cwd: str, scopes: dict) -> str | None:
     p = Path(file_path if os.path.isabs(file_path) else os.path.join(cwd or ".", file_path)).resolve()
     try:
@@ -111,6 +116,9 @@ def abs_violation(name: str, file_path: str, cwd: str, scopes: dict) -> str | No
         is_dir = False
     root = find_root(p if is_dir else p.parent)
     if root is not None:  # inside a project: the project's rules apply, even under /tmp
+        if not is_task_worktree(root):
+            return (f"{name} may only write inside its task's worktree (<repo>-wt/<id>, the Worktree: path in its "
+                    f"brief); {root} is not one (the main checkout?). Blocked: {p}")
         return path_violation(name, p.relative_to(root).as_posix(), load_scopes(root))
     if match(str(p), scopes.get("scratch", [])):
         return None
@@ -129,9 +137,24 @@ INSTALL = re.compile(r"\b(pip3?|uv\s+pip|python3?\s+-m\s+pip)\s+(install|uninsta
                      r"\b(apt|apt-get|brew|conda|mamba)\s+install\b|\bcurl\b[^|]*\|\s*(ba)?sh\b")
 DESTRUCTIVE = re.compile(r"(^|[;&|\n]\s*)\s*(sudo\s+)?(rm\s+-[a-zA-Z]*r[a-zA-Z]*f|rm\s+-[a-zA-Z]*f[a-zA-Z]*r)\s+(/|~|\$HOME)(\s|$)")
 WRITE_CMDS = re.compile(r"(^|[;&|(\n]\s*)(rm|mv|cp|tee|touch|mkdir|rmdir|truncate|chmod|chown|ln|install|dd)\b|\bsed\s+(-[a-zA-Z]*i|--in-place)")
+WRITE_NAMES = {"rm", "mv", "cp", "tee", "touch", "mkdir", "rmdir", "truncate", "chmod", "chown", "ln", "install",
+               "dd", "shred", "unlink", "rsync"}
+FIND_DELETE = re.compile(r"\bfind\b[^|;&\n]*\s-delete\b")
 REDIRECT = re.compile(r"(?<![<>&0-9])(?:\d?>>?|&>)\s*([^\s;&|]+)")
 SEPARATORS = {"&&", "||", ";", "|", "\n", ";;"}
-WRAPPERS = {"sudo", "command", "exec", "env", "time", "nohup", "nice", "builtin"}
+WRAPPERS = {"sudo", "command", "exec", "env", "time", "nohup", "nice", "builtin", "timeout", "watch", "xargs",
+            "parallel", "stdbuf", "ionice", "chronic", "unbuffer", "setsid", "flock", "doas", "caffeinate"}
+# wrapper options that take a separate value (so the value isn't mistaken for the wrapped command)
+WRAPPER_OPT_ARGS = {
+    "sudo": {"-u", "-g", "-C", "-h", "-p", "-U", "-r", "-t"}, "doas": {"-u", "-C"},
+    "env": {"-u", "--unset", "-C", "--chdir", "-S", "--split-string"}, "nice": {"-n", "--adjustment"},
+    "timeout": {"-s", "--signal", "-k", "--kill-after"}, "watch": {"-n", "--interval"},
+    "xargs": {"-I", "-n", "-P", "-L", "-d", "-E", "-s", "-a", "--max-args", "--max-procs", "--delimiter",
+              "--arg-file", "--replace", "--max-lines", "--eof", "--max-chars"},
+    "parallel": {"-j", "--jobs", "-S", "--sshlogin", "-N", "--delay", "--timeout"},
+    "stdbuf": {"-i", "-o", "-e"}, "ionice": {"-c", "-n", "-p"}, "flock": {"-w", "-E"},
+}
+FIND_EXEC = {"-exec", "-execdir", "-ok", "-okdir"}
 PIPE_FILTERS = {"head", "tail", "grep", "wc", "sort", "cut", "uniq", "cat", "less", "jq"}
 
 
@@ -161,10 +184,44 @@ def segments(command: str) -> list[list[str]] | None:
 
 
 def strip_wrappers(tok: list[str]) -> list[str]:
+    """`sudo -u x timeout -s 9 5 xargs -n1 git push` → `git push`."""
     i = 0
-    while i < len(tok) and (tok[i] in WRAPPERS or re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*=.*", tok[i])):
+    while i < len(tok):
+        name = os.path.basename(tok[i])
+        if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*=.*", tok[i]):
+            i += 1
+            continue
+        if name not in WRAPPERS:
+            break
         i += 1
+        takes = WRAPPER_OPT_ARGS.get(name, set())
+        while i < len(tok) and (tok[i].startswith("-") or re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*=.*", tok[i])):
+            i += 2 if tok[i] in takes else 1
+        if name in ("timeout", "flock") and i < len(tok):
+            i += 1  # the duration / lock file
+        if name == "watch" and i == len(tok) - 1 and " " in tok[i]:
+            try:  # watch 'git push' runs its single argument through sh -c
+                return strip_wrappers(shlex.split(tok[i]))
+            except ValueError:
+                return tok[i:]
     return tok[i:]
+
+
+def find_exec_cmds(tok: list[str]) -> list[str]:
+    """`find . -exec git commit -m x {} ;` → ["git commit -m x {}"]."""
+    if not tok or os.path.basename(tok[0]) != "find":
+        return []
+    out, i = [], 0
+    while i < len(tok):
+        if tok[i] in FIND_EXEC:
+            j = i + 1
+            while j < len(tok) and tok[j] not in (";", "+"):
+                j += 1
+            if j > i + 1:
+                out.append(shlex.join(tok[i + 1:j]))
+            i = j
+        i += 1
+    return out
 
 
 def git_sub(tok: list[str]) -> tuple[str, list[str]]:
@@ -176,8 +233,22 @@ def git_sub(tok: list[str]) -> tuple[str, list[str]]:
     return (tok[i], tok[i + 1:]) if i < len(tok) else ("", [])
 
 
+def capture_cmds(tok: list[str]) -> list[str]:
+    """The shell commands `capture.py term --cmd "<cmd>"` would run (it uses shell=True)."""
+    idx = next((i for i, t in enumerate(tok) if os.path.basename(t) == "capture.py"), None)
+    if idx is None:
+        return []
+    out, args = [], tok[idx + 1:]
+    for i, a in enumerate(args):
+        if a in ("--cmd", "--cm") and i + 1 < len(args):
+            out.append(args[i + 1])
+        elif a.startswith(("--cmd=", "--cm=")):
+            out.append(a.split("=", 1)[1])
+    return out
+
+
 def inner_commands(tok: list[str]) -> list[str]:
-    """Commands hidden inside bash -c / sh -c / eval."""
+    """Commands hidden inside bash -c / sh -c / eval / capture.py --cmd."""
     if not tok:
         return []
     if tok[0] in ("bash", "sh", "zsh", "dash") and "-c" in tok:
@@ -185,7 +256,61 @@ def inner_commands(tok: list[str]) -> list[str]:
         return tok[i + 1:i + 2]
     if tok[0] == "eval":
         return [" ".join(tok[1:])]
-    return []
+    return capture_cmds(tok) + find_exec_cmds(tok)
+
+
+def embedded_commands(command: str) -> list[str]:
+    """Every command nested one level inside `command` (bash -c, eval, capture.py --cmd)."""
+    return [c for seg in segments(command) or [] for c in inner_commands(strip_wrappers(seg))]
+
+
+RUNNERS = {("uv", "run"), ("poetry", "run"), ("pipenv", "run"), ("pdm", "run"), ("conda", "run")}
+SHELLS = {"bash", "sh", "zsh", "dash", "ksh"}
+# interpreter -> its flags that take code inline
+INLINE_FLAGS = {"node": {"-e", "--eval", "-p", "--print"}, "deno": {"eval"}, "bun": {"-e", "--eval"},
+                "ruby": {"-e"}, "php": {"-r"}}
+INLINE_TEXT = re.compile(r"\b(python[0-9.]*|pypy3?)\s+(-\S+\s+)*-[a-zA-Z]*c|\b(node|bun)\s+(-\S+\s+)*(-e|-p|--eval|--print)\b|"
+                         r"\bperl\s+(-\S+\s+)*-[a-zA-Z]*[eE]|\bruby\s+(-\S+\s+)*-e\b|\bphp\s+-r\b|\b(ba|z|da|k)?sh\s+[^-\s]")
+
+
+def strip_runner(tok: list[str]) -> list[str]:
+    """`uv run [opts] python …` → `python …`."""
+    if len(tok) >= 2 and (os.path.basename(tok[0]), tok[1]) in RUNNERS:
+        i = 2
+        while i < len(tok) and tok[i].startswith("-"):
+            i += 2 if tok[i] in ("--with", "--python", "-p", "--project", "--directory", "-n", "--name") else 1
+        return tok[i:]
+    return tok
+
+
+def inline_code(command: str) -> str | None:
+    """Code run from the command line (python -c, node -e, perl -e, bash script.sh …), which no
+    text rule can inspect. Returns the offending command, or None."""
+    segs = segments(command)
+    if segs is None or "$(" in command or "`" in command:
+        m = INLINE_TEXT.search(command)
+        return m.group(0) if m else None
+    for seg in segs:
+        tok = strip_runner(strip_wrappers(seg))
+        if not tok:
+            continue
+        name, args = os.path.basename(tok[0]), tok[1:]
+        opts = []
+        for a in args:  # options before the script/first argument
+            if not a.startswith("-") and not (name == "deno" and a == "eval"):
+                break
+            opts.append(a)
+        if re.fullmatch(r"python[0-9.]*|pypy3?", name) and any(not o.startswith("--") and "c" in o[1:] for o in opts):
+            return " ".join(tok)[:80]
+        if name == "perl" and any(not o.startswith("--") and set(o[1:]) & {"e", "E"} for o in opts):
+            return " ".join(tok)[:80]
+        if name in INLINE_FLAGS and (set(opts) & INLINE_FLAGS[name] or (name == "deno" and args[:1] == ["eval"])):
+            return " ".join(tok)[:80]
+        if name in SHELLS and "-c" not in args and len(args) > len(opts):
+            return " ".join(tok)[:80]  # runs a script file the guard can't see into
+        if name in ("source", "."):
+            return " ".join(tok)[:80]
+    return None
 
 
 def git_write_in(command: str, depth: int = 0) -> bool:
@@ -204,14 +329,30 @@ def git_write_in(command: str, depth: int = 0) -> bool:
     return False
 
 
-def git_mode_violation(command: str) -> str | None:
+SCRIPTS = ROOT / "skills" / "setup-project" / "scripts"
+# git options that run a program or write a file, even on read-only subcommands
+GIT_GLOBAL_UNSAFE = re.compile(r"^(-c.*|--config-env.*|--exec-path.*)$")
+GIT_ARG_UNSAFE = re.compile(r"^(--output|--upload-pack|--receive-pack|--exec|--ext-diff|--textconv|-O|--open-files-in-pager)(=.*)?$")
+
+
+def is_plugin_script(arg: str, name: str, cwd: str | None) -> bool:
+    """True only for this plugin's own copy of `name` (not a look-alike such as /tmp/evil/taskgit.sh)."""
+    if os.path.basename(arg) != name:
+        return False
+    p = Path(arg) if os.path.isabs(arg) else Path(cwd or os.getcwd()) / arg
+    try:
+        return os.path.normcase(str(p.resolve())) == os.path.normcase(str((SCRIPTS / name).resolve()))
+    except OSError:
+        return False
+
+
+def git_mode_violation(command: str, depth: int = 0, cwd: str | None = None) -> str | None:
     """git-pr: every simple command must be on the allowlist."""
     if "$(" in command or "`" in command:
         return "git-pr may not use command substitution ($(...) or backticks)"
     segs = segments(command)
     if segs is None:
         return "git-pr commands must be plain commands joined by && ; || or | (no subshells, background jobs or unbalanced quotes)"
-    prev_pipe_ok = False
     for seg in segs:
         tok = seg
         if any(t in (">", ">>", "<") for t in tok):
@@ -219,13 +360,29 @@ def git_mode_violation(command: str) -> str | None:
         name = os.path.basename(tok[0]) if tok else ""
         ok = False
         if name == "cd" and len(tok) <= 2:
+            if len(tok) == 2:  # later relative script paths resolve from here
+                cwd = tok[1] if os.path.isabs(tok[1]) else os.path.join(cwd or os.getcwd(), tok[1])
             ok = True
-        elif name == "taskgit.sh" or (name in ("bash", "sh") and len(tok) > 1 and os.path.basename(tok[1]) == "taskgit.sh"):
+        elif is_plugin_script(tok[0], "taskgit.sh", cwd) or (
+                name in ("bash", "sh") and len(tok) > 1 and is_plugin_script(tok[1], "taskgit.sh", cwd)):
             ok = True
-        elif name in ("python3", "python") and len(tok) > 1 and os.path.basename(tok[1]) == "capture.py":
+        elif name in ("python3", "python") and len(tok) > 1 and is_plugin_script(tok[1], "capture.py", cwd):
+            # capture.py term --cmd runs its argument through a shell: it must pass the same allowlist
+            for inner in capture_cmds(tok):
+                why = git_mode_violation(inner, depth + 1, cwd) if depth < 3 else "nested too deep"
+                if why:
+                    return f"capture.py --cmd would run a blocked command: {why}"
             ok = True
+        elif name in ("taskgit.sh", "capture.py") or (len(tok) > 1 and os.path.basename(tok[1]) in ("taskgit.sh", "capture.py")):
+            return f"git-pr may only run the plugin's own scripts in {SCRIPTS}. Blocked: {' '.join(tok)[:80]}"
         elif name == "git":
             sub, rest = git_sub(tok)
+            gopts = tok[1:len(tok) - len(rest) - 1]
+            bad = [a for a in gopts if GIT_GLOBAL_UNSAFE.match(a)] + [a for a in rest if GIT_ARG_UNSAFE.match(a)]
+            if sub in ("fetch", "ls-remote") and "-u" in rest:
+                bad.append("-u")
+            if bad:
+                return f"git-pr may not use git options that run programs or write files ({', '.join(bad)})"
             if sub in GIT_READ_SUBS:
                 ok = True
             elif sub == "branch" and all(a in ("--list", "-a", "-v", "-vv", "-r", "--show-current", "--all") for a in rest):
@@ -239,7 +396,7 @@ def git_mode_violation(command: str) -> str | None:
     return None
 
 
-def bash_violation(name: str, command: str, scopes: dict) -> str | None:
+def bash_violation(name: str, command: str, scopes: dict, depth: int = 0, cwd: str | None = None) -> str | None:
     mode = scopes["agents"][name].get("bash", "none")
     scratch = scopes.get("scratch", [])
     if mode == "none":
@@ -247,13 +404,25 @@ def bash_violation(name: str, command: str, scopes: dict) -> str | None:
     if DESTRUCTIVE.search(command):
         return "destructive rm on a root/home path blocked"
     if mode == "git":
-        return git_mode_violation(command)
+        return git_mode_violation(command, cwd=cwd)
+    # commands nested in bash -c / eval / capture.py --cmd get the same checks as top-level ones
+    for inner in embedded_commands(command):
+        why = bash_violation(name, inner, scopes, depth + 1, cwd) if depth < 3 else "commands nested too deep"
+        if why:
+            return f"nested command blocked: {why}"
     if git_write_in(command):
         return "git history is managed by the Orchestrator (taskgit.sh) and git-pr; don't run git write commands"
     if mode != "full" and INSTALL.search(command):
         return "installing or removing packages is a Tier 1 decision: return DECISION NEEDED instead"
     if mode == "readonly":
-        if WRITE_CMDS.search(command):
+        inline = inline_code(command)
+        if inline:
+            return (f"{name} is read-only: inline code (python -c, node -e, perl -e, bash script.sh …) can't be "
+                    f"checked, so it's blocked. Write the script to /tmp with Write and run that file instead. "
+                    f"Blocked: {inline}")
+        hidden = [strip_wrappers(seg) for seg in segments(command) or []]
+        if WRITE_CMDS.search(command) or FIND_DELETE.search(command) or any(
+                tok and os.path.basename(tok[0]) in WRITE_NAMES for tok in hidden):
             return f"{name} is read-only: file-changing shell commands are blocked (write scratch files with Write under /tmp)"
         for target in REDIRECT.findall(command):
             t = target.strip("'\"")
@@ -299,7 +468,7 @@ def evaluate(name: str, event: dict, scopes: dict) -> str | None:
         cmd = inp.get("command", "")
         if not isinstance(cmd, str):
             raise ValueError("non-string command")
-        return bash_violation(name, cmd, load_scopes(find_root(Path(cwd).resolve())))
+        return bash_violation(name, cmd, load_scopes(find_root(Path(cwd).resolve())), cwd=cwd)
     return None
 
 

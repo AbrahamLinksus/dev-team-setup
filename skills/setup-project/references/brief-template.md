@@ -5,34 +5,40 @@ Fill every field for every spawn. Agents can't find these paths on their own, an
 the task's `Context:` items from TASKS.md, then any row for this role in STATE.md
 "Context additions".
 
+**Every path in a brief is absolute.** A subagent starts in the session's folder, not in the
+task's worktree: a relative `docs/LLD.md` would read main's stale copy, and a relative
+`.results/…` would write into the main checkout. Below, `<wt>` stands for the worktree's
+absolute path (what `$TASKGIT start` printed, e.g. `/home/me/projects/todo-wt/T-03`).
+
 ```
 BRIEF · <task-id> · <agent-name> · <step>
-Worktree:     <repo>-wt/<task-id>     (work only here; branch wip/<task-id>)
+Worktree:     <wt>     (absolute; work only here; branch wip/<task-id>; every Bash call starts with `cd <wt> &&`)
 Task:         <title>
 Acceptance criteria (verbatim from TASKS.md):
   - ...
 Step:         <implement | test | review | debug round n/3 | rework | ...>
 Read:         <exact files and sections, one per line, e.g.>
-              docs/LLD.md §2.1, §4
-              docs/SPEC.md US-03, US-04
-              docs/CONVENTIONS.md
-              src/auth/*
-              TASK_PROGRESS.md
-              <review only> .results/<task-id>/changes.diff
-              <debug only>  .results/<task-id>/<failing step>-<agent>.md (failure output) + the changed files
+              <wt>/docs/LLD.md §2.1, §4
+              <wt>/docs/SPEC.md US-03, US-04
+              <wt>/docs/CONVENTIONS.md
+              <wt>/src/auth/*
+              <wt>/TASK_PROGRESS.md
+              <review only> <wt>/.results/<task-id>/changes.diff
+              <debug only>  <wt>/.results/<task-id>/<failing step>-<agent>.md (failure output) + the changed files
 Rework:       <rework only> previous REPORT (verbatim, ≤12 lines) + owner's change request (verbatim)
-Write full report to: .results/<task-id>/<step>-<agent>.md
+Write full report to: <wt>/.results/<task-id>/<step>-<agent>.md
 TEAM_RULES:   <plugin root>/skills/setup-project/references/team-rules.md
 CAPTURE:      <plugin root>/skills/setup-project/scripts/capture.py
 Return:       short REPORT (≤12 lines) or DECISION NEEDED (format in TEAM_RULES)
 ```
 
 Write files the agent reads before spawning it, e.g. for the reviewer:
-`$TASKGIT diff <repo> <task-id> > <worktree>/.results/<task-id>/changes.diff` (don't open it yourself).
+`$TASKGIT diff <repo> <task-id> > <wt>/.results/<task-id>/changes.diff` (don't open it yourself).
 
 ## Per-role `Read:` defaults
 
 "The task's LLD sections" and "its SPEC stories" come from the task's `Context:` line.
+The paths below are relative to the worktree: write them into the brief as `<wt>/<path>`.
 
 | Agent | Read |
 |---|---|

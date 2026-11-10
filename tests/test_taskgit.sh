@@ -28,6 +28,7 @@ new_repo() {  # fresh origin + main checkout in $R with TASKS/STATE/DECISIONS an
   echo "x = 1" > "$R/shared_code.py"
   git -C "$R" add -A && git -C "$R" commit -qm init && git -C "$R" push -q -u origin main 2>/dev/null
 }
+sedi() { local f="${*: -1}"; sed -i.bak "$@" && rm -f "$f.bak"; }   # sed -i that works with BSD sed (macOS)
 tg() { bash "$TG" "$@"; }
 tgq() { bash "$TG" "$@" >/dev/null 2>&1; }
 on_main() { git -C "$R" show "origin/main:$1" 2>/dev/null; }
@@ -47,13 +48,13 @@ if scenario cr_wipe_recorded_results; then
   new_repo cr1
   C=$(tg start "$R" CR-1)
   T=$(tg start "$R" T-01); echo "a = 1" > "$T/a.py"; tgq checkpoint "$R" T-01 "coder done"
-  sed -i 's/T-02: Backlog/T-02: Backlog (re-planned by CR-1)/; s/T-01: In progress/T-01: In progress (CR view)/' "$C/TASKS.md"
+  sedi 's/T-02: Backlog/T-02: Backlog (re-planned by CR-1)/; s/T-01: In progress/T-01: In progress (CR view)/' "$C/TASKS.md"
   echo "- CR-1 decision (should be reverted)" >> "$C/DECISIONS.md"
   tgq checkpoint "$R" CR-1 "re-plan"
   check "task approval is held while CR is open (exit 8)" expect_exit 8 tg approve "$R" T-01 "feat: a"
   check "main untouched by held approval" clean_main
   # simulate a record that slipped in on main anyway (e.g. from another device)
-  sed -i 's/T-01: In progress/T-01: Done/' "$R/TASKS.md"; echo "- D-01 T-01 decision" >> "$R/DECISIONS.md"
+  sedi 's/T-01: In progress/T-01: Done/' "$R/TASKS.md"; echo "- D-01 T-01 decision" >> "$R/DECISIONS.md"
   tgq record "$R" "chore: record T-01"
   check "CR with conflicting TASKS.md aborts with exit 4" expect_exit 4 tg approve "$R" CR-1 "docs: CR-1"
   check "main still has T-01 Done" contains "$(on_main TASKS.md)" "T-01: Done"
@@ -62,7 +63,7 @@ if scenario cr_wipe_recorded_results; then
   check "CR branch kept for re-plan" test -d "$R-wt/CR-1"
   # planner redoes the re-plan on top of current main: sync gives conflict → reset TASKS.md to main + re-apply
   git -C "$C" fetch -q origin main && git -C "$C" merge -q -X theirs --no-edit origin/main >/dev/null 2>&1
-  sed -i 's/T-02: Backlog$/T-02: Backlog (re-planned by CR-1)/' "$C/TASKS.md"; tgq checkpoint "$R" CR-1 "re-plan on current main"
+  sedi 's/T-02: Backlog$/T-02: Backlog (re-planned by CR-1)/' "$C/TASKS.md"; tgq checkpoint "$R" CR-1 "re-plan on current main"
   check "CR merges after re-plan" expect_exit 0 tg approve "$R" CR-1 "docs: CR-1"
   m=$(on_main TASKS.md); d=$(on_main DECISIONS.md)
   check "T-01 Done survived the CR merge" contains "$m" "T-01: Done"
@@ -76,7 +77,7 @@ if scenario cr_clean_merge_keeps_both; then
   new_repo cr2
   C=$(tg start "$R" CR-2); echo "- T-09: Backlog (new from CR-2)" >> "$C/TASKS.md"; echo "spec v2" > "$C/SPEC.md"
   tgq checkpoint "$R" CR-2 "docs"
-  sed -i 's/T-01: In progress/T-01: Done/' "$R/TASKS.md"; tgq record "$R" "chore: record"
+  sedi 's/T-01: In progress/T-01: Done/' "$R/TASKS.md"; tgq record "$R" "chore: record"
   check "non-overlapping CR re-plan merges" expect_exit 0 tg approve "$R" CR-2 "docs: CR-2"
   m=$(on_main TASKS.md)
   check "keeps main's record" contains "$m" "T-01: Done"
@@ -88,8 +89,8 @@ if scenario parallel_tasks_shared_files; then
   # Reported bug: two parallel tasks both edited TASKS.md; the second squash conflicted and left main in UU state.
   new_repo par
   A=$(tg start "$R" T-01); B=$(tg start "$R" T-02)
-  echo "a = 1" > "$A/a.py"; sed -i 's/T-01: In progress/T-01: Done/' "$A/TASKS.md"; tgq checkpoint "$R" T-01 x
-  echo "b = 1" > "$B/b.py"; sed -i 's/T-02: Backlog/T-02: Done/' "$B/TASKS.md"; tgq checkpoint "$R" T-02 x
+  echo "a = 1" > "$A/a.py"; sedi 's/T-01: In progress/T-01: Done/' "$A/TASKS.md"; tgq checkpoint "$R" T-01 x
+  echo "b = 1" > "$B/b.py"; sedi 's/T-02: Backlog/T-02: Done/' "$B/TASKS.md"; tgq checkpoint "$R" T-02 x
   check "first approve" expect_exit 0 tg approve "$R" T-01 "feat: a"
   check "second approve" expect_exit 0 tg approve "$R" T-02 "feat: b"
   check "main clean, no conflict" clean_main
@@ -99,7 +100,7 @@ fi
 
 if scenario record_missing_shared_file; then
   new_repo rec; git -C "$R" rm -q STATE.md; git -C "$R" commit -qm "no state"; git -C "$R" push -q 2>/dev/null
-  sed -i 's/T-01: In progress/T-01: Done/' "$R/TASKS.md"
+  sedi 's/T-01: In progress/T-01: Done/' "$R/TASKS.md"
   check "record works when STATE.md doesn't exist" expect_exit 0 tg record "$R" "chore: record"
   check "recorded on origin" contains "$(on_main TASKS.md)" "T-01: Done"
 fi
@@ -201,6 +202,49 @@ if scenario scope_catches_committed_changes; then
   check "in-scope file kept" test -f "$W/tests/test_y.py"
   tgq checkpoint "$R" T-12 "tester done"
   check "checkpoint pushes only the in-scope change" test "$(git -C "$R" show "origin/wip/T-12:shared_code.py")" = "x = 1"
+fi
+
+if scenario start_installs_locked_deps; then
+  # T1: node_modules/.venv are git-ignored, so fresh worktrees had no dependencies and coders can't install.
+  new_repo deps; mkdir -p "$R/frontend" "$WORK/fakebin"
+  echo '{}' > "$R/frontend/package-lock.json"; git -C "$R" add -A; git -C "$R" commit -qm lock; git -C "$R" push -q 2>/dev/null
+  printf '#!/bin/sh\nmkdir -p node_modules && echo "$*" > node_modules/.installed\n' > "$WORK/fakebin/npm"; chmod +x "$WORK/fakebin/npm"
+  D=$(PATH="$WORK/fakebin:$PATH" tg start "$R" T-13)
+  check "start prints only the worktree path" test "$D" = "$R-wt/T-13"
+  check "npm ci ran in frontend/" contains "$(cat "$D/frontend/node_modules/.installed" 2>/dev/null)" "ci"
+  check "checkpoint still works after the install" expect_exit 0 tg checkpoint "$R" T-13 x
+  D2=$(TASKGIT_SKIP_DEPS=1 PATH="$WORK/fakebin:$PATH" tg start "$R" T-14)
+  check "TASKGIT_SKIP_DEPS=1 skips the install" test ! -e "$D2/frontend/node_modules"
+  nonpm=$(tr ':' '
+' <<<"$PATH" | while IFS= read -r d; do [[ -x "$d/npm" ]] || printf '%s:' "$d"; done)
+  out=$(PATH="${nonpm%:}" bash "$TG" start "$R" T-15 2>&1 >/dev/null)
+  check "a missing package manager is a warning, not an error" contains "$out" "npm not found"
+fi
+
+if scenario precommit_hook_does_not_block_checkpoints; then
+  # T2: env-setup installs pre-commit into .git/hooks (shared by every worktree); WIP code fails it.
+  new_repo hook; printf '#!/bin/sh\necho "lint failed" >&2\nexit 1\n' > "$R/.git/hooks/pre-commit"; chmod +x "$R/.git/hooks/pre-commit"
+  cp "$R/.git/hooks/pre-commit" "$R/.git/hooks/pre-merge-commit"
+  H=$(tg start "$R" T-16); echo "half_done = (" > "$H/wip.py"
+  check "checkpoint succeeds despite a failing pre-commit hook" expect_exit 0 tg checkpoint "$R" T-16 "coder halfway"
+  check "the WIP commit is on origin" test -n "$(git -C "$R" ls-remote origin wip/T-16)"
+  echo "y = 2" > "$R/other.py"; git -C "$R" add other.py; git -C "$R" commit -q --no-verify -m other; git -C "$R" push -q 2>/dev/null
+  echo "half_done = 1" > "$H/wip.py"; tgq checkpoint "$R" T-16 "coder done"
+  check "sync merges main despite the hook" expect_exit 0 tg sync "$R" T-16
+fi
+
+if scenario portable_to_macos; then
+  # T3: macOS ships bash 3.2 and BSD tools: no mapfile/readarray, grep -P, stat -c, head -n -N, bare sed -i.
+  code=$(grep -v '^ *#' "$TG")
+  for bad in mapfile readarray 'grep -P' 'stat -c' 'head -n -' 'sed -i ' 'declare -A' 'local -n'; do
+    check "taskgit.sh avoids '$bad'" bash -c '! grep -qF -- "$1" <<<"$2"' _ "$bad" "$code"
+  done
+  new_repo port; P=$(tg start "$R" T-17)
+  check "usage text prints" contains "$(bash "$TG" 2>&1)" "taskgit.sh start"
+  echo 'KEY=1' > "$P/.env.local"
+  check ".env.local still blocked without grep -P" expect_exit 2 tg checkpoint "$R" T-17 x
+  rm "$P/.env.local"; echo 'KEY=' > "$P/.env.example"
+  check ".env.example still allowed" expect_exit 0 tg checkpoint "$R" T-17 x
 fi
 
 # ---- summary ---------------------------------------------------------------------------

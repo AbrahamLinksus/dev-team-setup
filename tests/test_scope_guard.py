@@ -12,6 +12,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 GUARD = ROOT / "hooks" / "scope_guard.py"
+SCRIPTS = (ROOT / "skills" / "setup-project" / "scripts").as_posix()
+TG, CAP = f"{SCRIPTS}/taskgit.sh", f"{SCRIPTS}/capture.py"
 
 
 def hook(agent: str | None, tool: str, tool_input: dict, cwd: str) -> str | None:
@@ -30,9 +32,14 @@ class GuardTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.tmp = tempfile.TemporaryDirectory()
-        cls.repo = Path(cls.tmp.name) / "proj"
-        cls.repo.mkdir()
-        subprocess.run(["git", "init", "-q", str(cls.repo)], check=True)
+        # agents work in a linked worktree <repo>-wt/<id>, as taskgit.sh start creates it
+        cls.main = Path(cls.tmp.name) / "proj"
+        cls.main.mkdir()
+        git = ["git", "-c", "user.name=t", "-c", "user.email=t@t", "-C", str(cls.main)]
+        subprocess.run(git[:5] + ["init", "-q", str(cls.main)], check=True)
+        subprocess.run(git + ["commit", "-q", "--allow-empty", "-m", "init"], check=True)
+        cls.repo = Path(cls.tmp.name) / "proj-wt" / "T-1"
+        subprocess.run(git + ["worktree", "add", "-q", "-b", "wip/T-1", str(cls.repo)], check=True)
 
     @classmethod
     def tearDownClass(cls):
@@ -70,6 +77,28 @@ class GuardTest(unittest.TestCase):
             with self.subTest(agent=agent, path=rel, expect="deny"):
                 self.assertIsNotNone(self.write(agent, rel))
 
+    def test_gate_files_protected(self):
+        # S7: the agents a gate judges may not change it
+        for agent in ("backend-coder", "frontend-coder", "debugger", "trainer", "rag-engineer", "agent-engineer", "mlops"):
+            for rel in ("scripts/check.sh", "pyproject.toml", "backend/pyproject.toml", ".github/workflows/ci.yml",
+                        "frontend/.eslintrc.json", "tsconfig.json", ".pre-commit-config.yaml", ".dependency-cruiser.js",
+                        "tests/test_a.py", "backend/tests/test_api.py", "frontend/src/App.test.tsx"):
+                with self.subTest(agent=agent, path=rel):
+                    self.assertIsNotNone(self.write(agent, rel))
+        for agent, rel in [("env-setup", "scripts/check.sh"), ("env-setup", "pyproject.toml"),
+                           ("devops", ".github/workflows/ci.yml"), ("tester", "tests/test_a.py"),
+                           ("backend-coder", "backend/src/app.py"), ("frontend-coder", "frontend/src/App.tsx")]:
+            with self.subTest(agent=agent, path=rel, expect="allow"):
+                self.assertIsNone(self.write(agent, rel))
+
+    def test_writes_only_in_task_worktree(self):
+        # S8: a write anywhere in a git repo used to pass; the main checkout is off limits
+        self.assertIsNotNone(hook("dev-team-setup:backend-coder", "Write",
+                                  {"file_path": str(self.main / "backend" / "app.py")}, str(self.main)))
+        self.assertIsNotNone(hook("dev-team-setup:tester", "Write",
+                                  {"file_path": str(self.main / "tests" / "test_a.py")}, str(self.repo)))
+        self.assertIsNone(self.write("backend-coder", "backend/app.py"))
+
     def test_outside_repo(self):
         self.assertIsNone(hook("dev-team-setup:statistician", "Write", {"file_path": "/tmp/scratch-x/a.py"}, "/"))
         self.assertIsNotNone(hook("dev-team-setup:backend-coder", "Write", {"file_path": "/root/elsewhere.py"}, "/"))
@@ -101,17 +130,23 @@ class GuardTest(unittest.TestCase):
         self.assertIsNone(hook(None, "Write", {"file_path": str(self.repo / "TASKS.md")}, str(self.repo)))
         self.assertIsNone(hook("other-plugin:tester", "Write", {"file_path": str(self.repo / "src/a.py")}, str(self.repo)))
         self.assertIsNone(hook("Explore", "Bash", {"command": "git push -f"}, str(self.repo)))
+        # S6: bare names are other agents (the user's own "reviewer", or `claude --agent tester`)
+        self.assertIsNone(hook("reviewer", "Bash", {"command": "npm test"}, str(self.repo)))
+        self.assertIsNone(hook("tester", "Write", {"file_path": str(self.repo / "src/a.py")}, str(self.repo)))
+        self.assertIsNone(hook("my-plugin:dev-team-setup:tester", "Write", {"file_path": str(self.repo / "src/a.py")}, str(self.repo)))
+        self.assertIsNotNone(hook("dev-team-setup:tester", "Write", {"file_path": str(self.repo / "src/a.py")}, str(self.repo)))
 
     # ---- git-pr allowlist --------------------------------------------------------
     def test_git_pr_allowed(self):
         for cmd in [
-            'bash /p/skills/setup-project/scripts/taskgit.sh approve /r T-1 "feat: x && y; z"',
-            "/p/scripts/taskgit.sh reject /r T-2",
+            f'bash {TG} approve /r T-1 "feat: x && y; z"',
+            f"{TG} reject /r T-2",
+            f"cd {SCRIPTS} && bash ./taskgit.sh list /r",
             "git status && git log --oneline -5",
             "git -C /r status -sb",
             "git log --oneline | head -5",
             "cd /r && git diff --stat",
-            'python3 /p/scripts/capture.py term /r/.results/T-1/git.png --cmd "git log --oneline -5"',
+            f'python3 {CAP} term /r/.results/T-1/git.png --cmd "git log --oneline -5"',
             "git branch --show-current",
             "git remote -v",
             "git status 2>&1",
@@ -132,7 +167,7 @@ class GuardTest(unittest.TestCase):
             "git status && `git push`",
             "(git push -f)",
             "git push -f &",
-            "bash /p/taskgit.sh list && git reset --hard HEAD~3",
+            f"bash {TG} list && git reset --hard HEAD~3",
             "git -C /r push origin main",
             "git -c user.name=x commit -m y",
             "git branch -D wip/T-1",
@@ -168,6 +203,109 @@ class GuardTest(unittest.TestCase):
                     "cp a b", "python /tmp/a.py && git commit -am x"]:
             with self.subTest(cmd=cmd):
                 self.assertIsNotNone(self.bash("statistician", cmd))
+
+    def test_capture_cmd_is_checked(self):
+        # S2: capture.py term --cmd runs its argument with shell=True
+        cap = f"python3 {CAP} term /r/.results/T-1/o.png"
+        for agent, cmd in [
+            ("git-pr", f'{cap} --cmd "git push --force origin main"'),
+            ("git-pr", f'{cap} --cmd="git push --force origin main"'),
+            ("git-pr", f'{cap} --cm "git reset --hard HEAD~3"'),
+            ("git-pr", f'{cap} --cmd "rm -rf src"'),
+            ("backend-coder", f'{cap} --cmd "git push --force origin main"'),
+            ("backend-coder", f'{cap} --cmd "pip install requests"'),
+            ("statistician", f'{cap} --cmd "git push --force origin main"'),
+            ("statistician", f'{cap} --cmd "rm -r src"'),
+            ("statistician", "bash -c 'rm -r src'"),
+        ]:
+            with self.subTest(agent=agent, cmd=cmd):
+                self.assertIsNotNone(self.bash(agent, cmd))
+        for agent, cmd in [
+            ("git-pr", f'{cap} --cmd "git log --oneline -5"'),
+            ("backend-coder", f'{cap} --cmd "uv run pytest -q" --title tests'),
+            ("statistician", f'{cap} --cmd "uv run python /tmp/a.py"'),
+        ]:
+            with self.subTest(agent=agent, cmd=cmd, expect="allow"):
+                self.assertIsNone(self.bash(agent, cmd))
+
+    def test_capture_rejects_abbreviated_cmd(self):
+        # capture.py itself must refuse --cm (prefix of --cmd): the guard is not the only line of defence
+        cap = ROOT / "skills" / "setup-project" / "scripts" / "capture.py"
+        p = subprocess.run([sys.executable, str(cap), "term", "/tmp/never.png", "--cm", "echo x"],
+                           capture_output=True, text=True)
+        self.assertEqual(p.returncode, 2)
+        self.assertIn("unrecognized arguments", p.stderr)
+
+    def test_inline_code_blocked_for_readonly(self):
+        # S3: interpreter one-liners bypass every text rule
+        for cmd in [
+            "python3 -c \"import subprocess; subprocess.run(['git','commit','-am','x'])\"",
+            "python3 -c \"import shutil; shutil.rmtree('src')\"",
+            "uv run python -c 'import os; os.remove(\"a\")'",
+            "python -Bc 'print(1)'",
+            "node -e \"require('fs').rmSync('src',{recursive:true})\"",
+            "node --eval 'x'",
+            "perl -pi -e 's/a/b/' src/x.py",
+            "perl -ne 'print' x",
+            "ruby -e 'File.delete(\"x\")'",
+            "php -r 'unlink(\"x\");'",
+            "bash /tmp/script.sh",
+            "sh ./clean.sh",
+            "source /tmp/env.sh",
+            "cd src && python3 -c 'x'",
+        ]:
+            with self.subTest(cmd=cmd):
+                self.assertIsNotNone(self.bash("statistician", cmd))
+        for cmd in ["uv run python /tmp/a.py", "python3 /tmp/a.py --flag", "uv run --with scipy python /tmp/a.py",
+                    "node /tmp/a.js", "grep -rn 'python -c' docs", "bash --version"]:
+            with self.subTest(cmd=cmd, expect="allow"):
+                self.assertIsNone(self.bash("statistician", cmd))
+        # code mode keeps one-liners (the post-step scope revert covers their file changes)
+        self.assertIsNone(self.bash("backend-coder", "python3 -c 'print(1)'"))
+
+    def test_wrapped_commands_are_unwrapped(self):
+        # S4: xargs / find -exec / timeout / watch / parallel hid git writes from the guard
+        for cmd in [
+            "echo origin | xargs git push",
+            "xargs -n 1 -I {} git push {} main < remotes.txt",
+            "find . -name '*.py' -exec git commit -m x {} \\;",
+            "find . -execdir git rm {} +",
+            "timeout 30 git push origin main",
+            "timeout -s KILL 5 git push",
+            "watch -n 1 git push",
+            "watch 'git push origin main'",
+            "parallel git push ::: origin",
+            "sudo -u me env FOO=1 nice -n 5 git commit -am x",
+        ]:
+            with self.subTest(cmd=cmd):
+                self.assertIsNotNone(self.bash("backend-coder", cmd))
+        for cmd in ["find src -name '*.tmp' -delete", "find . -exec rm {} \\;", "ls | xargs rm",
+                    "timeout 5 touch x", "xargs -a list.txt mv -t old/"]:
+            with self.subTest(agent="statistician", cmd=cmd):
+                self.assertIsNotNone(self.bash("statistician", cmd))
+        for cmd in ["timeout 60 uv run pytest -q", "find . -name '*.py' -exec grep -l TODO {} \\;",
+                    "git ls-files | xargs wc -l", "watch -n 5 git status"]:
+            with self.subTest(cmd=cmd, expect="allow"):
+                self.assertIsNone(self.bash("backend-coder", cmd))
+
+    def test_git_pr_allowlist_holes(self):
+        # S5: options that run programs or write files, and look-alike scripts
+        for cmd in [
+            "git -c core.pager='sh -c \"touch /tmp/x\"' log",
+            "git -ccore.pager=evil log",
+            "git --config-env=core.pager=EVIL log",
+            "git diff --output=TASKS.md",
+            "git log --output TASKS.md",
+            "git fetch --upload-pack='sh -c evil' origin",
+            "git ls-remote -u 'sh -c evil' origin",
+            "git diff --ext-diff",
+            "bash /tmp/evil/taskgit.sh approve /r T-1 x",
+            "/tmp/evil/taskgit.sh list /r",
+            "python3 /tmp/evil/capture.py term o.png",
+            "cd /tmp/evil && bash ./taskgit.sh list /r",
+        ]:
+            with self.subTest(cmd=cmd):
+                self.assertIsNotNone(self.bash("git-pr", cmd))
 
     def test_no_shell_roles(self):
         for agent in ("reviewer", "researcher", "planner", "architect", "docs", "insights-reporter"):

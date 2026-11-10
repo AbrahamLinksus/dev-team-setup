@@ -81,7 +81,7 @@ AGENTS = [
              "Write typed code (type hints, Pydantic models at I/O boundaries) with clear domain exceptions.",
              "Before reporting, run `scripts/check.sh` and fix everything it flags in your files; put the result in your REPORT's Checks line (lint/types/complexity/layers) and any SOLID trade-off you made in the full report.",
              "Run the code to prove it works (start the server and hit the endpoint, run the CLI) and capture it: `/docs` screenshot with `$CAPTURE web` and a real request/response with `$CAPTURE term`.",
-             "Add or update only the minimal tests needed to run your code; the Tester owns the full test suite.",
+             "Don't write or change tests, `scripts/check.sh` or the lint/type/test configs: the Tester owns the tests and env-setup the gates (the scope guard blocks both). If one of them is wrong, say so under Issues.",
              "Stay out of frontend folders.",
          ]),
     dict(name="frontend-coder", model="sonnet", color="magenta", tools=[R, W, E, B, GL, G],
@@ -128,7 +128,7 @@ AGENTS = [
          duties=[
              "Reproduce the failure first and capture it (`$CAPTURE term`).",
              "Trace the root cause through logs and stack traces; state it in one sentence.",
-             "Make the minimal fix; don't refactor or change interfaces. If the fix needs a design change, return `DECISION NEEDED`.",
+             "Make the minimal fix; don't refactor or change interfaces. If the fix needs a design change, return `DECISION NEEDED`. You may not change tests or the check configs: if a test itself is wrong, report it for the Tester.",
              "Re-run the failing tests and `scripts/check.sh`; the fix must keep every convention check green. Capture the passing run.",
          ]),
     dict(name="docs", model="haiku", color="green", tools=[R, W, E, GL],
