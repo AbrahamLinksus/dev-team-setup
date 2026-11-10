@@ -13,7 +13,11 @@ Subcommands (all write PNGs; print the output paths):
   html    IN.html OUT.png [--width PX]
           Screenshot a local HTML file (e.g. plotly/Altair exports, coverage reports).
 
-Requires: playwright (Python) with Chromium; markdown; npm for mermaid.
+  doctor  [--install]
+          Check the dependencies below; --install puts them in a private venv
+          (${CLAUDE_PLUGIN_DATA}/venv) that the other subcommands then use automatically.
+
+Requires: playwright (Python) with Chromium; pillow; markdown; npm for mermaid.
 """
 from __future__ import annotations  # `str | None` annotations on Python 3.9 (macOS's python3)
 
@@ -25,6 +29,58 @@ import sys
 from pathlib import Path
 
 CACHE = Path(os.environ.get("DEVTEAM_CACHE", Path.home() / ".cache" / "dev-team-setup"))
+# The plugin's own Python deps live in a private venv, not in the project's or the system's
+# Python (PEP 668 blocks a plain `pip install` on modern Ubuntu, Debian and Homebrew).
+DATA = Path(os.environ.get("CLAUDE_PLUGIN_DATA") or CACHE)
+VENV = DATA / "venv"
+PY_DEPS = {"playwright": "playwright==1.49.1", "PIL": "pillow==11.0.0", "markdown": "markdown==3.7"}
+
+
+def venv_python() -> Path:
+    return VENV / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+
+
+def missing_modules() -> list[str]:
+    import importlib.util
+    return [m for m in PY_DEPS if importlib.util.find_spec(m) is None]
+
+
+def use_venv_if_needed() -> None:
+    """Re-run this script under the plugin venv when the current Python lacks the deps."""
+    vp = venv_python()
+    if (missing_modules() and vp.exists() and os.environ.get("DEVTEAM_CAPTURE_IN_VENV") != "1"
+            and Path(sys.executable).resolve() != vp.resolve()):
+        env = {**os.environ, "DEVTEAM_CAPTURE_IN_VENV": "1"}
+        sys.exit(subprocess.run([str(vp), str(Path(__file__).resolve()), *sys.argv[1:]], env=env).returncode)
+
+
+def cmd_doctor(a):
+    """Check (and with --install, set up) everything capture.py needs. Exit 0 when ready."""
+    if a.install:
+        if not venv_python().exists():
+            subprocess.run([sys.executable, "-m", "venv", str(VENV)], check=True)
+        py = str(venv_python())
+        subprocess.run([py, "-m", "pip", "install", "-q", *PY_DEPS.values()], check=True)
+        subprocess.run([py, "-m", "playwright", "install", "chromium"], check=True)
+        os.environ["DEVTEAM_CAPTURE_IN_VENV"] = "1"
+        return subprocess.run([py, str(Path(__file__).resolve()), "doctor"]).returncode
+    problems = [f"python module {m} ({PY_DEPS[m]})" for m in missing_modules()]
+    if "playwright" not in missing_modules():
+        try:
+            pw, browser = _browser(install=False)
+            browser.close(); pw.stop()
+        except Exception as exc:  # noqa: BLE001 - any launch failure means "not ready"
+            problems.append(f"Chromium for Playwright ({type(exc).__name__})")
+    from shutil import which
+    if not which("npm"):
+        problems.append("npm (only needed for Mermaid diagrams)")
+    for p in problems:
+        print(f"missing: {p}")
+    if problems:
+        print(f"fix: python3 {Path(__file__).resolve()} doctor --install   (venv: {VENV})")
+        return 1
+    print(f"capture.py ready (python: {sys.executable})")
+    return 0
 
 CSS = """
 body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;margin:0;padding:28px;
@@ -39,12 +95,15 @@ h1,h2,h3{margin:12px 0 8px}
 """
 
 
-def _browser():
+def _browser(install: bool = True):
     from playwright.sync_api import sync_playwright
     pw = sync_playwright().start()
     try:
         browser = pw.chromium.launch(args=["--no-sandbox"])
     except Exception:
+        if not install:
+            pw.stop()
+            raise
         subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"], check=False)
         browser = pw.chromium.launch(args=["--no-sandbox"])
     return pw, browser
@@ -205,8 +264,14 @@ def main():
     h = sub.add_parser("html", allow_abbrev=False); h.add_argument("input"); h.add_argument("out")
     h.add_argument("--width", type=int, default=1200); h.set_defaults(fn=cmd_html)
 
+    doc = sub.add_parser("doctor", allow_abbrev=False)
+    doc.add_argument("--install", action="store_true", help="create the plugin venv and install everything")
+    doc.set_defaults(fn=cmd_doctor)
+
     a = ap.parse_args()
-    a.fn(a)
+    if a.cmd_name != "doctor":
+        use_venv_if_needed()
+    sys.exit(a.fn(a) or 0)
 
 
 if __name__ == "__main__":

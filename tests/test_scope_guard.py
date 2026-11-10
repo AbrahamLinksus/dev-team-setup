@@ -309,6 +309,14 @@ class GuardTest(unittest.TestCase):
             with self.subTest(cmd=cmd):
                 self.assertIsNotNone(self.bash("git-pr", cmd))
 
+    def test_capture_doctor_install_is_orchestrator_only(self):
+        # C1: doctor --install installs packages; agents may only run the read-only check
+        for agent in ("backend-coder", "statistician", "git-pr"):
+            with self.subTest(agent=agent):
+                self.assertIsNotNone(self.bash(agent, f"python3 {CAP} doctor --install"))
+        self.assertIsNone(self.bash("git-pr", f"python3 {CAP} doctor"))
+        self.assertIsNone(self.bash("env-setup", f"python3 {CAP} doctor --install"))
+
     def test_no_shell_roles(self):
         for agent in ("reviewer", "researcher", "planner", "architect", "docs", "insights-reporter"):
             with self.subTest(agent=agent):
