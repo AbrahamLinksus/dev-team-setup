@@ -51,14 +51,27 @@ def match(path: str, globs: list[str]) -> bool:
 
 
 def load_scopes(project_root: Path | None) -> dict:
-    data = json.loads(DEFAULTS.read_text())
+    """Defaults plus the project's .devteam/scopes.json. Per agent, an override may:
+    - "write": replace the write globs (the project's folders differ from the defaults);
+    - "write_add" / "deny_add": append globs;
+    - "deny": ADD to the defaults (S19: it used to replace them, which silently dropped
+      @main_owned and @design; protections can only grow);
+    - "bash": change the shell mode."""
+    data = json.loads(DEFAULTS.read_text(encoding="utf-8"))
     if project_root:
         override = project_root / ".devteam" / "scopes.json"
         if override.is_file():
             try:
-                for name, spec in json.loads(override.read_text()).get("agents", {}).items():
-                    data["agents"].setdefault(name, {}).update(spec)
-            except (OSError, ValueError):
+                for name, spec in json.loads(override.read_text(encoding="utf-8")).get("agents", {}).items():
+                    cur = data["agents"].setdefault(name, {})
+                    for key, val in spec.items():
+                        if key in ("deny", "deny_add"):
+                            cur["deny"] = cur.get("deny", []) + [g for g in val if g not in cur.get("deny", [])]
+                        elif key == "write_add":
+                            cur["write"] = cur.get("write", []) + [g for g in val if g not in cur.get("write", [])]
+                        else:
+                            cur[key] = val
+            except (OSError, ValueError, TypeError, AttributeError):
                 pass
     return data
 

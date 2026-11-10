@@ -115,6 +115,22 @@ class GuardTest(unittest.TestCase):
             with self.subTest(agent=agent, path=rel, expect="allow"):
                 self.assertIsNone(self.write(agent, rel))
 
+    def test_override_deny_adds_not_replaces(self):
+        # S19: "deny": ["x"] in .devteam/scopes.json silently dropped @main_owned and @design
+        (self.repo / ".devteam").mkdir(exist_ok=True)
+        (self.repo / ".devteam" / "scopes.json").write_text(json.dumps({"agents": {
+            "backend-coder": {"deny": ["legacy/**"], "write_add": []},
+            "tester": {"write_add": ["spec/**"]}}}))
+        try:
+            for rel in ("legacy/old.py", "TASKS.md", "docs/LLD.md", "frontend/src/a.tsx"):
+                with self.subTest(path=rel):
+                    self.assertIsNotNone(self.write("backend-coder", rel))
+            self.assertIsNone(self.write("backend-coder", "backend/src/app.py"))
+            self.assertIsNone(self.write("tester", "spec/models/user_spec.rb"))   # added
+            self.assertIsNone(self.write("tester", "tests/test_a.py"))            # defaults kept
+        finally:
+            (self.repo / ".devteam" / "scopes.json").unlink()
+
     def test_outside_repo(self):
         self.assertIsNone(hook("dev-team-setup:statistician", "Write", {"file_path": "/tmp/scratch-x/a.py"}, "/"))
         self.assertIsNotNone(hook("dev-team-setup:backend-coder", "Write", {"file_path": "/root/elsewhere.py"}, "/"))
