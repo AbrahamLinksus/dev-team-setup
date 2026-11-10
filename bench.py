@@ -230,7 +230,24 @@ def fmt(n) -> str:
 FIELDS = ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens", "output_tokens")
 CAMEL = {"inputTokens": "input_tokens", "cacheCreationInputTokens": "cache_creation_input_tokens",
          "cacheReadInputTokens": "cache_read_input_tokens", "outputTokens": "output_tokens"}
-BRIEF_RE = re.compile(r"BRIEF\s*·\s*(\S+)\s*·\s*([a-z][a-z0-9-]+)")
+BRIEF_RE = re.compile(r"BRIEF\s*·\s*(\S+)\s*·\s*([a-z][a-z0-9-]+)(?:\s*·\s*([a-z][a-z-]*))?")
+# D9: price weight of each token type relative to fresh input (cache read 0.1×, cache write
+# 1.25×, output 5×), so shares say where the money goes, not just where the tokens go.
+WEIGHTS = {"input_tokens": 1.0, "cache_creation_input_tokens": 1.25, "cache_read_input_tokens": 0.1,
+           "output_tokens": 5.0}
+
+
+def weighted(u: dict) -> float:
+    return sum(WEIGHTS[f] * u.get(f, 0) for f in FIELDS)
+
+
+def brief_step(path: Path) -> str | None:
+    """The step a subagent ran (implement, test, review, debug, …) from its BRIEF line."""
+    for d in read_lines(path):
+        if d.get("type") == "user" and isinstance(d.get("message"), dict):
+            m = BRIEF_RE.search(text_of(d["message"]))
+            return m.group(3) if m and m.group(3) else None
+    return None
 BACKGROUND = "background calls (not logged as replies)"
 NOT_TYPED = ("<command-", "<local-command", "Caveat:", "[Request interrupted", "<system-reminder")
 
@@ -302,6 +319,7 @@ def measure(log_dir: Path, sessions: list[str]) -> dict:
     """Totals from Claude Code's own accounting (last cost-state per session = /cost); split by
     agent from logged replies; remainder shown as background calls. Also counts interventions."""
     by_agent = defaultdict(lambda: defaultdict(int))
+    by_step = defaultdict(lambda: defaultdict(int))
     calls = defaultdict(int)
     auth = defaultdict(lambda: defaultdict(int))
     cost, cost_complete, minutes, notes = 0.0, True, 0.0, []
@@ -316,6 +334,7 @@ def measure(log_dir: Path, sessions: list[str]) -> dict:
         s_model = defaultdict(lambda: defaultdict(int))
         for path, fixed in files:
             replies, ask_ids, prompts = {}, set(), 0
+            step = "orchestrator" if fixed is None else (brief_step(path) or "other")
             for i, d in enumerate(read_lines(path)):
                 ts = parse_ts(d.get("timestamp"))
                 if ts:
@@ -345,6 +364,7 @@ def measure(log_dir: Path, sessions: list[str]) -> dict:
                 for f in FIELDS:
                     v = int(u.get(f) or 0)
                     by_agent[agent][f] += v
+                    by_step[step if agent != "subagent (sidechain)" else "other"][f] += v
                     s_agent[agent][f] += v
                     s_model[model][f] += v
             if fixed is None:
@@ -390,9 +410,28 @@ def measure(log_dir: Path, sessions: list[str]) -> dict:
             "tokens": grand, "all_tokens": sum(grand.values()),
             "subagent_tokens": sum(sum(u.values()) for k, u in by_agent.items() if k != "main session"),
             "calls": sum(calls.values()), "minutes": round(minutes, 1), "background": background,
-            "by_agent": agents, "agent_calls": dict(calls),
+            "by_agent": agents, "agent_calls": dict(calls), "by_step": {k: dict(v) for k, v in by_step.items()},
+            "shares": shares(agents),
             "by_model": {k: dict(v) for k, v in auth.items()},
             "interventions": typed + asked, "typed": typed, "answered_questions": asked, "notes": notes}
+
+
+def shares(groups: dict) -> dict:
+    """Per group: share of the run's price-weighted cost, how much of its input was written to the
+    cache rather than read from it (H3), and its output share of its own cost (H4)."""
+    total = sum(weighted(u) for u in groups.values()) or 1.0
+    out = {}
+    for k, u in groups.items():
+        cached = u.get("cache_creation_input_tokens", 0) + u.get("cache_read_input_tokens", 0)
+        w = weighted(u) or 1.0
+        out[k] = {"cost_share": round(weighted(u) / total, 4),
+                  "cache_write_share": round(u.get("cache_creation_input_tokens", 0) / cached, 4) if cached else 0.0,
+                  "output_cost_share": round(5.0 * u.get("output_tokens", 0) / w, 4)}
+    return out
+
+
+def pct(x: float) -> str:
+    return f"{100 * x:.0f}%"
 
 
 def token_table(m: dict, label: str) -> str:
@@ -401,12 +440,24 @@ def token_table(m: dict, label: str) -> str:
             f"cost: ${m['cost_usd']:.2f}{'' if m['cost_complete'] else ' (partial)'} · "
             f"interventions: {m['interventions']} ({m['typed']} typed, {m['answered_questions']} answered)", ""]
     rows += [f"- note: {n}" for n in m["notes"]]
-    rows += ["| agent | calls | input | cache write | cache read | output | all |", "|---|---|---|---|---|---|---|"]
+    sh = m.get("shares") or shares(m["by_agent"])
+    rows += ["| agent | calls | input | cache write | cache read | output | all | cost share "
+             "| cached input written | output share of cost |", "|---|---|---|---|---|---|---|---|---|---|"]
     for k, u in sorted(m["by_agent"].items(), key=lambda kv: (kv[0] == BACKGROUND, -sum(kv[1].values()))):
+        x = sh.get(k) or {"cost_share": 0, "cache_write_share": 0, "output_cost_share": 0}
         rows.append(f"| {k} | {m['agent_calls'].get(k, '-')} | " + " | ".join(fmt(u[f]) for f in FIELDS)
-                    + f" | {fmt(sum(u.values()))} |")
+                    + f" | {fmt(sum(u.values()))} | {pct(x['cost_share'])} | {pct(x['cache_write_share'])}"
+                    + f" | {pct(x['output_cost_share'])} |")
     t = m["tokens"]
-    rows.append(f"| **total** | {m['calls']} | " + " | ".join(fmt(t[f]) for f in FIELDS) + f" | {fmt(m['all_tokens'])} |")
+    rows.append(f"| **total** | {m['calls']} | " + " | ".join(fmt(t[f]) for f in FIELDS)
+                + f" | {fmt(m['all_tokens'])} | | | |")
+    if len(m.get("by_step") or {}) > 1:
+        ss = shares(m["by_step"])
+        rows += ["", "| step | input | cache write | cache read | output | cost share | output share of cost |",
+                 "|---|---|---|---|---|---|---|"]
+        for k, u in sorted(m["by_step"].items(), key=lambda kv: -weighted(kv[1])):
+            rows.append(f"| {k} | " + " | ".join(fmt(u.get(f, 0)) for f in FIELDS)
+                        + f" | {pct(ss[k]['cost_share'])} | {pct(ss[k]['output_cost_share'])} |")
     return "\n".join(rows)
 
 
@@ -987,6 +1038,13 @@ def cmd_run(args) -> None:
     say(f"\nSaved. Results so far: {RESULTS}")
 
 
+def per_check(run_state: dict) -> str:
+    """H7's headline: what one passed acceptance check cost."""
+    passed = (run_state.get("test") or {}).get("acceptance")
+    cost = (run_state.get("tokens") or {}).get("cost_usd")
+    return f"${cost / passed:.2f}" if passed and cost else ""
+
+
 def cell(v) -> str:
     return "" if v is None else str(v)
 
@@ -1003,19 +1061,21 @@ def write_report(state: dict) -> str:
         if not keys:
             continue
         L += [f"## {app.capitalize()} app", "",
-              "| Run | Cost | All tokens | Output | Subagent tokens | Time | Sessions | Your interventions |",
-              "|---|---|---|---|---|---|---|---|"]
+              "| Run | Cost | All tokens | Output | Subagent tokens | Time | Sessions | Your interventions "
+              "| Cost per passed check | Main session's share of cost |",
+              "|---|---|---|---|---|---|---|---|---|---|"]
         for k in keys:
             t = runs[k].get("tokens", {})
             L.append(f"| {k}{' (stopped)' if runs[k].get('stopped') else ''} | ${t.get('cost_usd', 0):.2f} | "
                      f"{fmt(t.get('all_tokens', 0))} | {fmt(t.get('tokens', {}).get('output_tokens', 0))} | "
                      f"{fmt(t.get('subagent_tokens', 0))} | {t.get('minutes', 0):.0f} min | {len(t.get('sessions', []))} | "
-                     f"{t.get('interventions', '')} |")
+                     f"{t.get('interventions', '')} | {per_check(runs[k])} | "
+                     f"{pct((t.get('shares') or {}).get('main session', {}).get('cost_share', 0)) if t.get('shares') else ''} |")
         if len(keys) == 2:
             a, b = (runs[k].get("tokens", {}) for k in keys)
             if a.get("cost_usd") and a.get("all_tokens"):
                 L.append(f"| **plugin ÷ normal** | **{b.get('cost_usd', 0) / a['cost_usd']:.1f}×** | "
-                         f"{b.get('all_tokens', 0) / a['all_tokens']:.1f}× | | | | | |")
+                         f"{b.get('all_tokens', 0) / a['all_tokens']:.1f}× | | | | | | | |")
         L += ["", "| Run | Acceptance | Survives restart | Tests passed | Failed | Coverage | Ruff | Mypy | Lines |",
               "|---|---|---|---|---|---|---|---|---|"]
         for k in keys:

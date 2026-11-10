@@ -97,6 +97,17 @@ class MeasureTest(unittest.TestCase):
         self.assertEqual(m["tokens"], usage(5, 60, 700, 50))
         self.assertEqual(m["by_agent"]["tester"], usage(2, 40, 500, 30))
         self.assertTrue(m["cost_complete"])
+        # D9: split by step from the BRIEF line, and price-weighted shares
+        self.assertEqual(m["by_step"]["test"], usage(2, 40, 500, 30))
+        self.assertEqual(m["by_step"]["orchestrator"], usage(1, 10, 100, 5))
+        tester = m["shares"]["tester"]
+        self.assertAlmostEqual(tester["cache_write_share"], 40 / 540, places=4)
+        self.assertAlmostEqual(tester["output_cost_share"], 150 / (2 + 50 + 50 + 150), places=4)
+        total = sum(bench.weighted(u) for u in m["by_agent"].values())
+        self.assertAlmostEqual(tester["cost_share"], bench.weighted(usage(2, 40, 500, 30)) / total, places=4)
+        table = bench.token_table(m, "x")
+        self.assertIn("| step |", table)
+        self.assertIn("| test |", table)
 
     def test_tokens_cli(self):
         self.write("s.jsonl", [{"type": "user", "timestamp": "2026-11-09T10:00:00Z", "message": {"content": "x"}},
