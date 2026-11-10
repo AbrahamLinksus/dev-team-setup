@@ -166,7 +166,9 @@ reasons). Mention the approval and cost modes; the owner can type a change.
 
 ## 5 · Environment setup ⏸
 
-**env-setup** phase 1 → install plan; Install / Edit / Cancel. Phase 2 → install,
+**env-setup** phase 1 → install plan; **Install** / **Edit** (the owner says what to change →
+env-setup redoes phase 1) / **Cancel** (nothing is installed: back to the LLD's package table at
+stage 4 to pick different packages, or **Pause** the project, see below). Phase 2 → install,
 `scripts/check.sh` (with `CHECK_NO_COVERAGE=1` for the skeleton), configs, pre-commit, smoke
 check with terminal images.
 
@@ -243,6 +245,16 @@ SPEC/HLD/LLD → "what changes" card ⏸ → planner re-plans TASKS.md → merge
 milestone end) → resume.
 Design docs change only through this flow, the milestone as-built sync, or handover.
 
+## Pause or abandon (anytime)
+
+The owner can say "pause" or "stop" at any card, or pick it from an AskUserQuestion.
+- **Pause**: finish nothing new; checkpoint every open `wip/*` branch (they're already pushed),
+  set STATE.md `Status: Paused` with the reason and the next step, `$TASKGIT record`, stop any
+  server you started. `/setup-project resume <repo>` later continues from STATE.md as usual.
+- **Abandon**: ask once to confirm (it can't be resumed). Then `$TASKGIT reject` every open task
+  branch, set STATE.md `Status: Abandoned` with the reason, `$TASKGIT record`. The repo and
+  everything already on main stay; nothing is deleted on GitHub.
+
 ## Resume
 
 `/setup-project resume <repo>`, or "continue" in a folder with a setup-project STATE.md (details in
@@ -254,6 +266,8 @@ Agent IDs from earlier sessions are not continued; every step after a resume spa
    the worktrees `<repo>-wt/` sit next to the repo. A repo outside this session's folders (e.g.
    `~/projects/<repo>` from an older run) → `/add-dir` its parent first.
 2. Read STATE.md / TASKS.md / DECISIONS.md on main; `$TASKGIT list <repo>`.
+   `Status: Paused` → set it back to Active and continue. `Status: Abandoned` or `Complete` → say so
+   and ask whether to reopen it before doing anything.
 3. Per open wip branch (`plan`, `CR-n`, `T-xx`): `$TASKGIT start` (installs dependencies into a
    restored worktree), read TASK_PROGRESS.md, run `check.sh` once if code steps are ✅, re-ask any open decision
    or open spec round, restart the first step that isn't ✅.

@@ -333,6 +333,14 @@ class StructureTest(unittest.TestCase):
             with self.subTest(agent=path.stem):
                 self.assertLessEqual(len(mentions), 1, "the same instruction appears in more than one duty")
 
+    def test_cancel_pause_and_abandon_are_defined(self):
+        # K22: "Cancel" on the install card went nowhere; no way to stop or abandon a project
+        skill = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+        stage5 = skill[skill.index("## 5 · "):skill.index("## 6 · ")]
+        self.assertIn("**Cancel** (", stage5)
+        self.assertIn("## Pause or abandon", skill)
+        self.assertIn("Paused", (SKILL / "templates" / "STATE.md").read_text(encoding="utf-8"))
+
     def test_no_hardcoded_owner(self):
         for path in list((ROOT / "agents").glob("*.md")) + list(SKILL.rglob("*.md")):
             with self.subTest(file=str(path.relative_to(ROOT))):
