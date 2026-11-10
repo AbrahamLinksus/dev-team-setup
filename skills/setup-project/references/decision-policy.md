@@ -48,6 +48,10 @@ Use AskUserQuestion: the question holds the context in ≤2 lines; 2–4 options
 the recommended one first and labelled "(Recommended)"; each option's description holds
 its trade-off. Add a diagram or table image first if it helps compare the options.
 
+Before the question, one line: **Why we're asking:** naming the Tier 1 rule above that applies,
+in plain words, e.g. "Why we're asking: adding a package is your call (it changes what the
+project depends on)." The owner should never wonder why the build stopped.
+
 Log every Tier 1 answer in `DECISIONS.md`:
 
 ```

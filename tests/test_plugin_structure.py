@@ -549,6 +549,16 @@ class StructureTest(unittest.TestCase):
         self.assertIn("- tester · may change: tests, its own reports · can't: anything else", current)
         self.assertIn("agent-cards.md", (SKILL / "SKILL.md").read_text(encoding="utf-8"))
 
+    def test_cards_explain_themselves(self):
+        # D26: progress line, fixed order, a gloss for jargon, and why a decision is asked
+        card = (SKILL / "references" / "result-card.md").read_text(encoding="utf-8")
+        self.assertLess(card.index("## Every card, every time"), card.index("## Per-task card"))
+        self.assertIn("Stage 7 Build · Milestone 2/3 · Task 4/12", card)
+        self.assertIn("what happened → what it means for you → what you decide", card)
+        for term in ("| spec |", "| HLD |", "| LLD |", "| worktree |", "| Tier 1 |"):
+            self.assertIn(term, card)
+        self.assertIn("**Why we're asking:**", (SKILL / "references" / "decision-policy.md").read_text(encoding="utf-8"))
+
     def test_every_known_hole_keeps_its_regression_test(self):
         # M1: each problem fixed in code got a test that names it (S = scope guard, T = taskgit,
         # C = capture.py, G = gen_agents.py). Removing one of those tests should be a conscious act.
