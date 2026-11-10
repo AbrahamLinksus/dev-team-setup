@@ -357,7 +357,8 @@ class GuardTest(unittest.TestCase):
                     "kill -- -1", f"rm -rf {self.main.as_posix()}"]:
             with self.subTest(cmd=cmd):
                 self.assertIsNotNone(self.bash("backend-coder", cmd))
-        for cmd in ["rm -rf build", "rm -r src/old", "rm -rf node_modules/.cache", "rm x.pyc", "kill -9 1234"]:
+        for cmd in ["rm -rf build", "rm -r src/old", "rm -rf node_modules/.cache", "rm x.pyc", "kill -9 1234",
+                    "rm -rf /tmp/devteam-scratch-x"]:  # scratch away from the project stays allowed
             with self.subTest(cmd=cmd, expect="allow"):
                 self.assertIsNone(self.bash("backend-coder", cmd))
 
