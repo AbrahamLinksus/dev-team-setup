@@ -120,7 +120,7 @@ Pushing `wip/*` branches is pre-approved. **main changes only through `$TASKGIT 
    the owner for a folder, then add it with `/add-dir <folder>` before cloning there.
    Record `<base>` in STATE.md. Copy templates: `STATE.md`, `TASKS.md`, `DECISIONS.md` at the
    root; `SPEC.md`, `HLD.md`, `LLD.md`, `CONVENTIONS.md` into `docs/`. `.gitignore`: `.env`,
-   `.results/`, `.venv/`, `node_modules/`. Commit + push (covered by the visibility answer).
+   `.results/`, `.venv/`, `node_modules/` (env-setup adds the data and model ignores for data/ML work). Commit + push (covered by the visibility answer).
 6. `$TASKGIT start <repo> plan`: stages 1–6 run on `wip/plan`.
 
 ## 1 · Spec interview ⏸

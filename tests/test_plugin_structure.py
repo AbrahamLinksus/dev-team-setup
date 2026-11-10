@@ -173,6 +173,13 @@ class StructureTest(unittest.TestCase):
         self.assertIn("card.md", card)
         self.assertIn("absolute paths", card)
 
+    def test_data_and_models_stay_out_of_git(self):
+        # T8: nothing ignored data/, models/, *.parquet, *.pt, *.pkl; only the 20 MB limit stopped them
+        env = (ROOT / "agents" / "env-setup.md").read_text(encoding="utf-8")
+        for pattern in ("`data/`", "`models/`", "`*.parquet`", "`*.pt`", "`*.pkl`"):
+            self.assertIn(pattern, env)
+        self.assertIn("DVC", (SKILL / "references" / "decision-policy.md").read_text(encoding="utf-8"))
+
     def test_no_hardcoded_owner(self):
         for path in list((ROOT / "agents").glob("*.md")) + list(SKILL.rglob("*.md")):
             with self.subTest(file=str(path.relative_to(ROOT))):
