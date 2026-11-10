@@ -140,6 +140,32 @@ class MeasureTest(unittest.TestCase):
         self.assertEqual(run("--budget", "1.5").returncode, 3)             # over budget
         self.assertIn("$0.00 so far", run("--since", "2026-11-11 00:00 +00:00").stdout)   # before the project
 
+    def test_claude_p_survives_large_output(self):
+        # A real run hung 1.5 h: Claude Code's final JSON outgrew the pipe buffer while bench.py
+        # waited for it to exit. A fake claude printing 300 KB must still come back, parsed.
+        script = self.d / "big.py"
+        script.write_text("import json, sys\nsys.stderr.write('w' * 100000)\n"
+                          "print(json.dumps({'is_error': False, 'result': 'x' * 300000}))\n")
+        if os.name == "nt":
+            fake = self.d / "claude.cmd"
+            fake.write_text(f'@"{sys.executable}" "{script}" %*\n')
+        else:
+            fake = self.d / "claude"
+            fake.write_text(f"#!/bin/sh\nexec {sys.executable} {script} \"$@\"\n")
+            fake.chmod(0o755)
+        import threading
+        old, bench.CLAUDE = bench.CLAUDE, str(fake)
+        box = {}
+        try:
+            t = threading.Thread(target=lambda: box.update(r=bench.claude_p("hi", self.d, False)), daemon=True)
+            t.start()
+            t.join(60)
+        finally:
+            bench.CLAUDE = old
+        self.assertIn("r", box, "claude_p deadlocked on large output")
+        self.assertFalse(box["r"]["is_error"])
+        self.assertEqual(len(box["r"]["result"]), 300000)
+
     def test_step_times(self):
         # D10: started→done pairs per step, and the wait between the last event and the answer
         (self.d / ".git").mkdir()
