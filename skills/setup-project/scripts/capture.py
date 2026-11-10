@@ -104,12 +104,28 @@ h1,h2,h3{margin:12px 0 8px}
 """
 
 
+def in_container() -> bool:
+    if Path("/.dockerenv").exists() or Path("/run/.containerenv").exists() or os.environ.get("container"):
+        return True
+    try:
+        return any(k in Path("/proc/1/cgroup").read_text() for k in ("docker", "kubepods", "containerd", "lxc"))
+    except OSError:
+        return False
+
+
+def chromium_args() -> list[str]:
+    """C8: keep Chromium's sandbox on. It only fails as root or inside most containers, which is
+    the only time --no-sandbox is passed (DEVTEAM_NO_SANDBOX=1 forces it)."""
+    root = hasattr(os, "geteuid") and os.geteuid() == 0
+    return ["--no-sandbox"] if root or in_container() or os.environ.get("DEVTEAM_NO_SANDBOX") == "1" else []
+
+
 def _browser():
     """Launch Chromium. Never installs it mid-task (C3): that's `doctor --install`'s job."""
     from playwright.sync_api import sync_playwright
     pw = sync_playwright().start()
     try:
-        browser = pw.chromium.launch(args=["--no-sandbox"])
+        browser = pw.chromium.launch(args=chromium_args())
     except Exception as exc:
         pw.stop()
         raise SystemExit(f"Chromium isn't installed for Playwright ({type(exc).__name__}). "

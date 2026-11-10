@@ -89,6 +89,20 @@ class FontTest(unittest.TestCase):
             os.unlink(f.name)
 
 
+class SandboxTest(unittest.TestCase):
+    def test_sandbox_only_dropped_when_needed(self):
+        # C8: Chromium always ran with --no-sandbox
+        cap = load_capture()
+        needed = (hasattr(os, "geteuid") and os.geteuid() == 0) or cap.in_container()
+        self.assertEqual(cap.chromium_args(), ["--no-sandbox"] if needed else [])
+        os.environ["DEVTEAM_NO_SANDBOX"] = "1"
+        try:
+            self.assertEqual(cap.chromium_args(), ["--no-sandbox"])
+        finally:
+            del os.environ["DEVTEAM_NO_SANDBOX"]
+        self.assertNotIn('launch(args=["--no-sandbox"])', CAP.read_text(encoding="utf-8"))
+
+
 class CaptureCliTest(unittest.TestCase):
     def test_help_lists_doctor(self):
         p = run("--help")
