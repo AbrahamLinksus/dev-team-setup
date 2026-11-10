@@ -324,6 +324,15 @@ class StructureTest(unittest.TestCase):
         self.assertIn("coverage.thresholds", row)
         self.assertIn("coverage.thresholds", (ROOT / "agents" / "env-setup.md").read_text(encoding="utf-8"))
 
+    def test_agent_duties_are_not_repeated(self):
+        # K21: the reviewer's duties 4 and 5 said the same thing (severity, file:line, fix)
+        for path in AGENTS:
+            duties = [ln for ln in path.read_text(encoding="utf-8").split("## Responsibilities")[1].split("## Team rules")[0].splitlines()
+                      if re.match(r"\d+\. ", ln)]
+            mentions = [d for d in duties if "file:line" in d]
+            with self.subTest(agent=path.stem):
+                self.assertLessEqual(len(mentions), 1, "the same instruction appears in more than one duty")
+
     def test_no_hardcoded_owner(self):
         for path in list((ROOT / "agents").glob("*.md")) + list(SKILL.rglob("*.md")):
             with self.subTest(file=str(path.relative_to(ROOT))):
