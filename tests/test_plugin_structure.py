@@ -386,6 +386,15 @@ class StructureTest(unittest.TestCase):
         for agent in web:
             self.assertIn(agent, readme, f"{agent} fetches the web but the README doesn't say so")
 
+    def test_guard_prefix_matches_plugin_name(self):
+        # D2: the guard only checks agents named "<plugin name>:<agent>". Renaming the plugin without
+        # updating both hook files would silently turn the guard off, so pin them to plugin.json.
+        manifest = json.loads((ROOT / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
+        prefix = manifest["name"] + ":"
+        self.assertIn(prefix, (ROOT / "hooks" / "scope_guard.sh").read_text(encoding="utf-8"))
+        self.assertIn(f'PLUGIN = "{manifest["name"]}"', (ROOT / "hooks" / "scope_guard.py").read_text(encoding="utf-8"))
+        self.assertTrue(manifest.get("displayName"), "plugin.json needs a displayName for the listing")
+
     def test_every_known_hole_keeps_its_regression_test(self):
         # M1: each problem fixed in code got a test that names it (S = scope guard, T = taskgit,
         # C = capture.py, G = gen_agents.py). Removing one of those tests should be a conscious act.
