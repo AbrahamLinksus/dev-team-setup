@@ -117,6 +117,8 @@ Pick these when Claude Code asks after you enable the plugin, or change them lat
 ## Learn more
 
 - [How it works](docs/how-it-works.md): the agents, the guardrails, the files each project gets
+- [Guardrails](docs/guardrails.md): what each agent may and may not touch, enforced by a hook, and the
+  20 bypasses found and closed, each kept by a named test
 - [Example run](examples/todo-app/): real planning output for a small todo app, from an early
   version (v0.2: planning stages only)
 - **Benchmark:** `python3 bench.py all` compares a normal Claude Code session with the plugin
