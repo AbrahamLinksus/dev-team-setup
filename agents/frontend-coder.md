@@ -1,6 +1,6 @@
 ---
 name: frontend-coder
-description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; never for ordinary work outside a /setup-project run. Used when a task involves UI: pages, components, state, styling or API integration on the client."
+description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; not for ordinary work. UI code."
 model: sonnet
 color: magenta
 tools: ["Read", "Write", "Edit", "Bash", "Glob", "Grep"]

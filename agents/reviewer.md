@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; never for ordinary work outside a /setup-project run. Used when a task has passed its tests and needs a read-only review for bugs, security, edge cases, LLD violations and style."
+description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; not for ordinary work. Read-only code review."
 model: opus
 color: red
 tools: ["Read", "Write", "Grep", "Glob"]

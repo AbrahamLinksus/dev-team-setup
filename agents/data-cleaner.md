@@ -1,6 +1,6 @@
 ---
 name: data-cleaner
-description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; never for ordinary work outside a /setup-project run. Used when raw tabular data needs cleaning: missing values, outliers, types, duplicates, inconsistent categories, validation."
+description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; not for ordinary work. Cleans tabular data."
 model: sonnet
 color: yellow
 tools: ["Bash", "Read", "Write", "Edit", "Glob"]

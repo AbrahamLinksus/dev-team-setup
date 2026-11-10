@@ -1,6 +1,6 @@
 ---
 name: statistician
-description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; never for ordinary work outside a /setup-project run. Used when hypothesis tests, A/B test analysis, confidence intervals, power analysis or causal inference are needed."
+description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; not for ordinary work. Hypothesis tests and causal inference."
 model: opus
 color: blue
 tools: ["Bash", "Read", "Write", "Glob"]

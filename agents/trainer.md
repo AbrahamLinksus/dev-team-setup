@@ -1,6 +1,6 @@
 ---
 name: trainer
-description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; never for ordinary work outside a /setup-project run. Used when a deep learning model must be trained or an LLM fine-tuned (PyTorch, HF Transformers, PEFT/LoRA)."
+description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; not for ordinary work. Trains or fine-tunes models."
 model: sonnet
 color: magenta
 tools: ["Bash", "Read", "Write", "Edit", "Glob"]

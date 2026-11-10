@@ -1,6 +1,6 @@
 ---
 name: tester
-description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; never for ordinary work outside a /setup-project run. Used when a task's code is written and needs unit/integration tests run against its acceptance criteria."
+description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; not for ordinary work. Tests a task against its criteria."
 model: sonnet
 color: yellow
 tools: ["Read", "Write", "Edit", "Bash", "Glob", "Grep"]

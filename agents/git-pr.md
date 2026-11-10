@@ -1,6 +1,6 @@
 ---
 name: git-pr
-description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; never for ordinary work outside a /setup-project run. Used when the Orchestrator wants a summarised commit message for a large approved task, or asks it to run an approve/reject it would rather not do itself (normally it runs taskgit.sh directly)."
+description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; not for ordinary work. Drafts squash commit messages."
 model: haiku
 color: yellow
 tools: ["Bash", "Read", "Write"]

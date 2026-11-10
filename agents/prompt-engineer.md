@@ -1,6 +1,6 @@
 ---
 name: prompt-engineer
-description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; never for ordinary work outside a /setup-project run. Used when a task involves LLM prompts, system prompts, structured outputs or iterating prompts against evals."
+description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; not for ordinary work. Prompts and structured outputs."
 model: sonnet
 color: magenta
 tools: ["Bash", "Read", "Write", "Edit", "Glob"]

@@ -1,6 +1,6 @@
 ---
 name: architect
-description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; never for ordinary work outside a /setup-project run. Used when an approved HLD needs a low-level design (stack, structure, modules, schema, contracts, packages, conventions), a change request needs design updates, the LLD needs an as-built sync at milestone end, or the project needs its handover ARCHITECTURE.md and WALKTHROUGH.md."
+description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; not for ordinary work. LLD, conventions, as-built docs."
 model: opus
 color: blue
 tools: ["Read", "Write", "Edit", "Glob", "Grep"]

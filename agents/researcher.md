@@ -1,6 +1,6 @@
 ---
 name: researcher
-description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; never for ordinary work outside a /setup-project run. Used when libraries, frameworks, models, APIs or papers need to be compared or checked for current versions and known issues."
+description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; not for ordinary work. Compares libraries, models and APIs."
 model: sonnet
 color: cyan
 tools: ["WebSearch", "WebFetch", "Read", "Write"]

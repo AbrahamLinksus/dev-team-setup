@@ -1,6 +1,6 @@
 ---
 name: evaluator
-description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; never for ordinary work outside a /setup-project run. Used when a model, RAG pipeline or LLM output needs measuring against a baseline, including LLM-as-judge grading."
+description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; not for ordinary work. Measures models and LLM output."
 model: opus
 color: cyan
 tools: ["Bash", "Read", "Write", "Glob", "Grep"]

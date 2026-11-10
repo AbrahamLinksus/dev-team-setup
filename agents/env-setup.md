@@ -1,6 +1,6 @@
 ---
 name: env-setup
-description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; never for ordinary work outside a /setup-project run. Used when the project environment must be created from the approved LLD: folders, uv/node project, pinned packages, .env.example, .gitignore, pre-commit, Docker."
+description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; not for ordinary work. Creates the project environment."
 model: sonnet
 color: green
 tools: ["Bash", "Read", "Write", "Edit", "Glob"]

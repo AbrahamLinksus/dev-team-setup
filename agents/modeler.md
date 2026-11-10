@@ -1,6 +1,6 @@
 ---
 name: modeler
-description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; never for ordinary work outside a /setup-project run. Used when a task needs feature engineering and classical ML models (regression, tree ensembles, XGBoost/LightGBM, clustering) or time-series forecasting."
+description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; not for ordinary work. Features and classical ML."
 model: sonnet
 color: magenta
 tools: ["Bash", "Read", "Write", "Edit", "Glob"]

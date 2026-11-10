@@ -1,6 +1,6 @@
 ---
 name: eda
-description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; never for ordinary work outside a /setup-project run. Used when a dataset needs exploratory analysis before features or modelling."
+description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; not for ordinary work. Exploratory data analysis."
 model: sonnet
 color: cyan
 tools: ["Bash", "Read", "Write", "Edit", "Glob"]

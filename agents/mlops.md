@@ -1,6 +1,6 @@
 ---
 name: mlops
-description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; never for ordinary work outside a /setup-project run. Used when a model must be served (FastAPI + Docker), versioned, or monitored for drift and performance."
+description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; not for ordinary work. Serves and monitors models."
 model: sonnet
 color: green
 tools: ["Bash", "Read", "Write", "Edit", "Glob"]

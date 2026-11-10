@@ -1,6 +1,6 @@
 ---
 name: debugger
-description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; never for ordinary work outside a /setup-project run. Used when tests fail, the app errors, or the reviewer reports a Critical issue."
+description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; not for ordinary work. Fixes failing tests and errors."
 model: opus
 color: red
 tools: ["Read", "Write", "Edit", "Bash", "Glob", "Grep"]
