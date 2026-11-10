@@ -1,5 +1,12 @@
 # Example: todo-app (planning stages)
 
+> **Dated example (plugin v0.2).** It predates the spec interview, the scope guard, per-task
+> worktrees and everything since, and it stops before the build. Use it to see what the planning
+> documents look like, not how a run goes today. To replace it, do one full run with the current
+> plugin (spec → handover) and keep: `docs/SPEC.md` + wireframes, `docs/HLD.md`, `docs/LLD.md`,
+> `docs/CONVENTIONS.md`, `TASKS.md`, `DECISIONS.md`, one task's result card and visuals, the
+> milestone card, and `docs/ARCHITECTURE.md` + `docs/WALKTHROUGH.md` from the handover.
+
 Real output from a `/setup-project` dry run (plugin v0.2): a single-user todo app with a
 FastAPI + SQLite backend and a React + Vite + TypeScript frontend. Nothing here was edited
 by hand except replacing the owner's name.
