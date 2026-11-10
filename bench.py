@@ -723,6 +723,51 @@ def claude_interactive(prompt: str, cwd: Path, skip_permissions: bool) -> int:
     return subprocess.call(cmd, cwd=cwd)
 
 
+MAX_UNATTENDED_SESSIONS = 12
+MARKERS = ("MILESTONE DONE", "HANDOVER DONE", "STOPPED")
+
+
+def answers_log(folder: Path) -> list[str]:
+    path = folder / "answers.log"
+    return path.read_text(encoding="utf-8").splitlines() if path.exists() else []
+
+
+def logged_answers(folder: Path) -> list[str]:
+    return [ln for ln in answers_log(folder) if ln.strip() and not ln.startswith(MARKERS)]
+
+
+def run_unattended(key: str, folder: Path, repo: str, start: datetime, budget: float | None,
+                   skip_permissions: bool, state: dict) -> None:
+    """D7: headless plugin sessions that answer their own cards from ANSWERS.md
+    (skills/setup-project/references/unattended.md), resumed until the handover is done."""
+    answers_file = f" Answers file: {folder / 'ANSWERS.md'}"  # same line: Windows cuts args at a newline
+    prompt = PLUGIN_PROMPT.format(repo=repo) + answers_file
+    stalled = 0
+    for n in range(1, MAX_UNATTENDED_SESSIONS + 1):
+        before = len(answers_log(folder))
+        say(f"Plugin session {n}, headless…")
+        result = claude_p(prompt, folder, skip_permissions)
+        if result.get("is_error"):
+            say(f"  ! the session ended with an error: {str(result.get('result'))[:300]}")
+        lines = answers_log(folder)
+        m = measure(log_dir_for(folder), sessions_in(log_dir_for(folder), start))
+        say(f"  {len(lines) - before} new answer-log lines · cost so far ${m['cost_usd']:.2f}"
+            + (f" of ${budget:.2f}" if budget else ""))
+        if any(ln.startswith("HANDOVER DONE") for ln in lines):
+            say("  Handover done.")
+            return
+        stop = next((ln for ln in lines if ln.startswith("STOPPED")), None)
+        over = budget is not None and m["cost_usd"] > budget
+        stalled = stalled + 1 if len(lines) == before else 0
+        if stop or over or stalled >= 2:
+            say(f"  Stopping: {stop or ('over budget' if over else 'two sessions in a row made no progress')}.")
+            state.setdefault("runs", {}).setdefault(key, {})["stopped"] = True
+            return
+        prompt = RESUME_PROMPT.format(repo=repo) + answers_file
+    say(f"  Stopping: {MAX_UNATTENDED_SESSIONS} sessions without a handover.")
+    state.setdefault("runs", {}).setdefault(key, {})["stopped"] = True
+
+
 # ---- commands --------------------------------------------------------------------------------
 def cmd_check(_=None) -> bool:
     say("Checking tools")
@@ -827,6 +872,10 @@ def settings(state: dict) -> dict:
         s["skip_permissions"] = yes("Skip permission prompts in benchmark runs? (same for every run)", True)
         s["normal_unattended"] = yes("Run the normal sessions unattended (headless)? You won't need to watch them.", True) \
             if s["skip_permissions"] else False
+    if "plugin_unattended" not in s:
+        s["plugin_unattended"] = s["skip_permissions"] and yes(
+            "Run the plugin sessions unattended too? The plugin answers its own cards from ANSWERS.md "
+            "and logs each answer, so runs are repeatable.", True)
     if "budget_factor" not in s:
         s["budget_factor"] = float(ask("Stop a plugin run if it costs more than N × the normal run. N =", "10"))
     save_state(state)
@@ -877,10 +926,13 @@ def cmd_run(args) -> None:
         say(f"(Also saved to {folder / 'ANSWERS.md'}.)")
         if budget:
             say(f"Budget: ${budget:.2f} ({s['budget_factor']:g} × the normal run).")
-        input("Press Enter to open the plugin session…")
         prompt = PLUGIN_PROMPT.format(repo=repo)
         sessions_done = 0
-        while True:
+        if s.get("plugin_unattended"):
+            run_unattended(key, folder, repo, start, budget, s["skip_permissions"], state)
+        else:
+            input("Press Enter to open the plugin session…")
+        while not s.get("plugin_unattended"):
             say(f"(If the prompt doesn't appear in the session, paste it: {prompt})")
             claude_interactive(prompt, folder, s["skip_permissions"])
             sessions_done += 1
@@ -896,11 +948,15 @@ def cmd_run(args) -> None:
                 state.setdefault("runs", {}).setdefault(key, {})["stopped"] = True
                 break
             prompt = RESUME_PROMPT.format(repo=repo)
-        project = PROJECTS / repo if (PROJECTS / repo).exists() else folder
+        project = next((p for p in (PROJECTS / repo, folder / repo) if p.exists()), folder)
 
     end = datetime.now(timezone.utc)
     say("Measuring tokens and cost…")
     tokens = measure(log_dir_for(folder), sessions_in(log_dir_for(folder), start))
+    if mode == "plugin" and s.get("plugin_unattended"):
+        # Unattended: the owner's interventions are the answers the plugin logged in their place.
+        n = len(logged_answers(folder))
+        tokens.update({"interventions": n, "answered_questions": n, "typed": 0})
     say(token_table(tokens, key))
     if not args.no_test:
         say(f"\nStarting the build from {project} and testing it…")

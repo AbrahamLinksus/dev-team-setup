@@ -31,6 +31,8 @@ If a value above is empty or still reads `${user_config...}`, ask the owner once
 (name, GitHub owner); defaults are `every-task` and `quality`. Record them in STATE.md.
 Timestamps you write (STATE.md, TASK_PROGRESS.md) use the owner's local time with its UTC offset
 (`date +'%Y-%m-%d %H:%M %:z'`), never a fixed zone.
+If the prompt contains `Answers file: <path>`, read `references/unattended.md` first and follow
+it for the whole run: every owner question is answered from that file, never AskUserQuestion.
 
 ## Paths
 
