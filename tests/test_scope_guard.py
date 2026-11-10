@@ -6,6 +6,8 @@ Run: python3 -m unittest discover -s tests -v
 from __future__ import annotations  # `str | None` annotations on Python 3.9 (macOS's python3)
 
 import json
+import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -400,6 +402,25 @@ class GuardTest(unittest.TestCase):
                 self.assertIsNone(self.bash("backend-coder", cmd))
         # other agents and the main thread are untouched
         self.assertIsNone(hook(None, "Read", {"file_path": str(self.repo / ".env")}, str(self.repo)))
+
+    def test_shell_prefilter(self):
+        # S15: the entry point answers other callers without starting Python
+        sh = shutil.which("sh")
+        if not sh:
+            self.skipTest("no sh")
+        entry = ROOT / "hooks" / "scope_guard.sh"
+        env = {**os.environ, "PATH": f"{Path(sys.executable).parent}{os.pathsep}{os.environ.get('PATH', '')}"}
+        if not shutil.which("python3", path=env["PATH"]):
+            self.skipTest("python3 not on PATH")
+
+        def run(event):
+            return subprocess.run([sh, str(entry)], input=json.dumps(event), capture_output=True, text=True,
+                                  env=env, check=True).stdout.strip()
+        push = {"tool_name": "Bash", "tool_input": {"command": "git push -f"}, "cwd": str(self.repo)}
+        self.assertEqual(run(push), "")                                         # main session
+        self.assertEqual(run({**push, "agent_type": "reviewer"}), "")           # someone else's agent
+        self.assertEqual(run({**push, "agent_type": "other:dev-team-setup:x"}), "")
+        self.assertIn('"deny"', run({**push, "agent_type": "dev-team-setup:backend-coder"}))
 
     def test_no_shell_roles(self):
         for agent in ("reviewer", "researcher", "planner", "architect", "docs", "insights-reporter"):
