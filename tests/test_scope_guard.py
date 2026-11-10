@@ -147,7 +147,7 @@ class GuardTest(unittest.TestCase):
         self.assertTrue(reason)
         # a deny outside any repo still denies (logging never breaks the guard)
         with tempfile.TemporaryDirectory() as d:
-            self.assertIsNotNone(hook("dev-team-setup:tester", "Write", {"file_path": f"{d}/x/src/a.py"}, d))
+            self.assertIsNotNone(hook("dev-team-setup:tester", "Bash", {"command": "git push origin main"}, d))
 
     def test_agent_pinned_to_its_own_worktree(self):
         # S8 follow-up: a write into ANOTHER task's worktree (<repo>-wt/T-02 from T-01's agent) used to pass
