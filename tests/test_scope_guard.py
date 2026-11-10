@@ -443,6 +443,18 @@ class GuardTest(unittest.TestCase):
                                    capture_output=True, text=True, env={"PATH": bindir}).stdout
             self.assertEqual(other, "")   # other callers never need Python
 
+    def test_cd_target_overrides_apply(self):
+        # S16: the hook's cwd is the session folder; `cd <worktree> &&` must bring that worktree's overrides
+        (self.repo / ".devteam").mkdir(exist_ok=True)
+        (self.repo / ".devteam" / "scopes.json").write_text(json.dumps({"agents": {"backend-coder": {"bash": "none"}}}))
+        try:
+            outside = str(self.main.parent)   # like the session folder: not inside the worktree
+            cmd = f"cd {self.repo.as_posix()} && uv run pytest -q"
+            self.assertIsNotNone(hook("dev-team-setup:backend-coder", "Bash", {"command": cmd}, outside))
+            self.assertIsNone(hook("dev-team-setup:backend-coder", "Bash", {"command": "uv run pytest -q"}, outside))
+        finally:
+            (self.repo / ".devteam" / "scopes.json").unlink()
+
     def test_no_shell_roles(self):
         for agent in ("reviewer", "researcher", "planner", "architect", "docs", "insights-reporter"):
             with self.subTest(agent=agent):

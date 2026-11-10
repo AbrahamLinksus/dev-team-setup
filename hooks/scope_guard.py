@@ -625,6 +625,9 @@ def evaluate(name: str, event: dict, scopes: dict) -> str | None:
         cmd = inp.get("command", "")
         if not isinstance(cmd, str):
             raise ValueError("non-string command")
+        # S16: a subagent's cwd is the session's folder; it reaches the worktree with a leading
+        # `cd <worktree> &&` (team rules), so that worktree's .devteam/scopes.json is the one to use
+        cwd = command_cwd(cmd, cwd)
         scopes = load_scopes(find_root(Path(cwd).resolve()))
         why = bash_violation(name, cmd, scopes, cwd=cwd)
         if why is None and inp.get("run_in_background") and scopes["agents"][name].get("bash", "none") != "none" \
@@ -632,6 +635,16 @@ def evaluate(name: str, event: dict, scopes: dict) -> str | None:
             why = UNBOUNDED_BACKGROUND
         return why
     return None
+
+
+def command_cwd(command: str, cwd: str) -> str:
+    """The folder a command really runs in: the hook's cwd, moved by the `cd`s that lead it."""
+    here = cwd
+    for seg in segments(command) or []:
+        if not seg or os.path.basename(seg[0]) != "cd" or len(seg) != 2:
+            break
+        here = seg[1] if os.path.isabs(seg[1]) else os.path.join(here, seg[1])
+    return here
 
 
 UNBOUNDED_BACKGROUND = ("background processes must end on their own so nothing outlives your step: start them "
