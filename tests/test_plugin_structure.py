@@ -363,9 +363,10 @@ class StructureTest(unittest.TestCase):
         self.assertNotIn("That's it.", readme)
 
     def test_readme_config_instructions_exist(self):
-        # M6: `/plugin configure …` isn't a Claude Code command; options are prompted on enable and live in /config
+        # M6: options are prompted on enable; afterwards `/plugin configure <plugin>` (named by the CLI's own
+        # install message) or a row per option in `/config` change them
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
-        self.assertNotIn("/plugin configure", readme)
+        self.assertIn("/plugin configure dev-team-setup@dev-team-setup", readme)
         self.assertIn("`/config`", readme)
 
     def test_example_says_how_old_it_is(self):
