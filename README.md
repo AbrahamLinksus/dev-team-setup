@@ -63,6 +63,31 @@ Mostly tap buttons. After every task you get a result like this:
 
 ---
 
+## What this plugin runs and sends
+
+Everything runs on your machine, in your Claude Code session. The plugin has no server and
+no telemetry. It sends nothing anywhere except what is listed here.
+
+| What | When | Where it goes |
+|---|---|---|
+| Creates a GitHub repo (`gh repo create`), private or public as you choose | Once, at the start of a project | GitHub, under the account you set as `github_owner` |
+| Pushes commits: `main` and one `wip/<task>` branch per task, after every step | Throughout the build, so work survives a closed session | That repo |
+| Installs the project's own dependencies (`uv sync`, `npm ci`, …) | When a task starts in its own worktree | Package registries (PyPI, npm); files stay in the project folder |
+| Installs Playwright, Chromium, Pillow and `mermaid@11.4.1` for screenshots and diagrams | Only when you say yes to `capture.py doctor --install` | Into the plugin's private data folder, not your system Python |
+| Starts a headless browser on `localhost` | To screenshot each result | Nowhere: local pages only |
+| Fetches web pages and searches the web | Only the researcher, rag-engineer, agent-engineer and data-acquisition agents, and only when the plan picks them | The sites they read |
+| Reads Google Drive files | Only the data-acquisition agent, only if you connected Google Drive and point it at a file | Read-only |
+
+**The guard.** A hook (`hooks/scope_guard.sh`, which runs `hooks/scope_guard.py`) checks every
+file edit and shell command made by the plugin's own agents, and blocks anything outside that
+agent's role: for example, the tester can't edit app code, and no agent can read `.env` files,
+push to `main`, or delete outside the project. It runs locally, makes no network calls, and
+ignores tools used outside the plugin's agents. When it can't run (no Python 3.9+), it blocks
+the agent's action rather than letting it through. The full rules are in
+[how it works](docs/how-it-works.md).
+
+---
+
 ## Good to know
 
 - **Take a break anytime.** Continue later, on any device:
