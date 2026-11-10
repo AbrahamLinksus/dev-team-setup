@@ -62,7 +62,8 @@ push_branch() {  # push_branch <dir> <branch>; quiet on success
 
 blocked_files() {
   local bad
-  bad=$(git -C "$1" diff --cached --name-only | grep -E '(^|/)\.env(\..+)?$|\.pem$|\.key$|^\.results/' \
+  # secrets by file name (T7: also cloud/SSH/registry credentials); check.sh scans contents (gitleaks)
+  bad=$(git -C "$1" diff --cached --name-only | grep -E '(^|/)\.env(\..+)?$|(^|/)\.envrc$|\.pem$|\.key$|\.p12$|\.pfx$|(^|/)credentials\.json$|(^|/)service[-_]?account[^/]*\.json$|(^|/)id_(rsa|dsa|ecdsa|ed25519)$|(^|/)\.(npmrc|pypirc|netrc)$|(^|/)kaggle\.json$|^\.results/' \
         | grep -Ev '(^|/)\.env\.example$' || true)
   [[ -n "$bad" ]] && { git -C "$1" reset -q; die 2 "refusing to commit secrets/results: $bad"; }
   local f big=""
