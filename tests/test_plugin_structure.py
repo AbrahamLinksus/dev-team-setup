@@ -312,11 +312,18 @@ class StructureTest(unittest.TestCase):
         for count in re.findall(r"\d+/(\d+) (?:sections )?compl", interview):
             self.assertEqual(int(count), len(spec_sections))
 
+    def test_marketplace_description_is_neutral(self):
+        # K19: "Jake's Claude plugins" (the owner's name belongs in the author field, not the description)
+        desc = json.loads((ROOT / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))["description"]
+        self.assertNotIn("'s Claude plugins", desc)
+
     def test_no_hardcoded_owner(self):
         for path in list((ROOT / "agents").glob("*.md")) + list(SKILL.rglob("*.md")):
             with self.subTest(file=str(path.relative_to(ROOT))):
                 self.assertNotIn("AbrahamLinksus", path.read_text())
                 self.assertNotIn("Jake", path.read_text())
+                # K19: no fixed time zone or gendered wording for the owner
+                self.assertNotRegex(path.read_text(encoding="utf-8"), r"\bIST\b|\b(his|her) phone\b")
 
 
 if __name__ == "__main__":
