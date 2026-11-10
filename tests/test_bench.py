@@ -109,6 +109,37 @@ class MeasureTest(unittest.TestCase):
         self.assertIn("| step |", table)
         self.assertIn("| test |", table)
 
+    def test_cost_script_for_cards_and_budget(self):
+        # D23: skills/setup-project/scripts/cost.py reuses this reader for the card's Cost line
+        import re as _re
+        base = self.d / "base"
+        base.mkdir()
+        logs = self.d / "logs"
+        ld = logs / _re.sub(r"[^A-Za-z0-9]", "-", str(base.resolve()))
+        ts = "2026-11-10T10:00:00Z"
+        main = [{"type": "user", "timestamp": ts, "message": {"content": "go"}},
+                {"type": "assistant", "timestamp": ts, "message": {"id": "m", "model": "opus", "usage": usage(0, 0, 1000, 100)}},
+                {"type": "cost-state", "totalCostUSD": 2.0, "modelUsage": {"opus": {
+                    "inputTokens": 0, "cacheCreationInputTokens": 0, "cacheReadInputTokens": 2000, "outputTokens": 200}}}]
+        sub = [{"type": "user", "timestamp": ts, "message": {"content": "TEAM_RULES: x\nBRIEF · T-04 · tester · test"}},
+               {"type": "assistant", "timestamp": ts, "message": {"id": "s", "model": "opus", "usage": usage(0, 0, 1000, 100)}}]
+        (ld / "s1" / "subagents").mkdir(parents=True)
+        (ld / "s1.jsonl").write_text("\n".join(json.dumps(x) for x in main) + "\n")
+        (ld / "s1" / "subagents" / "a.jsonl").write_text("\n".join(json.dumps(x) for x in sub) + "\n")
+        script = ROOT / "skills" / "setup-project" / "scripts" / "cost.py"
+
+        def run(*a):
+            return subprocess.run([sys.executable, str(script), str(base), *a], capture_output=True, text=True,
+                                  encoding="utf-8", env={**os.environ, "BENCH_LOGS": str(logs)})
+        p = run("--task", "T-04", "--since", "2026-11-10 09:00 +00:00", "--budget", "25", "--json")
+        r = json.loads(p.stdout)
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertEqual(r["total_usd"], 2.0)
+        self.assertEqual(r["task_usd"], 1.0)        # the tester's tokens are half the run's weighted tokens
+        self.assertEqual(r["line"], "Cost: ≈$1.00 this task · $2.00 so far · budget $25 (8%)")
+        self.assertEqual(run("--budget", "1.5").returncode, 3)             # over budget
+        self.assertIn("$0.00 so far", run("--since", "2026-11-11 00:00 +00:00").stdout)   # before the project
+
     def test_step_times(self):
         # D10: started→done pairs per step, and the wait between the last event and the answer
         (self.d / ".git").mkdir()

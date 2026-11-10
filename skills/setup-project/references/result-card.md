@@ -31,6 +31,7 @@ Tests: 14/14 passed · coverage 86%
 Conventions: lint ✅ · types ✅ · max complexity 7 · layers ✅ · SOLID review: 0 major, 1 minor
 Reviewer: 1 minor — hardcoded token expiry (auth.py:41)
 Agent decisions: bcrypt for hashing (D-12)
+Cost: ≈$0.42 this task · $3.10 so far · budget $25 (12%)
 ```
 
 Rules:
@@ -43,6 +44,8 @@ Rules:
   list the 3–5 most important changes in one line each.
 - If any goal is ⚠️ or ❌, put a line above the card: "⚠️ Not all goals met."
 - Offer the full diff on request (send it as a .diff file).
+- The Cost line is `python3 $COST` output, verbatim (task share is an estimate, hence ≈). If it
+  can't read the logs, leave the line out rather than guess.
 
 ## Approval question
 

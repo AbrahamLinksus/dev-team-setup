@@ -43,6 +43,9 @@ Per task `T-xx`:
 4. `$TASKGIT sync <repo> T-xx`. Exit 4 (conflict) / 5 (checks fail; output path in the error)
    → debugger, back to step 3.
 5. Classify risk (`approval-modes.md`); produce visuals (`visual-capture.md`, screenshots first).
+   Run `python3 $COST …` for the card's Cost line. **Exit 3 (over budget)** → before the card, a
+   decision card ⏸: "Spent $X of your $B budget" → **Raise the budget to …** (suggest 1.5×; record it
+   in STATE.md and use it from now on) / **Pause** (`anytime.md`). Never continue over budget unasked.
 6. Result card now or queued for a batch, per approval mode. Then:
    - **Approve** → run `$TASKGIT approve <repo> T-xx "<msg>"` yourself, with a conventional-commit
      message built from the card (`feat(auth): add login endpoint [T-07]`); then update `TASKS.md`,

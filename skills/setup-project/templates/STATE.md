@@ -11,6 +11,7 @@
 | Stage | {{0 Intake · 1 Spec · 2 HLD · 3 Team pick · 4 LLD · 5 Env · 6 Tasks · 7 Build · 8 Handover}} |
 | Milestone | {{M2 · name}} ({{done}}/{{total}} tasks) |
 | Next step | {{T-08 · owner · what}} |
+| Started | {{YYYY-MM-DD HH:MM ±HH:MM}} (cost.py --since) · Budget {{USD, 0 = no cap}} |
 | Last updated | {{YYYY-MM-DD HH:MM ±HH:MM, the owner's local time}} |
 
 ## Team
