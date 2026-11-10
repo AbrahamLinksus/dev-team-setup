@@ -395,6 +395,16 @@ class StructureTest(unittest.TestCase):
         self.assertIn(f'PLUGIN = "{manifest["name"]}"', (ROOT / "hooks" / "scope_guard.py").read_text(encoding="utf-8"))
         self.assertTrue(manifest.get("displayName"), "plugin.json needs a displayName for the listing")
 
+    def test_tracked_text_files_have_no_cr(self):
+        # D3: if the directory's validator rejects .gitattributes, the file goes and this test is the
+        # guard instead: a CRLF shell script fails on Linux/macOS ("$'\r': command not found").
+        out = subprocess.run(["git", "ls-files", "-z"], cwd=ROOT, capture_output=True).stdout
+        binary = {".png", ".jpg", ".jpeg", ".gif", ".ico", ".plugin"}
+        bad = [name for name in out.decode().split("\0")
+               if name and (ROOT / name).is_file() and (ROOT / name).suffix.lower() not in binary
+               and b"\r" in (ROOT / name).read_bytes()]
+        self.assertEqual(bad, [], "CR line endings: run `git add --renormalize .`")
+
     def test_every_known_hole_keeps_its_regression_test(self):
         # M1: each problem fixed in code got a test that names it (S = scope guard, T = taskgit,
         # C = capture.py, G = gen_agents.py). Removing one of those tests should be a conscious act.
