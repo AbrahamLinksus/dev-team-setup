@@ -351,6 +351,21 @@ if scenario scope_handles_odd_file_names; then
   check "in-scope file with a space kept" test -f "$W/tests/test ok.py"
 fi
 
+if scenario approve_and_reject_forget_agent_pins; then
+  # S8: the scope guard pins each agent to its task worktree in .git/devteam-agents/; a finished task's
+  # pins go with its worktree
+  new_repo pins; P1=$(tg start "$R" T-29); P2=$(tg start "$R" T-30); P3=$(tg start "$R" T-31)
+  mkdir -p "$R/.git/devteam-agents"
+  echo "$P1" > "$R/.git/devteam-agents/agent-1"; echo "$P2" > "$R/.git/devteam-agents/agent-2"
+  echo "$P3" > "$R/.git/devteam-agents/agent-3"
+  echo "a = 1" > "$P1/a.py"; tgq checkpoint "$R" T-29 x
+  check "approve works" expect_exit 0 tg approve "$R" T-29 "feat: a"
+  check "approve removes the approved task's pins" test ! -e "$R/.git/devteam-agents/agent-1"
+  tgq reject "$R" T-30
+  check "reject removes the rejected task's pins" test ! -e "$R/.git/devteam-agents/agent-2"
+  check "other tasks' pins stay" test -f "$R/.git/devteam-agents/agent-3"
+fi
+
 if scenario portable_to_macos; then
   # T3: macOS ships bash 3.2 and BSD tools: no mapfile/readarray, grep -P, stat -c, head -n -N, bare sed -i.
   code=$(grep -v '^ *#' "$TG")

@@ -166,6 +166,57 @@ def is_task_worktree(root: Path) -> bool:
     return (root / ".git").is_file() and root.parent.name.endswith("-wt")
 
 
+# S8: each agent is pinned to ONE task worktree: the first one it touches. Agents start by reading
+# the files their brief lists, which all live in their own worktree, so that is where they get
+# pinned; from then on a write, or a shell command run in another task's worktree, is refused.
+# Pins are keyed by Claude Code's per-subagent `agent_id` and kept in the repo's shared git dir
+# (`.git/devteam-agents/`), which the scope rules deny to every agent.
+def task_worktree_of(path: Path) -> Path | None:
+    try:
+        root = find_root(path if path.is_dir() else path.parent)
+    except OSError:
+        return None
+    return root.resolve() if root is not None and is_task_worktree(root) else None
+
+
+def pin_file(worktree: Path, agent_id: str) -> Path | None:
+    """<main checkout>/.git/devteam-agents/<agent_id>, found through the worktree's `.git` file."""
+    try:
+        line = (worktree / ".git").read_text(encoding="utf-8").strip()
+    except OSError:
+        return None
+    if not line.startswith("gitdir:"):
+        return None
+    gitdir = Path(line.split(":", 1)[1].strip())
+    if not gitdir.is_absolute():
+        gitdir = (worktree / gitdir).resolve()
+    common = gitdir.parent.parent   # <main>/.git/worktrees/<id> -> <main>/.git
+    return common / "devteam-agents" / re.sub(r"[^A-Za-z0-9_.-]", "_", agent_id)
+
+
+def pinned_elsewhere(agent_id: str | None, target: Path) -> Path | None:
+    """Pin the agent to target's task worktree on first touch; return the worktree it is pinned to
+    when target lies in a DIFFERENT one, else None."""
+    if not agent_id:
+        return None   # no per-agent id from Claude Code: nothing to pin to
+    wt = task_worktree_of(target)
+    pin = pin_file(wt, agent_id) if wt else None
+    if pin is None:
+        return None
+    try:
+        pinned = Path(pin.read_text(encoding="utf-8").strip())
+    except OSError:
+        pin.parent.mkdir(parents=True, exist_ok=True)
+        pin.write_text(str(wt), encoding="utf-8")
+        return None
+    return None if os.path.normcase(str(pinned)) == os.path.normcase(str(wt)) else pinned
+
+
+def other_worktree_reason(name: str, pinned: Path, target: Path) -> str:
+    return (f"{name} works in the task worktree {pinned} (the Worktree: in its brief); {target} belongs to "
+            f"another task's worktree. Each agent changes only its own task.")
+
+
 def abs_violation(name: str, file_path: str, cwd: str, scopes: dict) -> str | None:
     p = Path(file_path if os.path.isabs(file_path) else os.path.join(cwd or ".", file_path)).resolve()
     try:
@@ -661,11 +712,29 @@ def hook_main() -> None:
 
 def evaluate(name: str, event: dict, scopes: dict) -> str | None:
     tool, inp, cwd = event.get("tool_name", ""), event.get("tool_input") or {}, event.get("cwd") or os.getcwd()
+    agent_id = event.get("agent_id") if isinstance(event.get("agent_id"), str) else None
+
+    def abs_path(p: str) -> Path:
+        return Path(p if os.path.isabs(p) else os.path.join(cwd, p)).resolve()
+
     if tool in ("Read", "Grep"):
         fp = inp.get("file_path") or inp.get("path") or ""
         if isinstance(fp, str) and is_secret_file(fp):
             return f"{name} may not read {fp}: it holds secrets. Key names are documented in .env.example."
+        if isinstance(fp, str) and fp:
+            pinned_elsewhere(agent_id, abs_path(fp))   # reads only pin (S8); reading elsewhere is allowed
         return None
+    if tool in ("Write", "Edit", "MultiEdit", "NotebookEdit"):
+        fp = inp.get("file_path") or inp.get("notebook_path")
+        if isinstance(fp, str) and fp:
+            pinned = pinned_elsewhere(agent_id, abs_path(fp))
+            if pinned:
+                return other_worktree_reason(name, pinned, abs_path(fp))
+    if tool == "Bash" and isinstance(inp.get("command"), str):
+        where = abs_path(command_cwd(inp["command"], cwd))
+        pinned = pinned_elsewhere(agent_id, where)
+        if pinned:
+            return other_worktree_reason(name, pinned, where)
     if tool == "Bash" and isinstance(inp.get("command"), str):
         secret = secret_in_command(inp["command"])
         if secret:

@@ -131,6 +131,35 @@ class GuardTest(unittest.TestCase):
         finally:
             (self.repo / ".devteam" / "scopes.json").unlink()
 
+    def test_agent_pinned_to_its_own_worktree(self):
+        # S8 follow-up: a write into ANOTHER task's worktree (<repo>-wt/T-02 from T-01's agent) used to pass
+        other = self.repo.parent / "T-2"
+        if not other.exists():
+            subprocess.run(["git", "-C", str(self.main), "worktree", "add", "-q", "-b", "wip/T-2", str(other)], check=True)
+
+        def call(agent_id, tool, tool_input):
+            event = {"tool_name": tool, "tool_input": tool_input, "cwd": str(self.main.parent),
+                     "agent_type": "dev-team-setup:backend-coder", "agent_id": agent_id}
+            out = subprocess.run([sys.executable, str(GUARD)], input=json.dumps(event),
+                                 capture_output=True, text=True, check=True).stdout.strip()
+            return json.loads(out)["hookSpecificOutput"]["permissionDecisionReason"] if out else None
+
+        # agent a1 reads its brief's files in T-1 first: pinned there
+        self.assertIsNone(call("a1", "Read", {"file_path": str(self.repo / "docs" / "LLD.md")}))
+        self.assertIsNone(call("a1", "Write", {"file_path": str(self.repo / "backend" / "x.py")}))
+        self.assertIsNotNone(call("a1", "Write", {"file_path": str(other / "backend" / "x.py")}))
+        self.assertIsNotNone(call("a1", "Edit", {"file_path": str(other / "backend" / "x.py")}))
+        self.assertIsNotNone(call("a1", "Bash", {"command": f"cd {other.as_posix()} && uv run pytest -q"}))
+        self.assertIsNone(call("a1", "Read", {"file_path": str(other / "README.md")}))      # reading is fine
+        self.assertIsNone(call("a1", "Bash", {"command": f"cd {self.repo.as_posix()} && uv run pytest -q"}))
+        # agent a2 (T-2's coder) gets pinned to T-2 and is kept out of T-1
+        self.assertIsNone(call("a2", "Write", {"file_path": str(other / "backend" / "y.py")}))
+        self.assertIsNotNone(call("a2", "Write", {"file_path": str(self.repo / "backend" / "y.py")}))
+        # the pins live in the main checkout's .git, which agents can't write
+        pins = self.main / ".git" / "devteam-agents"
+        self.assertEqual(sorted(p.name for p in pins.iterdir()), ["a1", "a2"])
+        self.assertIsNotNone(call("a1", "Write", {"file_path": str(pins / "a1")}))
+
     def test_outside_repo(self):
         self.assertIsNone(hook("dev-team-setup:statistician", "Write", {"file_path": "/tmp/scratch-x/a.py"}, "/"))
         self.assertIsNotNone(hook("dev-team-setup:backend-coder", "Write", {"file_path": "/root/elsewhere.py"}, "/"))
