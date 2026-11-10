@@ -348,6 +348,21 @@ class GuardTest(unittest.TestCase):
             with self.subTest(cmd=cmd, expect="allow"):
                 self.assertIsNone(self.bash("backend-coder", cmd))
 
+    def test_gh_writes_blocked(self):
+        # S11: gh repo edit --visibility public and gh pr merge used to pass
+        for cmd in ["gh repo edit --visibility public", "gh pr merge 3 --squash", "gh repo delete x --yes",
+                    "gh secret set TOKEN -b x", "gh release create v1", "gh issue close 4", "gh pr create -f",
+                    "gh workflow run ci.yml", "gh api -X DELETE repos/o/r", "gh api repos/o/r/issues -f title=x",
+                    "gh api --method=PATCH repos/o/r", "gh -R o/r pr merge 3", "gh auth logout", "gh auth token",
+                    "timeout 5 gh pr merge 1"]:
+            with self.subTest(cmd=cmd):
+                self.assertIsNotNone(self.bash("backend-coder", cmd))
+        for cmd in ["gh pr view 3", "gh pr list", "gh run list --limit 5", "gh api repos/o/r/pulls",
+                    "gh -R o/r issue view 2", "gh auth status", "gh search repos fastapi"]:
+            with self.subTest(cmd=cmd, expect="allow"):
+                self.assertIsNone(self.bash("backend-coder", cmd))
+        self.assertIsNotNone(self.bash("env-setup", "gh repo edit --visibility public"))
+
     def test_no_shell_roles(self):
         for agent in ("reviewer", "researcher", "planner", "architect", "docs", "insights-reporter"):
             with self.subTest(agent=agent):

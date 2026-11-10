@@ -434,6 +434,46 @@ def git_mode_violation(command: str, depth: int = 0, cwd: str | None = None) -> 
     return None
 
 
+GH_READ = {("pr", v) for v in ("view", "list", "status", "diff", "checks")} | \
+          {("issue", v) for v in ("view", "list", "status")} | \
+          {("repo", v) for v in ("view", "list")} | {("release", v) for v in ("view", "list")} | \
+          {("run", v) for v in ("view", "list", "watch")} | {("workflow", v) for v in ("view", "list")} | \
+          {("auth", "status"), ("search", "*"), ("status", "*"), ("--version", "*"), ("version", "*")}
+GH_GLOBAL_ARGS = {"-R", "--repo", "--hostname"}
+GH_API_WRITE = {"-f", "-F", "--field", "--raw-field", "--input"}
+
+
+def gh_write(command: str) -> str | None:
+    """Any gh command that isn't on the read-only allowlist (S11): repo edit/delete, pr merge,
+    secret set, api -X POST … Returns the offending command, else None."""
+    segs = segments(command)
+    if segs is None:
+        m = re.search(r"\bgh\s+\S+", command)
+        return m.group(0) if m else None
+    for seg in segs:
+        tok = strip_wrappers(seg)
+        if not tok or os.path.basename(tok[0]) != "gh":
+            continue
+        words, i = [], 1
+        while i < len(tok) and len(words) < 2:
+            if tok[i] in GH_GLOBAL_ARGS:
+                i += 2
+                continue
+            if not tok[i].startswith("-") or not words:
+                words.append(tok[i])
+            i += 1
+        group, verb = (words + ["", ""])[:2]
+        if (group, verb) in GH_READ or (group, "*") in GH_READ:
+            continue
+        if group == "api":
+            method = next((tok[j + 1] for j, a in enumerate(tok[:-1]) if a in ("-X", "--method")), "GET")
+            if method.upper() == "GET" and not set(tok) & GH_API_WRITE and not any(
+                    a.startswith(("--method=", "-X", "--field=", "--raw-field=")) and a not in ("-X",) for a in tok):
+                continue
+        return " ".join(tok)[:80]
+    return None
+
+
 def destructive(command: str, cwd: str | None, scratch: list[str]) -> str | None:
     """Recursive deletes outside the current worktree (whatever the flag spelling: -rf, -r -f,
     --recursive --force, -R), and `kill … -1` (every process the user owns)."""
@@ -496,6 +536,9 @@ def bash_violation(name: str, command: str, scopes: dict, depth: int = 0, cwd: s
             return f"nested command blocked: {why}"
     if git_write_in(command):
         return "git history is managed by the Orchestrator (taskgit.sh) and git-pr; don't run git write commands"
+    gh = gh_write(command)
+    if gh:
+        return f"GitHub changes (repos, PRs, issues, releases, secrets…) belong to the Orchestrator; only read-only gh commands are allowed. Blocked: {gh}"
     if mode != "full" and npx_fetch(command, cwd):
         return (f"npx would download a package that isn't in node_modules ({npx_fetch(command, cwd)}): "
                 "installing packages is a Tier 1 decision, return DECISION NEEDED instead")
