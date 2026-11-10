@@ -397,5 +397,5 @@ fi
 # ---- summary ---------------------------------------------------------------------------
 echo
 echo "taskgit scenarios: $PASS passed, $FAIL failed"
-for f in "${FAILED[@]}"; do echo "  FAILED: $f"; done
+for f in ${FAILED[@]+"${FAILED[@]}"}; do echo "  FAILED: $f"; done   # bash 3.2: empty array + set -u
 (( FAIL == 0 ))
