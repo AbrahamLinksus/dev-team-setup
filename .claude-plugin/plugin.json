@@ -1,7 +1,7 @@
 {
   "name": "dev-team-setup",
   "displayName": "Dev Team",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "/setup-project: interviews you into a spec, designs the system, picks a team of subagents (software, AI/ML, data science), builds it task by task with a visual and your approval at every step, and hands over as-built docs.",
   "author": {
     "name": "Jake Roberts"
