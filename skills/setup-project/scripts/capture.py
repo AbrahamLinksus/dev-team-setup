@@ -4,7 +4,7 @@
 Subcommands (all write PNGs; print the output paths):
   web     URL OUT_PREFIX [--mobile] [--full-page] [--wait-for SELECTOR] [--delay MS]
           Screenshot a running web page at desktop (1440x900) and optionally mobile (390x844).
-  term    OUT.png (--cmd "pytest -q" | --file log.txt | stdin) [--title T] [--max-lines N] [--cwd DIR]
+  term    OUT.png (--cmd "pytest -q" | --file log.txt | stdin) [--title T] [--max-lines N] [--cwd DIR] [--timeout S]
           Render terminal output as a dark terminal image.
   mermaid IN.mmd OUT.png [--width PX]
           Render a Mermaid diagram (needs mermaid from `doctor --install`).
@@ -157,11 +157,34 @@ def cmd_web(a):
     print("\n".join(outs))
 
 
+def run_cmd(cmd: str, cwd: str | None, timeout: float) -> str:
+    """Run `cmd` through the shell and return the transcript to render. C4: a command that never
+    ends (e.g. one that starts a server) is stopped after `timeout` seconds, with its whole
+    process group, instead of hanging the capture forever."""
+    import signal
+    posix = os.name != "nt"
+    p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                         errors="replace", cwd=cwd, start_new_session=posix)
+    try:
+        out, _ = p.communicate(timeout=timeout)
+        status = f"exit {p.returncode}"
+    except subprocess.TimeoutExpired:
+        if posix:
+            try:
+                os.killpg(p.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+        else:
+            subprocess.run(["taskkill", "/F", "/T", "/PID", str(p.pid)], capture_output=True)
+        out, _ = p.communicate()
+        status = f"timed out after {timeout:g}s and was stopped"
+    return f"$ {cmd}\n" + (out or "") + f"\n[{status}]"
+
+
 def cmd_term(a):
     from PIL import Image, ImageDraw, ImageFont
     if a.cmd:
-        r = subprocess.run(a.cmd, shell=True, capture_output=True, text=True, cwd=a.cwd)
-        text = f"$ {a.cmd}\n" + r.stdout + r.stderr + f"\n[exit {r.returncode}]"
+        text = run_cmd(a.cmd, a.cwd, a.timeout)
     elif a.file:
         text = Path(a.file).read_text(errors="replace")
     else:
@@ -258,7 +281,9 @@ def main():
 
     t = sub.add_parser("term", allow_abbrev=False); t.add_argument("out"); t.add_argument("--cmd"); t.add_argument("--file")
     t.add_argument("--title", default=""); t.add_argument("--max-lines", type=int, default=60)
-    t.add_argument("--cwd"); t.set_defaults(fn=cmd_term)
+    t.add_argument("--cwd"); t.add_argument("--timeout", type=float, default=120,
+                                            help="stop --cmd after this many seconds (default 120)")
+    t.set_defaults(fn=cmd_term)
 
     m = sub.add_parser("mermaid", allow_abbrev=False); m.add_argument("input"); m.add_argument("out")
     m.add_argument("--width", type=int, default=1400); m.set_defaults(fn=cmd_mermaid)
