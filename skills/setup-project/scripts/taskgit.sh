@@ -286,7 +286,7 @@ case "$cmd" in
     read_lines bad < <(PYTHONIOENCODING=utf-8 python3 "$GUARD" --check "$agent" "$wt" "${changed[@]}" | tr -d '\r')
     if (( ${#bad[@]} == 0 )); then echo "scope: ${#changed[@]} changed file(s), all within $agent's scope"; exit 0; fi
     for f in "${bad[@]}"; do
-      if gw ls-files --error-unmatch -- "$f" >/dev/null 2>&1; then gw checkout -q HEAD -- "$f"; else rm -rf -- "$wt/$f"; fi
+      if gw ls-files --error-unmatch -- "$f" >/dev/null 2>&1; then gw checkout -q HEAD -- "$f"; else rm -rf -- "${wt:?}/$f"; fi
     done
     echo "scope: REVERTED ${#bad[@]} file(s) outside $agent's scope: ${bad[*]}"
     exit 0
@@ -375,9 +375,9 @@ case "$cmd" in
     present=(); for f in "${SHARED[@]}"; do [[ -e "$repo/$f" ]] || g cat-file -e "HEAD:$f" 2>/dev/null && present+=("$f"); done
     (( ${#present[@]} )) || { echo "record: no shared files present"; exit 0; }
     SHARED=("${present[@]}")
-    other=$(g -c core.quotepath=off status --porcelain --untracked-files=no | sed -E 's/^.. //' \
+    modified=$(g -c core.quotepath=off status --porcelain --untracked-files=no | sed -E 's/^.. //' \
             | grep -v -x -F -f <(printf '%s\n' "${SHARED[@]}") || true)
-    [[ -n "$other" ]] && die 3 "record only commits ${SHARED[*]}; other files are modified on $main: $other"
+    [[ -n "$modified" ]] && die 3 "record only commits ${SHARED[*]}; other files are modified on $main: $modified"
     g diff --quiet -- "${SHARED[@]}" && { echo "record: nothing to record"; exit 0; }
     g fetch -q origin "$main" || die 3 "fetch failed"
     if ! g merge-base --is-ancestor "origin/$main" HEAD; then
