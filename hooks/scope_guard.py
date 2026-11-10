@@ -378,8 +378,9 @@ def inline_code(command: str) -> str | None:
 
 def git_write_in(command: str, depth: int = 0) -> bool:
     segs = segments(command)
-    if segs is None or "$(" in command or "`" in command:
-        # can't reason about structure (subshells, substitutions): fall back to a text scan
+    if segs is None or split_substitutions(command):
+        # can't reason about structure (subshells, real substitutions): fall back to a text scan.
+        # bash_violation splits substitutions out first, so this mostly sees subshells.
         return bool(GIT_WRITE.search(command))
     for seg in segs:
         tok = strip_wrappers(seg)
@@ -537,6 +538,17 @@ def bash_violation(name: str, command: str, scopes: dict, depth: int = 0, cwd: s
     scratch = scopes.get("scratch", [])
     if mode == "none":
         return f"{name} has no shell access in this team. Use Read/Grep/Glob."
+    if mode != "git" and depth < 4:
+        # S17: check the command around $(...)/`...` and each substitution on its own, instead of a
+        # text scan of the whole string (which denied `grep -r "git commit" $(ls docs)`)
+        split = split_substitutions(command)
+        if split:
+            outer, inners = split
+            for part in (outer, *inners):
+                why = bash_violation(name, part, scopes, depth + 1, cwd)
+                if why:
+                    return why
+            return None
     if DESTRUCTIVE.search(command):
         return "destructive rm on a root/home path blocked"
     why = destructive(command, cwd, scratch)
@@ -635,6 +647,49 @@ def evaluate(name: str, event: dict, scopes: dict) -> str | None:
             why = UNBOUNDED_BACKGROUND
         return why
     return None
+
+
+def split_substitutions(command: str) -> tuple[str, list[str]] | None:
+    """`a $(b) "c $(d)" 'e $(f)'` → ("a SUBST \"c SUBST\" 'e $(f)'", ["b", "d"]). Single quotes
+    hide substitutions; nesting is handled by recursing on the inner commands. None when the
+    command has no substitution, or one that isn't closed (callers then fall back to text rules)."""
+    if "$(" not in command and "`" not in command:
+        return None
+    outer, inners, i, quote = [], [], 0, None
+    while i < len(command):
+        c = command[i]
+        if quote == "'":
+            outer.append(c)
+            quote = None if c == "'" else quote
+            i += 1
+            continue
+        if c == "\\" and i + 1 < len(command):
+            outer.append(command[i:i + 2]); i += 2
+            continue
+        if c == "'" and quote is None:
+            quote = "'"; outer.append(c); i += 1
+            continue
+        if c == '"':
+            quote = None if quote == '"' else '"'
+            outer.append(c); i += 1
+            continue
+        if command.startswith("$(", i) and not command.startswith("$((", i):
+            depth, j = 1, i + 2
+            while j < len(command) and depth:
+                depth += {"(": 1, ")": -1}.get(command[j], 0)
+                j += 1
+            if depth:
+                return None
+            inners.append(command[i + 2:j - 1]); outer.append("SUBST"); i = j
+            continue
+        if c == "`":
+            j = command.find("`", i + 1)
+            if j < 0:
+                return None
+            inners.append(command[i + 1:j]); outer.append("SUBST"); i = j + 1
+            continue
+        outer.append(c); i += 1
+    return ("".join(outer), inners) if inners else None
 
 
 def command_cwd(command: str, cwd: str) -> str:

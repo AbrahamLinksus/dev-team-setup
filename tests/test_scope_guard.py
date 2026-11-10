@@ -455,6 +455,17 @@ class GuardTest(unittest.TestCase):
         finally:
             (self.repo / ".devteam" / "scopes.json").unlink()
 
+    def test_substitutions_checked_precisely(self):
+        # S17: a substitution anywhere made the whole command fall back to a text scan
+        for cmd in ['grep -r "git commit" $(ls docs)', "wc -l `git ls-files`", 'echo "pushed: $(git log -1 --format=%h)"',
+                    "pytest $(find tests -name 'test_*.py')", "echo '$(git push)' > /tmp/note.txt"]:
+            with self.subTest(cmd=cmd, expect="allow"):
+                self.assertIsNone(self.bash("backend-coder", cmd))
+        for cmd in ["echo $(git push -f)", "x=`git commit -am y`", 'echo "$(git reset --hard)"',
+                    "ls $(echo $(git push))", "cat $(pip install x)", "echo $(git push"]:
+            with self.subTest(cmd=cmd):
+                self.assertIsNotNone(self.bash("backend-coder", cmd))
+
     def test_no_shell_roles(self):
         for agent in ("reviewer", "researcher", "planner", "architect", "docs", "insights-reporter"):
             with self.subTest(agent=agent):
