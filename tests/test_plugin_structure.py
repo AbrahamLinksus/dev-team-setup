@@ -629,6 +629,21 @@ class StructureTest(unittest.TestCase):
         self.assertIn("evals/results/", (ROOT / ".gitignore").read_text(encoding="utf-8"))
         self.assertIn("workflow_dispatch", (ROOT / ".github" / "workflows" / "evals.yml").read_text(encoding="utf-8"))
 
+    def test_directory_listing_fields(self):
+        # D36: what the directory reads for the listing; the icon is fixed at the first submission
+        manifest = json.loads((ROOT / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
+        for key in ("documentationUrl", "supportUrl", "privacyPolicyUrl", "homepage"):
+            self.assertTrue(manifest.get(key, "").startswith("https://"), key)
+        icon = ROOT / manifest["icon"]
+        data = icon.read_bytes()
+        self.assertEqual(data[:8], b"\x89PNG\r\n\x1a\n")
+        width, height = int.from_bytes(data[16:20], "big"), int.from_bytes(data[20:24], "big")
+        self.assertEqual(width, height, "the icon must be square")
+        self.assertTrue(512 <= width <= 2048, width)
+        self.assertLess(len(data), 2 * 1024 * 1024)
+        self.assertTrue(manifest["privacyPolicyUrl"].endswith("docs/PRIVACY.md"))
+        self.assertTrue((ROOT / "docs" / "PRIVACY.md").exists())
+
     def test_every_known_hole_keeps_its_regression_test(self):
         # M1: each problem fixed in code got a test that names it (S = scope guard, T = taskgit,
         # C = capture.py, G = gen_agents.py). Removing one of those tests should be a conscious act.
