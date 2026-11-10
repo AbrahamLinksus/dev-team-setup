@@ -174,7 +174,7 @@ class AcceptanceTest(unittest.TestCase):
         port = free_port()
         p = subprocess.Popen([sys.executable, str(script)], cwd=Path(script).parent,
                              env={**os.environ, "PORT": str(port), **(env or {})})
-        for _ in range(50):
+        for _ in range(200):   # up to 20 s: slow CI runners (macOS) took over 5 s to start the server
             if bench.port_open(port):
                 break
             time.sleep(0.1)
