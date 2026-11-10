@@ -559,6 +559,15 @@ class StructureTest(unittest.TestCase):
             self.assertIn(term, card)
         self.assertIn("**Why we're asking:**", (SKILL / "references" / "decision-policy.md").read_text(encoding="utf-8"))
 
+    def test_resume_shows_where_we_are(self):
+        # D27: a resumed project opens with a one-screen summary, not one line
+        resume = (SKILL / "references" / "resume.md").read_text(encoding="utf-8")
+        block = resume[resume.index("Where we are ·"):]
+        block = block[:block.index("```")]
+        self.assertLessEqual(len(block.strip().splitlines()), 9)
+        for must in ("Waiting on you:", "Recent decisions:", "Spent:", "Next:"):
+            self.assertIn(must, block)
+
     def test_every_known_hole_keeps_its_regression_test(self):
         # M1: each problem fixed in code got a test that names it (S = scope guard, T = taskgit,
         # C = capture.py, G = gen_agents.py). Removing one of those tests should be a conscious act.
