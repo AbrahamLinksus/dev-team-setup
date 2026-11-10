@@ -293,6 +293,15 @@ class StructureTest(unittest.TestCase):
                 self.assertNotRegex(f.read_text(encoding="utf-8"), r"localhost:(3000|8000|8501)\b")
         self.assertIn("Port:", (SKILL / "references" / "brief-template.md").read_text(encoding="utf-8"))
 
+    def test_state_template_uses_the_pipeline_numbering(self):
+        # K17: the Stage placeholder used old numbering ("1 Team pick · 3 HLD …")
+        state = (SKILL / "templates" / "STATE.md").read_text(encoding="utf-8")
+        skill = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+        for n, name in [(1, "Spec"), (2, "HLD"), (3, "Team pick"), (4, "LLD"), (5, "Env"), (6, "Tasks"), (7, "Build"), (8, "Handover")]:
+            with self.subTest(stage=n):
+                self.assertIn(f"{n} {name}", state)
+                self.assertIn(f"## {n} · ", skill)
+
     def test_no_hardcoded_owner(self):
         for path in list((ROOT / "agents").glob("*.md")) + list(SKILL.rglob("*.md")):
             with self.subTest(file=str(path.relative_to(ROOT))):
