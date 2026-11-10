@@ -43,6 +43,40 @@ jobs:
       - name: Shell syntax
         run: bash -n skills/setup-project/scripts/taskgit.sh && sh -n hooks/scope_guard.sh
 
+  windows:
+    # D34: Claude Code on Windows runs plugin hooks and Bash through Git Bash. Many users are on
+    # Windows, and Windows-only bugs have shipped before (CRLF, process groups, file locks).
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    env:
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: python3 on PATH (Windows Python ships only python.exe)
+        run: |
+          mkdir -p "$HOME/bin"
+          printf '#!/bin/sh\nexec python "$@"\n' > "$HOME/bin/python3"
+          chmod +x "$HOME/bin/python3"
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+      - name: Install test dependencies
+        run: python -m pip install pyyaml
+      - name: Line endings stayed LF in the checkout
+        run: "! grep -l $'\\r' hooks/scope_guard.sh skills/setup-project/scripts/taskgit.sh"
+      - name: The hook runs through Git Bash and blocks out-of-scope writes
+        run: |
+          out=$(printf '%s' '{"agent_type":"dev-team-setup:tester","tool_name":"Write","tool_input":{"file_path":"src/app.py"},"cwd":"."}' | sh hooks/scope_guard.sh)
+          echo "$out"
+          echo "$out" | grep -q '"permissionDecision": *"deny"'
+      - name: Plugin structure, agents, capture, scope guard and bench
+        run: python -m unittest discover -s tests -v
+      - name: taskgit scenarios
+        run: bash tests/test_taskgit.sh
+
   lint:
     # M3: manifest schema, shell and Python lint
     runs-on: ubuntu-latest

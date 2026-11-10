@@ -182,7 +182,12 @@ class AcceptanceTest(unittest.TestCase):
         port = free_port()
         p = subprocess.Popen([sys.executable, str(script)], cwd=Path(script).parent,
                              env={**os.environ, "PORT": str(port), **(env or {})})
-        self.addCleanup(lambda: (p.kill(), p.wait()))
+        def stop():
+            if os.name == "nt":   # D34: end the whole tree, or a child keeps the SQLite file open
+                subprocess.run(["taskkill", "/T", "/F", "/PID", str(p.pid)], capture_output=True)
+            p.kill()
+            p.wait()
+        self.addCleanup(stop)
         deadline = time.time() + 30          # slow CI machines need more than the old 5s
         while not bench.port_open(port):
             if p.poll() is not None:
@@ -206,13 +211,17 @@ class AcceptanceTest(unittest.TestCase):
                 self.assertIn(check, [n for n, ok in res if not ok])
 
     def test_small_app_passes(self):
-        with tempfile.TemporaryDirectory() as d:
-            for f in (FIX / "small_app").iterdir():
-                (Path(d) / f.name).write_bytes(f.read_bytes())
-            base = self.serve(Path(d) / "app.py")
-            res, ctx = bench.accept_small(base)
-            self.assertEqual([n for n, ok in res if not ok], [])
-            self.assertTrue(bench.persist_small(base, ctx))
+        # D34: remove the folder only after the server is stopped (cleanups run last-in, first-out);
+        # Windows can't delete the SQLite file while the server still has it open
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        d = tmp.name
+        for f in (FIX / "small_app").iterdir():
+            (Path(d) / f.name).write_bytes(f.read_bytes())
+        base = self.serve(Path(d) / "app.py")
+        res, ctx = bench.accept_small(base)
+        self.assertEqual([n for n, ok in res if not ok], [])
+        self.assertTrue(bench.persist_small(base, ctx))
 
 
 @SLOW_ON_MAC_CI
@@ -220,9 +229,13 @@ class EndToEndTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         t = Path(self.tmp.name)
-        fake = t / "claude"
-        fake.write_text(f"#!/bin/sh\nexec {sys.executable} {FIX / 'fake_claude.py'} \"$@\"\n")
-        fake.chmod(0o755)
+        if os.name == "nt":   # D34: Windows runs a .cmd, not a shebang script
+            fake = t / "claude.cmd"
+            fake.write_text(f'@"{sys.executable}" "{FIX / "fake_claude.py"}" %*\n')
+        else:
+            fake = t / "claude"
+            fake.write_text(f"#!/bin/sh\nexec {sys.executable} {FIX / 'fake_claude.py'} \"$@\"\n")
+            fake.chmod(0o755)
         self.env = {**os.environ, "BENCH_DIR": str(t / "bench"), "BENCH_PROJECTS": str(t / "projects"),
                     "BENCH_LOGS": str(t / "logs"), "CLAUDE_BIN": str(fake), "BENCH_PORT": str(free_port()),
                     "FAKE_CLAUDE_STATE": str(t / "plugin-state")}

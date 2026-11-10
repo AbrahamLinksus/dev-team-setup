@@ -637,16 +637,29 @@ def find_file(root: Path, name: str) -> Path | None:
     return min(hits, key=lambda p: len(p.parts)) if hits else None
 
 
+def bash_exe() -> str:
+    """D34: on Windows, `bash` on PATH can be WSL's (C:/Windows/System32/bash.exe), which runs
+    start.sh in a different OS. Use Git Bash, next to git, as Claude Code itself does."""
+    if os.name == "nt" and shutil.which("git"):
+        git = Path(shutil.which("git")).resolve()
+        # git.exe sits in <Git>/cmd, <Git>/bin, or <Git>/<mingw64|ucrt64>/bin; bash.exe in <Git>/bin
+        for root in (git.parent, git.parent.parent, git.parent.parent.parent):
+            for cand in (root / "bin" / "bash.exe", root / "usr" / "bin" / "bash.exe"):
+                if cand.exists():
+                    return str(cand)
+    return "bash"
+
+
 class App:
     def __init__(self, start_sh: Path, log: Path):
-        self.start_sh, self.log, self.proc = start_sh, log, None
+        self.start_sh, self.log, self.proc, self.out = start_sh, log, None, None
 
     def start(self, wait: int = 240) -> str | None:
         if port_open(PORT):
             return f"port {PORT} is already in use; stop whatever is running there and re-run"
         self.log.parent.mkdir(parents=True, exist_ok=True)
-        out = self.log.open("a")
-        self.proc = subprocess.Popen(["bash", str(self.start_sh)], cwd=self.start_sh.parent, stdout=out,
+        self.out = out = self.log.open("a")
+        self.proc = subprocess.Popen([bash_exe(), str(self.start_sh)], cwd=self.start_sh.parent, stdout=out,
                                      stderr=subprocess.STDOUT, start_new_session=True,
                                      env={**os.environ, "PORT": str(PORT)})
         t0 = time.time()
@@ -661,7 +674,11 @@ class App:
         return f"nothing listening on port {PORT} after {wait}s (see {self.log})"
 
     def stop(self) -> None:
-        if self.proc and self.proc.poll() is None:
+        if self.proc and self.proc.poll() is None and os.name == "nt":
+            # D34: Windows has no process groups (os.killpg); end the whole tree (bash → python)
+            subprocess.run(["taskkill", "/T", "/F", "/PID", str(self.proc.pid)], capture_output=True)
+            self.proc.wait(timeout=15)
+        elif self.proc and self.proc.poll() is None:
             for sig, pause in ((signal.SIGTERM, 10), (signal.SIGKILL, 2)):
                 try:
                     os.killpg(self.proc.pid, sig)
@@ -673,6 +690,9 @@ class App:
         t0 = time.time()
         while port_open(PORT) and time.time() - t0 < 10:
             time.sleep(0.3)
+        if self.out:
+            self.out.close()
+            self.out = None
 
 
 def test_build(app_name: str, project: Path, log: Path) -> dict:

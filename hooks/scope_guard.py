@@ -62,7 +62,15 @@ def _resolved_variants(glob: str) -> tuple[str, ...]:
 
 
 def in_scratch(path: Path, scratch: list[str]) -> bool:
-    return match(path.as_posix(), [v for g in scratch for v in _resolved_variants(g)])
+    globs = [v for g in scratch for v in _resolved_variants(g)]
+    p = path.as_posix()
+    if os.name == "nt":
+        # D34: Git Bash's /tmp gets whichever drive letter it is resolved against (the project's,
+        # the session's, the temp folder's), so compare scratch paths without the drive
+        nodrive = lambda s: re.sub(r"^[A-Za-z]:", "", s)  # noqa: E731
+        globs += [nodrive(g) for g in globs]
+        return match(p, globs) or match(nodrive(p), globs)
+    return match(p, globs)
 
 
 def match(path: str, globs: list[str]) -> bool:
