@@ -165,6 +165,13 @@ class StructureTest(unittest.TestCase):
                 self.assertNotIn("Clone to `~/projects", f.read_text(encoding="utf-8"))
         self.assertIn("<base>/<repo>-wt/", (SKILL / "SKILL.md").read_text(encoding="utf-8"))
 
+    def test_cards_have_a_cli_fallback(self):
+        # K8: SendUserFile / SendUserMessage don't exist in the terminal CLI
+        card = (SKILL / "references" / "result-card.md").read_text(encoding="utf-8")
+        self.assertIn("Not available", card)
+        self.assertIn("card.md", card)
+        self.assertIn("absolute paths", card)
+
     def test_no_hardcoded_owner(self):
         for path in list((ROOT / "agents").glob("*.md")) + list(SKILL.rglob("*.md")):
             with self.subTest(file=str(path.relative_to(ROOT))):
