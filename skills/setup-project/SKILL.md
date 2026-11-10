@@ -129,7 +129,8 @@ Pushing `wip/*` branches is pre-approved. **main changes only through `$TASKGIT 
 ## 1 · Spec interview ⏸
 
 Follow `spec-interview.md`: **planner** rounds, each one updating `docs/SPEC.md` and returning
-a QUESTIONS block, until it returns SPEC COMPLETE. There's no round limit. Ask every
+a QUESTIONS block, until it returns SPEC COMPLETE (at most 6 rounds; then open items become
+assumptions listed on the spec card). Ask every
 round's questions in one AskUserQuestion call (recommended option first, "Decide for me"
 where sensible) and send a one-line progress note between rounds.
 UI projects: planner writes lo-fi wireframes; render them (mobile + desktop).

@@ -1,8 +1,11 @@
 # Spec interview
 
 Goal: turn a one-line idea into `docs/SPEC.md` complete enough that the HLD needs no
-guesses. Interview in rounds until the checklist is complete. There is no fixed limit on
-rounds; stop only when nothing is open.
+guesses. Interview in rounds until the checklist is complete, for **at most 6 rounds**: every
+round an Opus planner re-reads the growing SPEC, so an open-ended interview gets expensive and
+tiring. After round 6 the planner writes each still-open item into SPEC.md as an explicit
+assumption (marked "(assumed)") and returns SPEC COMPLETE; the spec card lists those assumptions
+so the owner can correct any of them before the HLD.
 
 ## Loop
 
@@ -14,7 +17,8 @@ round n:
   Orchestrator asks them (one AskUserQuestion call; options from the block, recommended first,
     always include "Decide for me" when a sensible default exists)
   answers go back to the planner in the next brief (verbatim)
-until planner returns "SPEC COMPLETE"
+until planner returns "SPEC COMPLETE", or round 6 is answered: then the brief says
+  "final round: turn every open item into an (assumed) line and return SPEC COMPLETE"
 then: wireframes (UI projects) → spec card ⏸
 ```
 

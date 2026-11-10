@@ -246,6 +246,12 @@ class StructureTest(unittest.TestCase):
         self.assertNotIn("repo visibility, any push\n", policy)
         self.assertIn("`wip/*` checkpoint pushes", policy)
 
+    def test_spec_interview_is_capped(self):
+        # K12: no round limit, and every round an Opus planner re-reads the whole SPEC
+        interview = (SKILL / "references" / "spec-interview.md").read_text(encoding="utf-8")
+        self.assertIn("at most 6 rounds", interview)
+        self.assertNotIn("There's no round limit", (SKILL / "SKILL.md").read_text(encoding="utf-8"))
+
     def test_no_hardcoded_owner(self):
         for path in list((ROOT / "agents").glob("*.md")) + list(SKILL.rglob("*.md")):
             with self.subTest(file=str(path.relative_to(ROOT))):
