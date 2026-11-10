@@ -39,6 +39,18 @@ class CaptureCliTest(unittest.TestCase):
                 self.assertIn("ready", p.stdout)
             self.assertFalse((Path(d) / "venv").exists())   # checking never installs
 
+    def test_installs_only_in_doctor(self):
+        # C3: `playwright install chromium` and `npm install mermaid@11` ran mid-task, unpinned
+        import ast
+        import re
+        tree = ast.parse(CAP.read_text(encoding="utf-8"))
+        for fn in (n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name != "cmd_doctor"):
+            for call in (n for n in ast.walk(fn) if isinstance(n, ast.Call)):
+                words = {c.value for c in ast.walk(call) if isinstance(c, ast.Constant) and isinstance(c.value, str)}
+                with self.subTest(function=fn.name):
+                    self.assertNotIn("install", words, f"{fn.name} installs something at runtime")
+        self.assertRegex(CAP.read_text(encoding="utf-8"), r'MERMAID = "mermaid@\d+\.\d+\.\d+"')
+
     def test_venv_is_used_when_deps_are_missing(self):
         # a fake "venv python" that just reports it was used
         with tempfile.TemporaryDirectory() as d:
