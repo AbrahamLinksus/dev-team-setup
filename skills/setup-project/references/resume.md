@@ -1,0 +1,21 @@
+# Resume
+
+Part of the /setup-project Orchestrator (SKILL.md). Read this file when the stage starts; the core rules in SKILL.md (step protocol, context budget, rework) still apply.
+
+## Resume
+
+`/setup-project resume <repo>`, or "continue" in a folder with a setup-project STATE.md (details in
+`checkpointing.md`). Rebuild everything
+from STATE.md, TASKS.md, DECISIONS.md and TASK_PROGRESS.md; take nothing from a previous chat.
+Agent IDs from earlier sessions are not continued; every step after a resume spawns fresh.
+1. Reuse `<base>/<repo>` (the folder recorded in STATE.md, or `./<repo>` in this session's
+   folder) or clone it there. Resume from the folder that *holds* the repo, not from inside it:
+   the worktrees `<repo>-wt/` sit next to the repo. A repo outside this session's folders (e.g.
+   `~/projects/<repo>` from an older run) → `/add-dir` its parent first.
+2. Read STATE.md / TASKS.md / DECISIONS.md on main; `$TASKGIT list <repo>`.
+   `Status: Paused` → set it back to Active and continue. `Status: Abandoned` or `Complete` → say so
+   and ask whether to reopen it before doing anything.
+3. Per open wip branch (`plan`, `CR-n`, `T-xx`): `$TASKGIT start` (installs dependencies into a
+   restored worktree), read TASK_PROGRESS.md, run `check.sh` once if code steps are ✅, re-ask any open decision
+   or open spec round, restart the first step that isn't ✅.
+4. Tell the owner in one line where it resumed, then continue.

@@ -14,6 +14,17 @@ import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 SKILL = ROOT / "skills" / "setup-project"
+# D11: SKILL.md is a core; each stage's instructions live in references/stage-*.md and are read
+# when the stage starts. Content checks look at the core plus every stage file.
+STAGE_FILES = ("stage-0-intake.md", "stage-1-6-planning.md", "stage-7-build.md", "stage-8-handover.md",
+               "anytime.md", "resume.md")
+
+
+def skill_text() -> str:
+    return "\n".join([(SKILL / "SKILL.md").read_text(encoding="utf-8")]
+                     + [(SKILL / "references" / f).read_text(encoding="utf-8") for f in STAGE_FILES])
+
+
 AGENTS = sorted((ROOT / "agents").glob("*.md"))
 KNOWN_TOOLS = {"Read", "Write", "Edit", "Bash", "Grep", "Glob", "WebSearch", "WebFetch",
                "TaskCreate", "NotebookEdit"}
@@ -103,7 +114,7 @@ class StructureTest(unittest.TestCase):
         self.assertIn("STATE.md", desc)
 
     def test_skill_references_exist(self):
-        text = (SKILL / "SKILL.md").read_text()
+        text = skill_text()
         for ref in set(re.findall(r"`([a-z-]+\.md)`", text)):
             if ref in {"SKILL.md"}:
                 continue
@@ -197,7 +208,7 @@ class StructureTest(unittest.TestCase):
         self.assertNotIn("Inputs:", brief)
         self.assertIn("§0", (SKILL / "templates" / "LLD.md").read_text())
         self.assertIn("- Context:", (SKILL / "templates" / "TASKS.md").read_text())
-        skill = (SKILL / "SKILL.md").read_text()
+        skill = skill_text()
         for phrase in ("Never read diffs", "Rework continuation", "fresh session"):
             self.assertIn(phrase, skill)
         build_agents = {"backend-coder", "frontend-coder", "tester", "reviewer", "debugger", "rag-engineer",
@@ -230,14 +241,14 @@ class StructureTest(unittest.TestCase):
         docs = (ROOT / "agents" / "docs.md").read_text(encoding="utf-8")
         self.assertIn("docs/images/", docs)
         self.assertNotIn("screenshots of the running app from `.results/`", docs)
-        self.assertIn("docs/images/", (SKILL / "SKILL.md").read_text(encoding="utf-8"))
+        self.assertIn("docs/images/", skill_text())
 
     def test_project_lives_in_session_folder(self):
         # K3: ~/projects is outside the session's folders: permission prompts, refused in remote sessions
         for f in [SKILL / "SKILL.md", *SKILL.glob("references/*.md")]:
             with self.subTest(file=f.name):
                 self.assertNotIn("Clone to `~/projects", f.read_text(encoding="utf-8"))
-        self.assertIn("<base>/<repo>-wt/", (SKILL / "SKILL.md").read_text(encoding="utf-8"))
+        self.assertIn("<base>/<repo>-wt/", skill_text())
 
     def test_cards_have_a_cli_fallback(self):
         # K8: SendUserFile / SendUserMessage don't exist in the terminal CLI
@@ -255,7 +266,7 @@ class StructureTest(unittest.TestCase):
 
     def test_handover_commands_run_by_a_role_with_bash(self):
         # K7: the reviewer (no Bash) was asked to confirm that every documented command works
-        skill = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+        skill = skill_text()
         handover = skill[skill.index("## 8 · Handover"):skill.index("## Change requests")]
         self.assertNotIn("checks that every path, command and function", handover)
         self.assertIn("**tester** (it has Bash): runs every command", handover)
@@ -277,11 +288,11 @@ class StructureTest(unittest.TestCase):
         # K12: no round limit, and every round an Opus planner re-reads the whole SPEC
         interview = (SKILL / "references" / "spec-interview.md").read_text(encoding="utf-8")
         self.assertIn("at most 6 rounds", interview)
-        self.assertNotIn("There's no round limit", (SKILL / "SKILL.md").read_text(encoding="utf-8"))
+        self.assertNotIn("There's no round limit", skill_text())
 
     def test_orchestrator_runs_taskgit_itself(self):
         # K13: spawning git-pr for every approve/reject cost a whole agent start-up to run one script
-        skill = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+        skill = skill_text()
         self.assertNotIn("**git-pr** `$TASKGIT approve", skill)
         self.assertNotIn("**git-pr** `$TASKGIT reject", skill)
         self.assertIn("run `$TASKGIT approve <repo> T-xx", skill)
@@ -296,7 +307,7 @@ class StructureTest(unittest.TestCase):
     def test_state_template_uses_the_pipeline_numbering(self):
         # K17: the Stage placeholder used old numbering ("1 Team pick · 3 HLD …")
         state = (SKILL / "templates" / "STATE.md").read_text(encoding="utf-8")
-        skill = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+        skill = skill_text()
         for n, name in [(1, "Spec"), (2, "HLD"), (3, "Team pick"), (4, "LLD"), (5, "Env"), (6, "Tasks"), (7, "Build"), (8, "Handover")]:
             with self.subTest(stage=n):
                 self.assertIn(f"{n} {name}", state)
@@ -335,7 +346,7 @@ class StructureTest(unittest.TestCase):
 
     def test_cancel_pause_and_abandon_are_defined(self):
         # K22: "Cancel" on the install card went nowhere; no way to stop or abandon a project
-        skill = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+        skill = skill_text()
         stage5 = skill[skill.index("## 5 · "):skill.index("## 6 · ")]
         self.assertIn("**Cancel** (", stage5)
         self.assertIn("## Pause or abandon", skill)
@@ -417,10 +428,23 @@ class StructureTest(unittest.TestCase):
     def test_skill_stops_without_agents_or_bash(self):
         # D6: in claude.ai chat agents and hooks are ignored; the skill must refuse rather than run
         # the stages itself with no team and no guard.
-        skill = (ROOT / "skills" / "setup-project" / "SKILL.md").read_text(encoding="utf-8")
-        intake = skill[skill.index("## 0 · Intake"):]
-        self.assertLess(intake.index("Surface check"), intake.index("1. `/setup-project resume"))
-        self.assertIn("Agent tool", intake[:600])
+        # The check sits in the core, before the step that sends you to any stage file.
+        core = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+        start = core[core.index("## Start here"):]
+        self.assertLess(start.index("Surface check"), start.index("references/stage-0-intake.md"))
+        self.assertIn("Agent tool", start[:600])
+
+    def test_skill_core_is_small_and_wired_to_every_stage_file(self):
+        # D11: the core is re-read on every Orchestrator call (H2); stage files are read on demand.
+        core = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+        self.assertLess(len(core), 9000, "SKILL.md core grew; move stage detail into references/stage-*.md")
+        for f in STAGE_FILES:
+            self.assertIn(f"references/{f}", core)
+            self.assertTrue((SKILL / "references" / f).read_text(encoding="utf-8").startswith("# "))
+        for heading in ("## 0 · Intake", "## 7 · Build loop", "## 8 · Handover", "## Resume"):
+            self.assertNotIn(heading, core)
+        version = json.loads((ROOT / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))["version"]
+        self.assertEqual(frontmatter(SKILL / "SKILL.md")["metadata"]["version"], version)
 
     def test_every_known_hole_keeps_its_regression_test(self):
         # M1: each problem fixed in code got a test that names it (S = scope guard, T = taskgit,
