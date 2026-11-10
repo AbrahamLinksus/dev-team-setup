@@ -216,7 +216,16 @@ case "$cmd" in
       g fetch -q origin "+$br:refs/remotes/origin/$br"
       if g show-ref --verify -q "refs/heads/$br"; then
         g worktree add -q "$wt" "$br" || die 1 "worktree add failed"
-        gw merge -q --ff-only "origin/$br" 2>/dev/null || true
+        if ! gw merge -q --ff-only "origin/$br" 2>/dev/null; then
+          # T11: say so instead of silently keeping one copy. Local wins: it may hold checkpoints that
+          # never reached origin, while origin's commits stay safe on origin.
+          ahead=$(gw rev-list --count "origin/$br..HEAD"); behind=$(gw rev-list --count "HEAD..origin/$br")
+          if (( behind > 0 )); then
+            echo "warning: local $br and origin/$br have diverged ($ahead local-only, $behind origin-only commit(s)," \
+                 "e.g. work from another device). Keeping the LOCAL copy. To take origin's instead:" \
+                 "git -C $wt reset --hard origin/$br" >&2
+          fi
+        fi
       else
         g worktree add -q -b "$br" "$wt" "origin/$br" || die 1 "worktree add failed"
       fi
