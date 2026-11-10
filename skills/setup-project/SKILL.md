@@ -29,6 +29,8 @@ approval gates. The owner must never be left out of a Tier 1 decision.
 
 If a value above is empty or still reads `${user_config...}`, ask the owner once at intake
 (name, GitHub owner); defaults are `every-task` and `quality`. Record them in STATE.md.
+Timestamps you write (STATE.md, TASK_PROGRESS.md) use the owner's local time with its UTC offset
+(`date +'%Y-%m-%d %H:%M %:z'`), never a fixed zone.
 
 ## Paths
 

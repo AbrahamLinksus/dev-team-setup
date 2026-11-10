@@ -15,7 +15,7 @@
 
 ```
 # T-07 · Login API
-Owner: backend-coder · Started: 2026-11-09 14:20 IST
+Owner: backend-coder · Started: 2026-11-09 14:20 +05:30
 
 | Step | Agent | Status | Note |
 |---|---|---|---|

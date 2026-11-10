@@ -10,7 +10,7 @@
 | Stage | {{0 Intake · 1 Spec · 2 HLD · 3 Team pick · 4 LLD · 5 Env · 6 Tasks · 7 Build · 8 Handover}} |
 | Milestone | {{M2 · name}} ({{done}}/{{total}} tasks) |
 | Next step | {{T-08 · owner · what}} |
-| Last updated | {{YYYY-MM-DD HH:MM IST}} |
+| Last updated | {{YYYY-MM-DD HH:MM ±HH:MM, the owner's local time}} |
 
 ## Team
 | Agent | Model | Why on this project |
