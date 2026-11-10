@@ -131,6 +131,24 @@ class GuardTest(unittest.TestCase):
         finally:
             (self.repo / ".devteam" / "scopes.json").unlink()
 
+    def test_blocks_are_logged_for_the_result_card(self):
+        # D24: every deny leaves one line in the repo's shared .git dir (from a linked worktree too)
+        log = self.main / ".git" / "devteam-guard.log"
+        before = log.read_text(encoding="utf-8").splitlines() if log.exists() else []
+        self.assertIsNotNone(self.write("tester", "backend/src/app.py"))
+        self.assertIsNone(self.write("tester", "backend/tests/test_ok.py"))      # allowed: no line
+        after = log.read_text(encoding="utf-8").splitlines()
+        self.assertEqual(len(after), len(before) + 1)
+        stamp, task, agent, tool, target, reason = after[-1].split("\t")
+        self.assertEqual(task, "T-1")
+        self.assertRegex(stamp, r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$")
+        self.assertEqual((agent, tool), ("tester", "Write"))
+        self.assertTrue(Path(target).as_posix().endswith("backend/src/app.py"), target)
+        self.assertTrue(reason)
+        # a deny outside any repo still denies (logging never breaks the guard)
+        with tempfile.TemporaryDirectory() as d:
+            self.assertIsNotNone(hook("dev-team-setup:tester", "Bash", {"command": "git push origin main"}, d))
+
     def test_agent_pinned_to_its_own_worktree(self):
         # S8 follow-up: a write into ANOTHER task's worktree (<repo>-wt/T-02 from T-01's agent) used to pass
         other = self.repo.parent / "T-2"

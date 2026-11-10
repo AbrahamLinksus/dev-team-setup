@@ -25,6 +25,7 @@ import os
 import re
 import shlex
 import sys
+import time
 from functools import cache
 from pathlib import Path
 
@@ -693,6 +694,46 @@ def deny(reason: str) -> None:
     sys.exit(0)
 
 
+def git_common_dir(start: Path) -> Path | None:
+    """The repo's shared .git directory for a folder in the main checkout or any worktree."""
+    for d in [start, *start.parents]:
+        g = d / ".git"
+        if g.is_dir():
+            return g
+        if g.is_file():   # a worktree: ".git" names <common>/worktrees/<name>, whose commondir points back
+            m = re.match(r"gitdir:\s*(.+)", g.read_text(encoding="utf-8", errors="replace").strip())
+            if not m:
+                return None
+            wt_git = (d / m.group(1).strip()).resolve()
+            common = wt_git / "commondir"
+            if common.is_file():
+                return (wt_git / common.read_text(encoding="utf-8").strip()).resolve()
+            return wt_git
+    return None
+
+
+def log_block(event: dict, name: str, reason: str) -> None:
+    """D24: one line per block in <repo>/.git/devteam-guard.log, so the result card can say the
+    guard stopped something (a block is otherwise seen only by the agent that hit it). Never
+    raises: logging must not turn a deny into a crash."""
+    try:
+        cwd = Path(event.get("cwd") or os.getcwd()).resolve()
+        git = git_common_dir(cwd)
+        if git is None:
+            return
+        # the task: worktrees live at <repo>-wt/<task id>/…, anything else is the main checkout
+        parts = cwd.parts
+        task = next((parts[i + 1] for i in range(len(parts) - 1) if parts[i].endswith("-wt")), "main")
+        ti = event.get("tool_input") if isinstance(event.get("tool_input"), dict) else {}
+        target = ti.get("file_path") or ti.get("path") or ti.get("command") or ""
+        line = "\t".join([time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), task, name, str(event.get("tool_name") or ""),
+                          " ".join(str(target).split())[:200], " ".join(reason.split())[:300]])
+        with open(git / "devteam-guard.log", "a", encoding="utf-8") as f:
+            f.write(line + "\n")
+    except Exception:  # noqa: BLE001 - see docstring
+        pass
+
+
 def hook_main() -> None:
     try:
         event = json.load(sys.stdin)
@@ -707,6 +748,7 @@ def hook_main() -> None:
     except Exception as exc:  # fail closed for our agents: a crashing hook would let the call through
         reason = f"scope guard could not evaluate this call ({type(exc).__name__}: {exc}); blocked to be safe"
     if reason:
+        log_block(event, name, reason)
         deny(reason)
 
 
