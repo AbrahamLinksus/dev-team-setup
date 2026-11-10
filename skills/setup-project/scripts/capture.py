@@ -15,6 +15,8 @@ Subcommands (all write PNGs; print the output paths):
 
 Requires: playwright (Python) with Chromium; markdown; npm for mermaid.
 """
+from __future__ import annotations  # `str | None` annotations on Python 3.9 (macOS's python3)
+
 import argparse
 import html as htmllib
 import os
