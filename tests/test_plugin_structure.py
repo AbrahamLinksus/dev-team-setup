@@ -143,6 +143,14 @@ class StructureTest(unittest.TestCase):
                     self.assertTrue("from __future__ import annotations" in text,
                                     "uses `X | Y` annotations: add `from __future__ import annotations`")
 
+    def test_coverage_belongs_to_tester(self):
+        # K4: coders may not write tests (S7), so they can't be held to the coverage threshold
+        for name in ("backend-coder", "frontend-coder", "debugger"):
+            with self.subTest(agent=name):
+                self.assertIn("CHECK_NO_COVERAGE=1 scripts/check.sh", (ROOT / "agents" / f"{name}.md").read_text(encoding="utf-8"))
+        self.assertNotIn("CHECK_NO_COVERAGE", (ROOT / "agents" / "tester.md").read_text(encoding="utf-8"))
+        self.assertIn("CHECK_NO_COVERAGE=1 scripts/check.sh", (SKILL / "references" / "team-rules.md").read_text(encoding="utf-8"))
+
     def test_no_hardcoded_owner(self):
         for path in list((ROOT / "agents").glob("*.md")) + list(SKILL.rglob("*.md")):
             with self.subTest(file=str(path.relative_to(ROOT))):
