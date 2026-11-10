@@ -70,6 +70,25 @@ class TermColorsTest(unittest.TestCase):
                 self.assertEqual(cap.line_color(line), want)
 
 
+class FontTest(unittest.TestCase):
+    def test_font_found_on_every_os(self):
+        # C7: only a Debian path was tried; macOS and Windows got a tiny bitmap font
+        cap = load_capture()
+        joined = " ".join(cap.MONO_FONTS)
+        for marker in ("DejaVuSansMono", "Menlo", "consola"):
+            self.assertIn(marker, joined)
+        found = cap.find_mono_font()
+        self.assertTrue(found is None or Path(found).is_file())
+        with tempfile.NamedTemporaryFile(suffix=".ttf", delete=False) as f:
+            pass
+        try:
+            os.environ["DEVTEAM_FONT"] = f.name
+            self.assertEqual(cap.find_mono_font(), f.name)   # an explicit font wins
+        finally:
+            del os.environ["DEVTEAM_FONT"]
+            os.unlink(f.name)
+
+
 class CaptureCliTest(unittest.TestCase):
     def test_help_lists_doctor(self):
         p = run("--help")
