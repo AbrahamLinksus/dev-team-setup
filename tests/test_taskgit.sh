@@ -247,6 +247,32 @@ if scenario portable_to_macos; then
   check ".env.example still allowed" expect_exit 0 tg checkpoint "$R" T-17 x
 fi
 
+if scenario rebase_conflict_during_approve; then
+  # T4: origin moved during approve with a conflicting change; the failed pull --rebase left main mid-rebase.
+  new_repo rb; F=$(tg start "$R" T-18); echo "mine" > "$F/f.txt"; tgq checkpoint "$R" T-18 x
+  # pre-push hook: the first time main is pushed, someone else pushes a conflicting f.txt first
+  cat > "$R/.git/hooks/pre-push" <<HOOK
+#!/bin/sh
+grep -q refs/heads/main || exit 0
+[ -f "$WORK/rb-raced" ] && exit 0
+touch "$WORK/rb-raced"
+git clone -q "$ORIGIN" "$WORK/rb-other" 2>/dev/null && cd "$WORK/rb-other" && echo theirs > f.txt && git add f.txt \
+  && git commit -qm theirs && git push -q origin main 2>/dev/null
+exit 0
+HOOK
+  chmod +x "$R/.git/hooks/pre-push"
+  check "approve reports the unpushed commit (exit 7)" expect_exit 7 tg approve "$R" T-18 "feat: f"
+  check "main checkout is not left mid-rebase" bash -c "[[ ! -d '$R/.git/rebase-merge' && ! -d '$R/.git/rebase-apply' ]]"
+  check "main checkout clean" clean_main
+  # a rebase left behind by a session that died: the next record clears it instead of failing confusingly
+  rm -f "$R/.git/hooks/pre-push"; git -C "$R" reset -q --hard origin/main
+  git -C "$R" checkout -q -b side; echo side > "$R/f.txt"; git -C "$R" commit -qam side; git -C "$R" checkout -q main
+  git -C "$R" rebase side >/dev/null 2>&1 || true
+  git -C "$R" checkout -q main 2>/dev/null; sedi 's/T-01: In progress/T-01: Done/' "$R/TASKS.md" 2>/dev/null
+  tgq record "$R" "chore: record"
+  check "record clears a leftover rebase" bash -c "[[ ! -d '$R/.git/rebase-merge' && ! -d '$R/.git/rebase-apply' ]]"
+fi
+
 # ---- summary ---------------------------------------------------------------------------
 echo
 echo "taskgit scenarios: $PASS passed, $FAIL failed"

@@ -83,6 +83,25 @@ open_crs() {  # open change-request branches (local or on origin)
     g ls-remote --heads origin 'wip/CR-*' 2>/dev/null | sed 's#.*refs/heads/##'; } | sort -u
 }
 
+clear_leftovers() {  # a merge or rebase left half-done in the main checkout (e.g. a session died mid-approve)
+  local gd; gd=$(g rev-parse --absolute-git-dir)
+  if [[ -d "$gd/rebase-merge" || -d "$gd/rebase-apply" ]]; then
+    g rebase --abort 2>/dev/null || rm -rf "$gd/rebase-merge" "$gd/rebase-apply"
+    echo "note: aborted a leftover rebase in the main checkout" >&2
+  fi
+  if [[ -f "$gd/MERGE_HEAD" ]]; then
+    g merge --abort 2>/dev/null || g reset -q --merge
+    echo "note: aborted a leftover merge in the main checkout" >&2
+  fi
+  return 0
+}
+
+pull_rebase_main() {  # origin moved under us: replay local main on it; on a conflict undo the rebase
+  g pull -q --rebase origin "$main" >/dev/null 2>&1 && return 0
+  g rebase --abort 2>/dev/null || true
+  return 1
+}
+
 ensure_wt() {  # sets wt; fails if the worktree doesn't exist
   wt="$wtroot/$id"; [[ -d "$wt" ]] || die 1 "no worktree for $id; run: taskgit.sh start $repo $id"
 }
@@ -257,7 +276,7 @@ case "$cmd" in
       [[ -n "${crs// }" ]] && die 8 "approvals are held while a change request is open ($crs). Merge or cancel it first; $id stays queued."
     fi
     # 1. main checkout must be clean and on main
-    [[ -f "$repo/.git/MERGE_HEAD" ]] && { g merge --abort 2>/dev/null || g reset -q --merge; echo "note: aborted a leftover merge in the main checkout" >&2; }
+    clear_leftovers
     dirty=$(g status --porcelain --untracked-files=no)
     [[ -n "$dirty" ]] && die 3 "main checkout has uncommitted changes, approve stopped:\n$dirty\n(commit them with 'record' or discard them first)"
     g checkout -q "$main" || die 3 "cannot check out $main"
@@ -290,7 +309,7 @@ case "$cmd" in
     g commit -q --allow-empty -m "$msg" || { g reset -q --hard HEAD; die 6 "commit on $main failed; main restored"; }
     # 4. push (one rebase retry if origin moved in the meantime)
     if ! push_branch "$repo" "$main"; then
-      if g pull -q --rebase origin "$main" && push_branch "$repo" "$main"; then
+      if pull_rebase_main && push_branch "$repo" "$main"; then
         echo "note: origin/$main moved during approve; rebased and pushed" >&2
       else
         die 7 "approved commit $(g rev-parse --short HEAD) is on local $main but NOT pushed. Worktree and $br were kept. Fix the push, then re-run approve."
@@ -306,6 +325,7 @@ case "$cmd" in
 
   record)
     msg=${3:?commit message}
+    clear_leftovers
     g checkout -q "$main" || die 3 "cannot check out $main"
     present=(); for f in "${SHARED[@]}"; do [[ -e "$repo/$f" ]] || g cat-file -e "HEAD:$f" 2>/dev/null && present+=("$f"); done
     (( ${#present[@]} )) || { echo "record: no shared files present"; exit 0; }
@@ -321,8 +341,8 @@ case "$cmd" in
     fi
     g add -- "${SHARED[@]}"
     g commit -q -m "$msg" || die 1 "commit failed"
-    push_branch "$repo" "$main" || { g pull -q --rebase origin "$main" && push_branch "$repo" "$main"; } \
-      || die 7 "recorded commit is local only; NOT pushed"
+    push_branch "$repo" "$main" || { pull_rebase_main && push_branch "$repo" "$main"; } \
+      || die 7 "recorded commit is local only; NOT pushed (if origin/$main changed the same lines, the rebase was undone: the main checkout is clean, not mid-rebase)"
     echo "recorded: $(g log --oneline -1)"
     ;;
 
