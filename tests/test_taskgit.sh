@@ -201,6 +201,20 @@ if scenario scope_reverts_out_of_scope_files; then
   check "untracked out-of-scope file removed" test ! -e "$W/src/sneaky.py"
 fi
 
+if scenario scope_after_parallel_test_and_review; then
+  # D19: tester and reviewer run together, then scope runs once as tester. Scoping as reviewer
+  # (its scope is .results/** only) would revert the tester's tests, which is why the skill forbids it.
+  new_repo scopepar; W=$(tg start "$R" T-23); tgq checkpoint "$R" T-23 "test+review started"
+  mkdir -p "$W/tests" "$W/src"; echo "def test_new(): pass" > "$W/tests/test_new.py"
+  echo "x = 2" > "$W/shared_code.py"   # an edit outside the tester's scope must still be caught
+  out=$(tg scope "$R" T-23 tester)
+  check "tester scope keeps the new test" test -f "$W/tests/test_new.py"
+  check "tester scope still reverts out-of-scope edits" test "$(cat "$W/shared_code.py")" = "x = 1"
+  check "reports one reverted file" contains "$out" "REVERTED 1"
+  out=$(tg scope "$R" T-23 reviewer)
+  check "scope as reviewer would remove the tester's test (why it must not run)" test ! -e "$W/tests/test_new.py"
+fi
+
 if scenario scope_catches_committed_changes; then
   # S1: an agent that committed its own out-of-scope edit used to keep it ("scope: no changes").
   new_repo scopec; W=$(tg start "$R" T-12); tgq checkpoint "$R" T-12 "started"
