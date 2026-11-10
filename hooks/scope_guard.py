@@ -25,7 +25,7 @@ import os
 import re
 import shlex
 import sys
-from functools import lru_cache
+from functools import cache
 from pathlib import Path
 
 PLUGIN = "dev-team-setup"
@@ -33,7 +33,7 @@ ROOT = Path(__file__).resolve().parent.parent
 DEFAULTS = ROOT / "skills" / "setup-project" / "scopes.json"
 
 
-@lru_cache(maxsize=None)
+@cache
 def _rx(glob: str) -> re.Pattern:
     i, out = 0, ""
     while i < len(glob):
@@ -46,7 +46,7 @@ def _rx(glob: str) -> re.Pattern:
     return re.compile(rf"^{out}$")
 
 
-@lru_cache(maxsize=None)
+@cache
 def _resolved_variants(glob: str) -> tuple[str, ...]:
     """A scratch glob like /tmp/** plus the same glob under its real path: /tmp is a symlink to
     /private/tmp on macOS (and maps to C:/tmp on Windows), and the paths we check are resolved."""

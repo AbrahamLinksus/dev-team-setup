@@ -135,20 +135,20 @@ install_deps() {  # install locked dependencies into a new worktree; uses $id $w
   # install anything themselves. Lockfiles are already approved, so installing them is not Tier 1.
   [[ "${TASKGIT_SKIP_DEPS:-0}" == 1 ]] && return 0
   local log lock dir failed=""
-  local -a cmd
+  local -a run
   log="$(gw rev-parse --absolute-git-dir)/devteam-deps.log"; : > "$log"
   while IFS= read -r lock; do
     dir=$(dirname "$lock")
     case "$(basename "$lock")" in
-      uv.lock)           cmd=(uv sync --frozen) ;;
-      package-lock.json) cmd=(npm ci --no-audit --no-fund) ;;
-      pnpm-lock.yaml)    cmd=(pnpm install --frozen-lockfile) ;;
-      yarn.lock)         cmd=(yarn install --frozen-lockfile) ;;
+      uv.lock)           run=(uv sync --frozen) ;;
+      package-lock.json) run=(npm ci --no-audit --no-fund) ;;
+      pnpm-lock.yaml)    run=(pnpm install --frozen-lockfile) ;;
+      yarn.lock)         run=(yarn install --frozen-lockfile) ;;
       *) continue ;;
     esac
-    if ! command -v "${cmd[0]}" >/dev/null 2>&1; then failed+="$dir (${cmd[0]} not found) "; continue; fi
-    echo "\$ cd $dir && ${cmd[*]}" >> "$log"
-    (cd "$wt/$dir" && "${cmd[@]}") >> "$log" 2>&1 < /dev/null || failed+="$dir "
+    if ! command -v "${run[0]}" >/dev/null 2>&1; then failed+="$dir (${run[0]} not found) "; continue; fi
+    echo "\$ cd $dir && ${run[*]}" >> "$log"
+    (cd "$wt/$dir" && "${run[@]}") >> "$log" 2>&1 < /dev/null || failed+="$dir "
   done < <(cd "$wt" && find . -maxdepth 3 \( -name node_modules -o -name .venv -o -name .git \) -prune -o \
              \( -name uv.lock -o -name package-lock.json -o -name pnpm-lock.yaml -o -name yarn.lock \) -print | sort)
   [[ -n "$failed" ]] && echo "warning: installing dependencies failed in: $failed(log: $log). Checks will fail in this worktree until that's fixed; give the log to env-setup." >&2
@@ -286,7 +286,7 @@ case "$cmd" in
     read_lines bad < <(PYTHONIOENCODING=utf-8 python3 "$GUARD" --check "$agent" "$wt" "${changed[@]}" | tr -d '\r')
     if (( ${#bad[@]} == 0 )); then echo "scope: ${#changed[@]} changed file(s), all within $agent's scope"; exit 0; fi
     for f in "${bad[@]}"; do
-      if gw ls-files --error-unmatch -- "$f" >/dev/null 2>&1; then gw checkout -q HEAD -- "$f"; else rm -rf -- "$wt/$f"; fi
+      if gw ls-files --error-unmatch -- "$f" >/dev/null 2>&1; then gw checkout -q HEAD -- "$f"; else rm -rf -- "${wt:?}/$f"; fi
     done
     echo "scope: REVERTED ${#bad[@]} file(s) outside $agent's scope: ${bad[*]}"
     exit 0
@@ -375,9 +375,9 @@ case "$cmd" in
     present=(); for f in "${SHARED[@]}"; do [[ -e "$repo/$f" ]] || g cat-file -e "HEAD:$f" 2>/dev/null && present+=("$f"); done
     (( ${#present[@]} )) || { echo "record: no shared files present"; exit 0; }
     SHARED=("${present[@]}")
-    other=$(g -c core.quotepath=off status --porcelain --untracked-files=no | sed -E 's/^.. //' \
+    modified=$(g -c core.quotepath=off status --porcelain --untracked-files=no | sed -E 's/^.. //' \
             | grep -v -x -F -f <(printf '%s\n' "${SHARED[@]}") || true)
-    [[ -n "$other" ]] && die 3 "record only commits ${SHARED[*]}; other files are modified on $main: $other"
+    [[ -n "$modified" ]] && die 3 "record only commits ${SHARED[*]}; other files are modified on $main: $modified"
     g diff --quiet -- "${SHARED[@]}" && { echo "record: nothing to record"; exit 0; }
     g fetch -q origin "$main" || die 3 "fetch failed"
     if ! g merge-base --is-ancestor "origin/$main" HEAD; then

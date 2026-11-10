@@ -140,7 +140,6 @@ class CaptureCliTest(unittest.TestCase):
     def test_installs_only_in_doctor(self):
         # C3: `playwright install chromium` and `npm install mermaid@11` ran mid-task, unpinned
         import ast
-        import re
         tree = ast.parse(CAP.read_text(encoding="utf-8"))
         for fn in (n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name != "cmd_doctor"):
             for call in (n for n in ast.walk(fn) if isinstance(n, ast.Call)):
