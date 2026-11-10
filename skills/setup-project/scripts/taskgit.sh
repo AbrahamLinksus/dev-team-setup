@@ -247,9 +247,16 @@ case "$cmd" in
       gw reset -q "$base" || die 1 "could not undo commits the agent made on wip/$id"
       echo "scope: undid $n commit(s) the agent made itself; their changes are checked below" >&2
     fi
-    read_lines changed < <(gw status --porcelain --untracked-files=all | sed -E 's/^.. //; s/.* -> //')
+    # -z: plain --porcelain quotes names with spaces or non-ASCII characters ("my file.py"), which
+    # then matched nothing; -z gives raw names, and a rename's old name as a second entry.
+    changed=(); rename_src=0
+    while IFS= read -r -d '' entry; do
+      if (( rename_src )); then changed+=("$entry"); rename_src=0; continue; fi
+      changed+=("${entry:3}")
+      [[ "${entry:0:1}" == [RC] ]] && rename_src=1
+    done < <(gw -c core.quotepath=off status --porcelain -z --untracked-files=all)
     (( ${#changed[@]} == 0 )) && { echo "scope: no changes"; exit 0; }
-    read_lines bad < <(python3 "$GUARD" --check "$agent" "$wt" "${changed[@]}" | tr -d '\r')
+    read_lines bad < <(PYTHONIOENCODING=utf-8 python3 "$GUARD" --check "$agent" "$wt" "${changed[@]}" | tr -d '\r')
     if (( ${#bad[@]} == 0 )); then echo "scope: ${#changed[@]} changed file(s), all within $agent's scope"; exit 0; fi
     for f in "${bad[@]}"; do
       if gw ls-files --error-unmatch -- "$f" >/dev/null 2>&1; then gw checkout -q HEAD -- "$f"; else rm -rf -- "$wt/$f"; fi
