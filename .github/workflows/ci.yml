@@ -67,7 +67,7 @@ jobs:
           echo "always-on: $n tokens"
           [ "$n" -lt 2000 ] || { echo "always-on cost $n >= 2000: the directory listing flags this"; exit 1; }
       - name: shellcheck
-        run: shellcheck --severity=warning skills/setup-project/scripts/taskgit.sh hooks/scope_guard.sh tests/test_taskgit.sh
+        run: shellcheck --severity=warning skills/setup-project/scripts/taskgit.sh hooks/scope_guard.sh hooks/subagent_status.sh tests/test_taskgit.sh
       - name: ruff
         run: |
           python -m pip install ruff
