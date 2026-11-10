@@ -5,7 +5,8 @@ Every result card needs a visual. Use the first option that works:
 
 Script: `<skill base dir>/scripts/capture.py` (pass its absolute path to agents in their
 brief, as `CAPTURE`). Save images under `<project>/.results/<task-id>/`, which is git-ignored.
-Send them to the owner with SendUserFile (they open on his phone).
+Send them to the owner with SendUserFile where it exists (they open on the owner's phone);
+otherwise print their absolute paths (see `result-card.md`, "How to deliver it").
 
 | Task type | Visual | Command |
 |---|---|---|

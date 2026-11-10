@@ -2,8 +2,20 @@
 
 ## Per-task card
 
-Order: the image(s) first (SendUserFile), then the card (SendUserMessage), then the
-approval question (AskUserQuestion). Keep the card mobile-readable.
+Order: the image(s) first, then the card, then the approval question (AskUserQuestion).
+Keep the card mobile-readable.
+
+**How to deliver it depends on the surface** (check once per session with ToolSearch, and
+record the result in STATE.md so a resume doesn't re-check):
+- **SendUserFile + SendUserMessage available** (Claude app, remote/phone sessions): images with
+  SendUserFile, the card with SendUserMessage.
+- **Not available** (terminal CLI, IDE extensions): write the card to
+  `<wt>/.results/<id>/card.md` (images linked by relative path), then print in your reply the
+  card text itself plus the **absolute paths** of the images, so the owner can open them
+  (most terminals make paths clickable). Never skip the images because they can't be sent:
+  the paths are the fallback.
+- AskUserQuestion works everywhere; it stays the way the owner answers.
+- PushNotification is optional: without it, say nothing about notifications.
 
 ```
 T-07 · Login API · backend-coder

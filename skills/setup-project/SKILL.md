@@ -49,6 +49,8 @@ References (read when the stage needs them): `spec-interview.md`, `agent-catalog
 ```
 ⏸ = stop and ask the owner with AskUserQuestion. Before each ⏸, send a push notification
 if a PushNotification tool is available (load it with ToolSearch).
+Cards and images go out with SendUserFile / SendUserMessage where they exist; in the terminal
+CLI they don't, so follow the fallback in `result-card.md` (card file + printed image paths).
 
 **Planning crew** (always used, never part of the team pick): planner, researcher,
 architect, env-setup, git-pr. The **build team** is picked in stage 3 from the HLD.
