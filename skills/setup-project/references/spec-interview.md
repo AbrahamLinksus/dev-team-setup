@@ -27,9 +27,12 @@ Between rounds, send the owner a one-line progress note:
 
 ## Completeness checklist (planner checks every round)
 
+One row per section of `templates/SPEC.md` (12), so progress is always "x/12 complete".
+
 | Section | Complete when |
 |---|---|
-| Goal, users | Who uses it and why is stated in one paragraph |
+| Goal | What it does and why, in one paragraph |
+| Users | Who uses it, and in what situation |
 | User stories | Every feature the owner mentioned is a story with a checkable acceptance line |
 | Main flows | Each story belongs to a step-by-step flow, including what happens on errors |
 | Inputs/outputs | At least one concrete example per flow (real-looking values, not placeholders) |

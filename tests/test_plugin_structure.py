@@ -302,6 +302,16 @@ class StructureTest(unittest.TestCase):
                 self.assertIn(f"{n} {name}", state)
                 self.assertIn(f"## {n} · ", skill)
 
+    def test_spec_progress_count_matches(self):
+        # K18: progress said x/12 but the checklist had 11 rows (SPEC.md has 12 sections)
+        spec_sections = re.findall(r"^## \d+\. ", (SKILL / "templates" / "SPEC.md").read_text(encoding="utf-8"), re.M)
+        interview = (SKILL / "references" / "spec-interview.md").read_text(encoding="utf-8")
+        table = interview.split("## Completeness checklist")[1].split("\n## ")[0]
+        rows = [ln for ln in table.splitlines() if ln.startswith("| ") and not ln.startswith("| Section")]
+        self.assertEqual(len(rows), len(spec_sections))
+        for count in re.findall(r"\d+/(\d+) (?:sections )?compl", interview):
+            self.assertEqual(int(count), len(spec_sections))
+
     def test_no_hardcoded_owner(self):
         for path in list((ROOT / "agents").glob("*.md")) + list(SKILL.rglob("*.md")):
             with self.subTest(file=str(path.relative_to(ROOT))):
