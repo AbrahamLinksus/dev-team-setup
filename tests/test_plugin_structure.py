@@ -467,6 +467,16 @@ class StructureTest(unittest.TestCase):
         reviewer = (ROOT / "agents" / "reviewer.md").read_text(encoding="utf-8")
         self.assertIn("With only Minor findings, write no full report", reviewer)
 
+    def test_always_on_context_stays_under_budget(self):
+        # D14 (H6): the skill description and every agent's name + description ride in every
+        # session's system prompt, plugin used or not. The directory listing flags plugins at
+        # 2,000+ tokens per turn. At 4,165 characters `claude plugin details` reports ~1,593 tokens
+        # (about 2.6 characters per token), so 4,800 characters keeps a margin under 2,000.
+        skill = " ".join(frontmatter(SKILL / "SKILL.md")["description"].split())
+        agents = sum(len(frontmatter(p)["name"]) + len(frontmatter(p)["description"]) for p in AGENTS)
+        self.assertLess(len(skill) + agents, 4800,
+                        "always-on text grew; shorten SHORT descriptions in tools/gen_agents.py")
+
     def test_every_known_hole_keeps_its_regression_test(self):
         # M1: each problem fixed in code got a test that names it (S = scope guard, T = taskgit,
         # C = capture.py, G = gen_agents.py). Removing one of those tests should be a conscious act.
