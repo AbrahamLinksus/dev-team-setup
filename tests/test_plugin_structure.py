@@ -88,6 +88,12 @@ class StructureTest(unittest.TestCase):
         self.assertNotRegex(fm["description"], r"[<>]")   # "description cannot contain XML tags"
         self.assertLessEqual(len(fm["description"]), 1024)
 
+    def test_bare_continue_needs_context(self):
+        # K11: a bare "continue" after any interrupted session could trigger the skill
+        desc = " ".join(frontmatter(SKILL / "SKILL.md")["description"].split())
+        self.assertNotIn('or says "continue" after a setup-project session was interrupted', desc)
+        self.assertIn("STATE.md", desc)
+
     def test_skill_references_exist(self):
         text = (SKILL / "SKILL.md").read_text()
         for ref in set(re.findall(r"`([a-z-]+\.md)`", text)):
