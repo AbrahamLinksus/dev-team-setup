@@ -314,13 +314,17 @@ case "$cmd" in
     g rm -q --cached --ignore-unmatch "$PROGRESS" >/dev/null; rm -f "$repo/$PROGRESS"
     blocked_files "$repo"
     g commit -q --allow-empty -m "$msg" || { g reset -q --hard HEAD; die 6 "commit on $main failed; main restored"; }
-    # 4. push (one rebase retry if origin moved in the meantime)
+    # 4. push. If origin moved in the meantime, a rebased commit would reach main untested (T5):
+    #    drop our squash commit and run the whole approve once more, so the task is synced with the
+    #    new main and scripts/check.sh runs again before anything is pushed.
     if ! push_branch "$repo" "$main"; then
-      if pull_rebase_main && push_branch "$repo" "$main"; then
-        echo "note: origin/$main moved during approve; rebased and pushed" >&2
-      else
-        die 7 "approved commit $(g rev-parse --short HEAD) is on local $main but NOT pushed. Worktree and $br were kept. Fix the push, then re-run approve."
+      g fetch -q origin "$main" 2>/dev/null
+      if [[ -n "$(g rev-list "$main..origin/$main" 2>/dev/null)" && "${TASKGIT_APPROVE_RETRY:-0}" != 1 ]]; then
+        g reset -q --hard HEAD~1
+        echo "note: origin/$main moved during approve; re-syncing $id with it and re-running the checks" >&2
+        TASKGIT_APPROVE_RETRY=1 exec bash "$0" approve "$repo" "$id" "$msg"
       fi
+      die 7 "approved commit $(g rev-parse --short HEAD) is on local $main but NOT pushed. Worktree and $br were kept. Fix the push, then re-run approve."
     fi
     # 5. clean up only after a successful push
     g worktree remove --force "$wt" 2>/dev/null || true

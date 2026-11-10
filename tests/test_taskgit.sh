@@ -233,6 +233,32 @@ if scenario precommit_hook_does_not_block_checkpoints; then
   check "sync merges main despite the hook" expect_exit 0 tg sync "$R" T-16
 fi
 
+if scenario recheck_when_origin_moves_during_approve; then
+  # T5: when origin moved during approve, the rebased commit was pushed without running check.sh again
+  race_hook() {  # race_hook <file> <content>: the first push of main is beaten by another clone
+    cat > "$R/.git/hooks/pre-push" <<HOOK
+#!/bin/sh
+grep -q refs/heads/main || exit 0
+[ -f "$WORK/race-$1" ] && exit 0
+touch "$WORK/race-$1"
+rm -rf "$WORK/race-clone"; git clone -q "$ORIGIN" "$WORK/race-clone" 2>/dev/null && cd "$WORK/race-clone" \
+  && echo "$2" > "$1" && git add "$1" && git commit -qm "race $1" && git push -q origin main 2>/dev/null
+exit 0
+HOOK
+    chmod +x "$R/.git/hooks/pre-push"
+  }
+  new_repo rc1; G=$(tg start "$R" T-20); echo "g = 1" > "$G/g.py"; tgq checkpoint "$R" T-20 x
+  race_hook z.py "BROKEN = 1"
+  check "approve stops when the new main fails the checks (exit 5)" expect_exit 5 tg approve "$R" T-20 "feat: g"
+  check "the untested commit was not pushed" bash -c "! git -C '$R' log --oneline origin/main | grep -q 'feat: g'"
+  check "worktree kept" test -d "$R-wt/T-20"
+  new_repo rc2; H=$(tg start "$R" T-21); echo "h = 1" > "$H/h.py"; tgq checkpoint "$R" T-21 x
+  race_hook other.txt "fine"
+  check "a harmless race re-syncs, re-checks and pushes" expect_exit 0 tg approve "$R" T-21 "feat: h"
+  check "origin has both changes" test -n "$(on_main other.txt)" -a -n "$(on_main h.py)"
+  check "exactly one feat: h commit" test "$(git -C "$R" log --oneline origin/main | grep -c 'feat: h')" = 1
+fi
+
 if scenario scope_handles_odd_file_names; then
   # S20: --porcelain quoted "my file.py" and "naïve.py", so scope checked and reverted the wrong names
   new_repo odd; echo "a = 1" > "$R/my code.py"; git -C "$R" add -A; git -C "$R" commit -qm odd; git -C "$R" push -q 2>/dev/null
@@ -273,7 +299,10 @@ git clone -q "$ORIGIN" "$WORK/rb-other" 2>/dev/null && cd "$WORK/rb-other" && ec
 exit 0
 HOOK
   chmod +x "$R/.git/hooks/pre-push"
-  check "approve reports the unpushed commit (exit 7)" expect_exit 7 tg approve "$R" T-18 "feat: f"
+  # (since T5 the retry re-syncs the task with the new main, which reports the conflict)
+  check "approve reports the conflict with the new main (exit 4)" expect_exit 4 tg approve "$R" T-18 "feat: f"
+  check "task branch kept for the owner agent" test -d "$R-wt/T-18"
+  check "nothing of ours reached origin" bash -c "! git -C '$R' log --oneline origin/main | grep -q 'feat: f'"
   check "main checkout is not left mid-rebase" bash -c "[[ ! -d '$R/.git/rebase-merge' && ! -d '$R/.git/rebase-apply' ]]"
   check "main checkout clean" clean_main
   # a rebase left behind by a session that died: the next record clears it instead of failing confusingly
