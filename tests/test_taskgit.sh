@@ -397,5 +397,6 @@ fi
 # ---- summary ---------------------------------------------------------------------------
 echo
 echo "taskgit scenarios: $PASS passed, $FAIL failed"
-for f in "${FAILED[@]}"; do echo "  FAILED: $f"; done
+# ${a[@]+...}: bash 3.2 (macOS) with set -u treats an empty array as unbound
+for f in ${FAILED[@]+"${FAILED[@]}"}; do echo "  FAILED: $f"; done
 (( FAIL == 0 ))
