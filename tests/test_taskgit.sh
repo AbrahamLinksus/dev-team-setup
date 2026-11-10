@@ -302,6 +302,21 @@ if scenario offline_cr_check_holds_approval; then
   check "approve works again once origin is back" expect_exit 0 tg approve "$R" T-26 "feat: o"
 fi
 
+if scenario start_warns_on_diverged_branch; then
+  # T11: `merge --ff-only … || true` kept a diverged local branch without a word
+  new_repo dv; V=$(tg start "$R" T-27); echo "v = 1" > "$V/v.py"; tgq checkpoint "$R" T-27 base
+  git clone -q "$ORIGIN" "$WORK/dv-other" 2>/dev/null; git -C "$WORK/dv-other" checkout -q wip/T-27
+  echo "phone = 1" > "$WORK/dv-other/phone.py"; git -C "$WORK/dv-other" add -A; git -C "$WORK/dv-other" commit -qm phone
+  git -C "$WORK/dv-other" push -q origin wip/T-27 2>/dev/null
+  echo "laptop = 1" > "$V/laptop.py"; git -C "$V" add -A; git -C "$V" commit -qm laptop   # local-only commit
+  git -C "$R" worktree remove --force "$V"
+  out=$(bash "$TG" start "$R" T-27 2>&1 >/dev/null)
+  check "start warns about the divergence" contains "$out" "have diverged"
+  check "and says which copy it kept" contains "$out" "Keeping the LOCAL copy"
+  check "local work kept" test -f "$V/laptop.py"
+  rm -rf "$WORK/dv-other"
+fi
+
 if scenario approve_keeps_untracked_files; then
   # T6: the dirty check ignored untracked files, then `worktree remove --force` deleted them
   new_repo untr; U=$(tg start "$R" T-22); echo "u = 1" > "$U/u.py"; tgq checkpoint "$R" T-22 x
