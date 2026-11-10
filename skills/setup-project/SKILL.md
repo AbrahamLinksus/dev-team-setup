@@ -217,7 +217,10 @@ Task `handover` (normal task flow, after the last milestone):
 1. **devops**: CI running `scripts/check.sh` on push/PR (deploy only if the owner asks).
 2. **architect**: `docs/ARCHITECTURE.md` (as built) and `docs/WALKTHROUGH.md` (templates).
 3. **docs**: README "How to run / How to test / How to extend" with the screenshots in `docs/images/`.
-4. **reviewer**: checks that every path, command and function named in the three docs exists.
+4. **reviewer** (read-only): checks that every path and function named in the three docs exists.
+   **tester** (it has Bash): runs every command in the README's "How to run" and "How to test"
+   in a fresh clone of the handover branch, each under `timeout`, captures the run with
+   `$CAPTURE term`, and reports any command that fails or doesn't exist.
 Handover card (`result-card.md`) → Approve handover / Request changes. Then STATE.md →
 "Complete" and a final `record`.
 
