@@ -109,6 +109,26 @@ class MeasureTest(unittest.TestCase):
         self.assertIn("| step |", table)
         self.assertIn("| test |", table)
 
+    def test_step_times(self):
+        # D10: started→done pairs per step, and the wait between the last event and the answer
+        (self.d / ".git").mkdir()
+        (self.d / ".git" / "devteam-timing.log").write_text("\n".join([
+            "2026-11-10T10:00:00Z\tT-01\tstart",
+            "2026-11-10T10:00:00Z\tT-01\timplement started",
+            "2026-11-10T10:06:00Z\tT-01\timplement done",
+            "2026-11-10T10:06:00Z\tT-01\ttest started",
+            "2026-11-10T10:09:00Z\tT-01\ttest done",
+            "2026-11-10T10:30:00Z\tT-01\tapproved",
+            "2026-11-10T10:00:00Z\tT-02\timplement started",
+            "2026-11-10T10:04:00Z\tT-02\timplement done",
+            "garbage line"]) + "\n")
+        t = bench.step_times(self.d)
+        self.assertEqual(t["implement"], {"minutes": 10.0, "count": 2})
+        self.assertEqual(t["test"], {"minutes": 3.0, "count": 1})
+        self.assertEqual(t["waiting for you (card → answer)"], {"minutes": 21.0, "count": 1})
+        self.assertIn("| implement | 2 | 10.0 |", bench.times_table(t))
+        self.assertEqual(bench.step_times(self.d / "missing"), {})
+
     def test_tokens_cli(self):
         self.write("s.jsonl", [{"type": "user", "timestamp": "2026-11-09T10:00:00Z", "message": {"content": "x"}},
                                {"type": "assistant", "timestamp": "2026-11-09T10:01:00Z",
