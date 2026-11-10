@@ -101,11 +101,24 @@ class StructureTest(unittest.TestCase):
 
     def test_generated_agents_up_to_date(self):
         with tempfile.TemporaryDirectory() as d:
-            subprocess.run([sys.executable, str(ROOT / "tools" / "gen_agents.py"), d], check=True, capture_output=True)
+            subprocess.run([sys.executable, str(ROOT / "tools" / "gen_agents.py"), "--out", d], check=True, capture_output=True)
             for path in AGENTS:
                 with self.subTest(agent=path.name):
                     self.assertEqual((Path(d) / path.name).read_text(), path.read_text(),
                                      "agents/ is out of date: run python3 tools/gen_agents.py")
+
+    def test_gen_agents_cli(self):
+        # G1: any first argument was taken as the output folder (`--help` wrote 26 files into ./--help/)
+        with tempfile.TemporaryDirectory() as d:
+            p = subprocess.run([sys.executable, str(ROOT / "tools" / "gen_agents.py"), "--help"], cwd=d,
+                               capture_output=True, text=True)
+            self.assertEqual(p.returncode, 0)
+            self.assertIn("--out", p.stdout)
+            self.assertEqual(list(Path(d).iterdir()), [])
+            p = subprocess.run([sys.executable, str(ROOT / "tools" / "gen_agents.py"), "stray"], cwd=d,
+                               capture_output=True, text=True)
+            self.assertNotEqual(p.returncode, 0)
+            self.assertFalse((Path(d) / "stray").exists())
 
     def test_token_rules(self):
         rules = (SKILL / "references" / "team-rules.md").read_text()
