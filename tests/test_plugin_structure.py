@@ -405,6 +405,15 @@ class StructureTest(unittest.TestCase):
                and b"\r" in (ROOT / name).read_bytes()]
         self.assertEqual(bad, [], "CR line endings: run `git add --renormalize .`")
 
+    def test_changelog_top_entry_is_the_current_version(self):
+        # D4: a release without a version bump never reaches installed users; tie the bump to a
+        # changelog entry so neither is forgotten.
+        version = json.loads((ROOT / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))["version"]
+        changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+        top = re.search(r"^## (\S+)", changelog, re.M)
+        self.assertIsNotNone(top, "CHANGELOG.md has no release heading")
+        self.assertEqual(top.group(1), version, "plugin.json version and the top CHANGELOG entry differ")
+
     def test_every_known_hole_keeps_its_regression_test(self):
         # M1: each problem fixed in code got a test that names it (S = scope guard, T = taskgit,
         # C = capture.py, G = gen_agents.py). Removing one of those tests should be a conscious act.
