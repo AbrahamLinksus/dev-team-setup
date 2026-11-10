@@ -5,7 +5,20 @@ Part of the /setup-project Orchestrator (SKILL.md). Read this file when the stag
 ## 7 · Build loop
 
 Take every `Backlog` task whose dependencies are `Done`; run independent tasks in parallel
-(own worktrees; shared files are only edited on main). Per task `T-xx`:
+(own worktrees; shared files are only edited on main).
+
+**Don't let the team idle while a card waits.** Waiting for the owner is most of a build's
+wall-clock time, and a question blocks your turn until it's answered. So before you ask a
+task's approval question (any approval mode), when another task is independent of it (no
+dependency, no shared files in their planned scope):
+- If your Agent tool can run an agent in the background (it has a `run_in_background`
+  parameter), start that task's first step in the background, then ask. Collect its REPORT
+  after the answer.
+- Otherwise, first take that task up to its own card, then ask both approval questions in one
+  AskUserQuestion call (at most 4 questions): one interruption instead of two.
+A rejection costs nothing extra: the other task never depended on it.
+
+Per task `T-xx`:
 
 1. `$TASKGIT start <repo> T-xx` (a new worktree gets the locked dependencies installed: `uv sync`,
    `npm ci`, …; a warning names the log if that fails, then give it to env-setup before any code step);

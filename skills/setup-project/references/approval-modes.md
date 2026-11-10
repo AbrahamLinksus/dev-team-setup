@@ -20,7 +20,8 @@ Record the class and the reason in TASK_PROGRESS.md.
 
 ## approval_mode
 
-**every-task** (default): every task gets its own result card and approval.
+**every-task** (default): every task gets its own result card and approval. Independent tasks
+keep moving while a card waits (`stage-7-build.md`, "Don't let the team idle").
 
 **batch-low-risk**:
 - High-risk tasks: their own card, as usual.

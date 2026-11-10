@@ -498,6 +498,15 @@ class StructureTest(unittest.TestCase):
         tools = frontmatter(ROOT / "agents" / "reviewer.md")["tools"]
         self.assertFalse({"Edit", "Bash"} & set(tools), "parallel is only safe while the reviewer can't change files")
 
+    def test_independent_work_continues_while_a_card_waits(self):
+        # D20: owner wait dominates wall time; the team keeps working (background agent, or two
+        # cards in one question) in every approval mode, not only batch mode
+        build = (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8")
+        self.assertIn("**Don't let the team idle while a card waits.**", build)
+        self.assertIn("run_in_background", build)
+        self.assertIn("one\n  AskUserQuestion call", build)
+        self.assertIn("Don't let the team idle", (SKILL / "references" / "approval-modes.md").read_text(encoding="utf-8"))
+
     def test_every_known_hole_keeps_its_regression_test(self):
         # M1: each problem fixed in code got a test that names it (S = scope guard, T = taskgit,
         # C = capture.py, G = gen_agents.py). Removing one of those tests should be a conscious act.
