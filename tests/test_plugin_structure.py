@@ -488,6 +488,16 @@ class StructureTest(unittest.TestCase):
         import bench
         self.assertIn("SESSION DONE", bench.MARKERS)
 
+    def test_tester_and_reviewer_run_in_parallel(self):
+        # D19: both read the same diff; running them together removes a sequential step per task
+        build = (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8")
+        step3 = build[build.index("3. **tester and reviewer in parallel.**"):build.index("\n4. ")]
+        self.assertLess(step3.index("changes.diff"), step3.index("one message"))
+        self.assertIn('"test+review started"', step3)
+        self.assertIn("stage-7-build.md` step 3", (SKILL / "SKILL.md").read_text(encoding="utf-8"))
+        tools = frontmatter(ROOT / "agents" / "reviewer.md")["tools"]
+        self.assertFalse({"Edit", "Bash"} & set(tools), "parallel is only safe while the reviewer can't change files")
+
     def test_every_known_hole_keeps_its_regression_test(self):
         # M1: each problem fixed in code got a test that names it (S = scope guard, T = taskgit,
         # C = capture.py, G = gen_agents.py). Removing one of those tests should be a conscious act.

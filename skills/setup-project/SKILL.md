@@ -77,7 +77,8 @@ for them (git-pr stays available for a task whose commit message needs real summ
    was reverted, tell the agent what and why in its next brief.
 4. Mark ✅ / ❌ and copy the one-line result of the short REPORT into the step's note
    (e.g. `5/5 goals ✅ · checks pass · 2 decisions`). A `Context gap:` in the REPORT → add a row
-   to STATE.md "Context additions". Checkpoint `"<step> done"`. Only then spawn the next agent.
+   to STATE.md "Context additions". Checkpoint `"<step> done"`. Only then spawn the next agent
+   (the one exception: tester and reviewer run together, see `stage-7-build.md` step 3).
 
 ## Context budget (Orchestrator)
 
