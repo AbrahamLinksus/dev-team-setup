@@ -34,3 +34,25 @@ jobs:
           PATH="$RUNNER_TEMP/bash32:$PATH" /bin/bash tests/test_taskgit.sh
       - name: Shell syntax
         run: bash -n skills/setup-project/scripts/taskgit.sh && sh -n hooks/scope_guard.sh
+
+  lint:
+    # M3: manifest schema, shell and Python lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Plugin manifest (claude plugin validate)
+        run: |
+          npm install -g @anthropic-ai/claude-code >/dev/null
+          claude plugin validate .
+      - name: shellcheck
+        run: shellcheck --severity=warning skills/setup-project/scripts/taskgit.sh hooks/scope_guard.sh tests/test_taskgit.sh
+      - name: ruff
+        run: |
+          python -m pip install ruff
+          ruff check --select E9,F,B,UP --target-version py39 hooks tools skills tests bench.py
