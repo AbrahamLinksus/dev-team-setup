@@ -495,6 +495,11 @@ class StructureTest(unittest.TestCase):
         step3 = build[build.index("3. **tester and reviewer in parallel.**"):build.index("\n4. ")]
         self.assertLess(step3.index("changes.diff"), step3.index("one message"))
         self.assertIn('"test+review started"', step3)
+        # D19 fix: scope checks every change since the checkpoint against ONE role, so scoping the
+        # reviewer after a parallel step reverted the tester's tests; scope runs once, as tester
+        self.assertIn("scope <repo> T-xx tester` **once**", step3)
+        self.assertIn("Never run `scope` as reviewer", step3)
+        self.assertNotIn("`scope` for each", step3)
         self.assertIn("stage-7-build.md` step 3", (SKILL / "SKILL.md").read_text(encoding="utf-8"))
         tools = frontmatter(ROOT / "agents" / "reviewer.md")["tools"]
         self.assertFalse({"Edit", "Bash"} & set(tools), "parallel is only safe while the reviewer can't change files")
