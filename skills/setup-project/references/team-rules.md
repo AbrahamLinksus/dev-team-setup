@@ -59,3 +59,20 @@ Options:
 Recommended: <A/B> because <reason>
 Affects: <files / tasks / cost>
 ```
+
+**Planner, during the spec interview only**, returns one of its interview formats instead of a
+REPORT (layout in `spec-interview.md`):
+
+```
+QUESTIONS (round <n> · <x>/<total> complete)
+1. [Area] <question> | options: <a>; <b>; Decide for me | recommended: <a> | why: <what it decides>
+...
+```
+or, when every checklist row is answered:
+```
+SPEC COMPLETE
+Assumptions: <list of (assumed) lines>
+Screens: <list> (or "no UI")
+```
+Every other step, the planner returns a REPORT or DECISION NEEDED like everyone else. These
+three are the only formats the Orchestrator accepts.

@@ -228,6 +228,12 @@ class StructureTest(unittest.TestCase):
         self.assertIn("**tester** (it has Bash): runs every command", handover)
         self.assertIn("Bash", frontmatter(ROOT / "agents" / "tester.md")["tools"])
 
+    def test_every_return_format_is_documented(self):
+        # K9: team-rules allowed only REPORT and DECISION NEEDED, but the planner returns QUESTIONS / SPEC COMPLETE
+        rules = (SKILL / "references" / "team-rules.md").read_text(encoding="utf-8")
+        for fmt in ("REPORT <task-id>", "DECISION NEEDED", "QUESTIONS (round", "SPEC COMPLETE"):
+            self.assertIn(fmt, rules)
+
     def test_no_hardcoded_owner(self):
         for path in list((ROOT / "agents").glob("*.md")) + list(SKILL.rglob("*.md")):
             with self.subTest(file=str(path.relative_to(ROOT))):
