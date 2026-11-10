@@ -9,6 +9,26 @@ You answer questions and approve each step, from your laptop or your phone.
 
 ## Get started
 
+**0. Check the requirements**
+
+| You need | Why |
+|---|---|
+| [Claude Code](https://claude.com/claude-code) | runs the plugin |
+| `git` | every task is a branch with checkpoints |
+| [GitHub CLI](https://cli.github.com) `gh`, signed in (`gh auth login`) | creates the project's repo and pushes to it |
+| Python 3.9 or newer (`python3`) | the guard that keeps each agent in its lane runs on it |
+| [uv](https://docs.astral.sh/uv/) | Python projects |
+| Node.js + npm | JavaScript projects and Mermaid diagrams |
+
+One line to check them all:
+
+```bash
+git --version && gh auth status && python3 --version && uv --version && npm --version
+```
+
+Playwright and Chromium (for screenshots) are set up the first time you start a project: the
+plugin asks first, and installs them into its own private folder, not your system Python.
+
 **1. Install** in Claude Code
 
 ```bash
@@ -28,8 +48,8 @@ claude plugin install dev-team-setup@dev-team-setup
 /setup-project a habit tracker with daily streaks
 ```
 
-That's it. Claude asks you a few questions, plans the project, picks a team of agents,
-and starts building.
+Claude checks the tools above, asks you a few questions, plans the project, picks a team of
+agents, and starts building.
 
 ---
 
