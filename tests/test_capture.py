@@ -74,6 +74,10 @@ class CaptureCliTest(unittest.TestCase):
                     self.assertNotIn("install", words, f"{fn.name} installs something at runtime")
         self.assertRegex(CAP.read_text(encoding="utf-8"), r'MERMAID = "mermaid@\d+\.\d+\.\d+"')
 
+    def test_no_networkidle_waits(self):
+        # C5: hot-reload and long-polling dev servers never go network-idle, so captures timed out
+        self.assertNotIn("networkidle", CAP.read_text(encoding="utf-8"))
+
     def test_venv_is_used_when_deps_are_missing(self):
         # a fake "venv python" that just reports it was used
         with tempfile.TemporaryDirectory() as d:

@@ -123,7 +123,7 @@ def _shot_html(content: str, out: str, width: int, base_url: str | None = None):
         if base_url:
             page.goto(base_url)
         else:
-            page.set_content(content, wait_until="networkidle")
+            page.set_content(content, wait_until="load")
         page.wait_for_timeout(300)
         page.screenshot(path=out, full_page=True)
     finally:
@@ -143,7 +143,9 @@ def cmd_web(a):
             ctx = browser.new_context(viewport=vp, device_scale_factor=scale,
                                       is_mobile=(name == "mobile"), has_touch=(name == "mobile"))
             page = ctx.new_page()
-            page.goto(a.url, wait_until="networkidle", timeout=30000)
+            # C5: dev servers with hot-reload or long-polling never go network-idle; wait for the
+            # load event, then for --wait-for if the caller named what "ready" looks like
+            page.goto(a.url, wait_until="load", timeout=30000)
             if a.wait_for:
                 page.wait_for_selector(a.wait_for, timeout=15000)
             page.wait_for_timeout(a.delay)
