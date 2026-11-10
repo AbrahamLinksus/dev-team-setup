@@ -1,4 +1,6 @@
 """Generate agents/*.md from one spec. Edit the AGENTS list, then run: python3 tools/gen_agents.py"""
+from __future__ import annotations
+
 import json
 from pathlib import Path
 
@@ -349,10 +351,21 @@ tools: [{tools}]
 {SHARED}"""
 
 
-if __name__ == "__main__":
-    import sys
-    out = Path(sys.argv[1]) if len(sys.argv) > 1 else OUT   # optional output dir (used by tests)
+def write_agents(out: Path) -> None:
     out.mkdir(parents=True, exist_ok=True)
     for a in AGENTS:
-        (out / f"{a['name']}.md").write_text(build(a))
-    print(len(AGENTS), "agents written to", out)
+        with open(out / f"{a['name']}.md", "w", encoding="utf-8", newline="\n") as f:   # LF on every OS
+            f.write(build(a))
+
+
+def main(argv: list[str] | None = None) -> None:
+    import argparse
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--out", type=Path, default=OUT, help=f"output folder (default: {OUT})")
+    args = ap.parse_args(argv)   # G1: `--help` used to create a folder named --help
+    write_agents(args.out)
+    print(len(AGENTS), "agents written to", args.out)
+
+
+if __name__ == "__main__":
+    main()

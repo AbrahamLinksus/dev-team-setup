@@ -97,7 +97,7 @@ Other notes:
 ```
 python3 -m unittest discover -s tests -v   # structure, agents, scope guard (needs pyyaml)
 bash tests/test_taskgit.sh                  # git scenarios against throwaway repos
-python3 tools/gen_agents.py                 # regenerate agents/ after editing the spec
+python3 tools/gen_agents.py                 # regenerate agents/ after editing the spec (--out DIR, --help)
 ```
 
 - `tests/test_taskgit.sh` has one scenario per git bug found so far (parallel approvals,
