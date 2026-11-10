@@ -104,6 +104,11 @@ Pushing `wip/*` branches is pre-approved. **main changes only through `$TASKGIT 
 
 ## 0 · Intake + repo
 
+0. **Surface check, before anything else.** This skill needs the Agent tool (to spawn the
+   team) and Bash (git, checks, the guard). If either is missing from your tools, e.g. in
+   claude.ai chat, reply in one line: "/setup-project needs Claude Code: it spawns a team of
+   agents and runs git and tests, which this app can't do." Then stop. Never run the stages
+   yourself without the team and the guard.
 1. `/setup-project resume <repo>`, or "continue" when this folder has a setup-project STATE.md
    (or the message names the repo) → **Resume** below.
 2. Check `python3 --version` (3.9 or newer). The scope guard that keeps every agent in its lane

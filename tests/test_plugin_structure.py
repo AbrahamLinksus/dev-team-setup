@@ -414,6 +414,14 @@ class StructureTest(unittest.TestCase):
         self.assertIsNotNone(top, "CHANGELOG.md has no release heading")
         self.assertEqual(top.group(1), version, "plugin.json version and the top CHANGELOG entry differ")
 
+    def test_skill_stops_without_agents_or_bash(self):
+        # D6: in claude.ai chat agents and hooks are ignored; the skill must refuse rather than run
+        # the stages itself with no team and no guard.
+        skill = (ROOT / "skills" / "setup-project" / "SKILL.md").read_text(encoding="utf-8")
+        intake = skill[skill.index("## 0 · Intake"):]
+        self.assertLess(intake.index("Surface check"), intake.index("1. `/setup-project resume"))
+        self.assertIn("Agent tool", intake[:600])
+
     def test_every_known_hole_keeps_its_regression_test(self):
         # M1: each problem fixed in code got a test that names it (S = scope guard, T = taskgit,
         # C = capture.py, G = gen_agents.py). Removing one of those tests should be a conscious act.
