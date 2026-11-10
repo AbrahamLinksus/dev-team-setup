@@ -38,6 +38,14 @@ class StructureTest(unittest.TestCase):
                 self.assertTrue({"type", "title", "description"} <= set(opt))
                 self.assertTrue(set(opt) <= allowed, set(opt) - allowed)
 
+    def test_modes_are_choices(self):
+        # K15: approval_mode and cost_mode accepted any text, so a typo went unnoticed
+        uc = json.loads((ROOT / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))["userConfig"]
+        self.assertEqual(uc["approval_mode"]["options"], ["every-task", "batch-low-risk"])
+        self.assertEqual(uc["cost_mode"]["options"], ["quality", "balanced"])
+        for key in ("approval_mode", "cost_mode"):
+            self.assertIn(uc[key]["default"], uc[key]["options"])
+
     def test_hooks_json(self):
         h = json.loads((ROOT / "hooks" / "hooks.json").read_text())
         cmd = h["hooks"]["PreToolUse"][0]["hooks"][0]["command"]

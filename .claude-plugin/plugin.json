@@ -31,13 +31,21 @@
       "type": "string",
       "title": "Approval mode",
       "description": "every-task = a result card and approval for every task. batch-low-risk = low-risk tasks are approved together in one batch card (high-risk tasks still get their own card).",
-      "default": "every-task"
+      "default": "every-task",
+      "options": [
+        "every-task",
+        "batch-low-risk"
+      ]
     },
     "cost_mode": {
       "type": "string",
       "title": "Cost mode",
       "description": "quality = models as defined per agent. balanced = Sonnet for reviewer/debugger on low-risk tasks and max 2 debugger rounds.",
-      "default": "quality"
+      "default": "quality",
+      "options": [
+        "quality",
+        "balanced"
+      ]
     }
   }
 }
