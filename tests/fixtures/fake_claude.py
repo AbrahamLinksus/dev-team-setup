@@ -76,6 +76,22 @@ elif "-p" in args:
     if prompt == "Reply with just: ok":
         total = 28677 + (5562 if plugin_on() else 0)
         print(json.dumps({"is_error": False, "result": "ok", "usage": usage(3, 0, total - 3, 4)}))
+    elif "Answers file:" in prompt:  # unattended plugin session (D7): answer cards into answers.log
+        log = Path(re.search(r"Answers file: (.+)", prompt).group(1).strip()).with_name("answers.log")
+        m = re.search(r"Name the repo ([\w-]+)", prompt) or re.search(r"resume ([\w-]+)", prompt)
+        repo = PROJECTS / m.group(1)
+        if not repo.exists():
+            shutil.copytree(APP, repo)
+        lines = (["2026-11-10T10:00 · Spec · Approve the spec? → Approve",
+                  "2026-11-10T10:05 · T-01 · Approve T-01? → Approve", "MILESTONE DONE 1"]
+                 if "resume" not in prompt else
+                 ["2026-11-10T10:20 · Handover · Approve the handover? → Approve", "HANDOVER DONE"])
+        with log.open("a", encoding="utf-8") as f:
+            f.write("\n".join(lines) + "\n")
+        write_session(Path.cwd(), prompt, [usage(5, 3000, 50000, 900)], 2.5,
+                      {"claude-opus-5-5": (500, 9000, 400000, 3000), "claude-sonnet-5-5": (10, 2000, 30000, 700)},
+                      subagent=usage(10, 2000, 30000, 700))
+        print(json.dumps({"is_error": False, "result": "done", "total_cost_usd": 2.5}))
     else:  # a normal build: "write" the app and log the session
         cwd = Path.cwd()
         for f in APP.iterdir():

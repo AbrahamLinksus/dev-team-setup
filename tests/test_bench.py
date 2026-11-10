@@ -167,8 +167,8 @@ class EndToEndTest(unittest.TestCase):
         return json.loads((self.t / "bench" / "state.json").read_text())
 
     def test_full_small_benchmark(self):
-        # normal run: settings → skip permissions y, headless y, budget 10
-        out = self.bench("run", "small", "normal", stdin="y\ny\n10\n")
+        # normal run: settings → skip permissions y, headless y, plugin unattended n, budget 10
+        out = self.bench("run", "small", "normal", stdin="y\ny\nn\n10\n")
         self.assertIn("acceptance 8/8", out)
         n = self.state()["runs"]["small-normal"]
         self.assertAlmostEqual(n["tokens"]["cost_usd"], 0.7586, places=4)
@@ -191,6 +191,17 @@ class EndToEndTest(unittest.TestCase):
         report = (self.t / "bench" / "results.md").read_text()
         self.assertIn("**plugin ÷ normal** | **6.6×**", report)
         self.assertIn("| small-plugin | 8/8 | ✅ |", report)
+
+    def test_unattended_plugin_run(self):
+        # D7: settings → skip permissions y, headless y, plugin unattended y, budget 10
+        self.bench("run", "small", "normal", stdin="y\ny\ny\n10\n")
+        out = self.bench("run", "small", "plugin")          # no stdin: nothing may ask
+        self.assertIn("Handover done.", out)
+        p = self.state()["runs"]["small-plugin"]
+        self.assertFalse(p["stopped"])
+        self.assertEqual(len(p["tokens"]["sessions"]), 2)    # first session ends at the milestone
+        self.assertEqual(p["tokens"]["interventions"], 3)    # the answers logged, not the markers
+        self.assertEqual(p["test"]["acceptance"], 8)
 
     def test_overhead(self):
         self.bench("overhead")
