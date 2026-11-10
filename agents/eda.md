@@ -1,6 +1,6 @@
 ---
 name: eda
-description: "Use this agent when a dataset needs exploratory analysis before features or modelling. Part of the /setup-project dev team; the Orchestrator spawns it with a task brief."
+description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; never for ordinary work outside a /setup-project run. Used when a dataset needs exploratory analysis before features or modelling."
 model: sonnet
 color: cyan
 tools: ["Bash", "Read", "Write", "Edit", "Glob"]

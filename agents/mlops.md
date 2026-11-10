@@ -1,6 +1,6 @@
 ---
 name: mlops
-description: "Use this agent when a model must be served (FastAPI + Docker), versioned, or monitored for drift and performance. Part of the /setup-project dev team; the Orchestrator spawns it with a task brief."
+description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; never for ordinary work outside a /setup-project run. Used when a model must be served (FastAPI + Docker), versioned, or monitored for drift and performance."
 model: sonnet
 color: green
 tools: ["Bash", "Read", "Write", "Edit", "Glob"]

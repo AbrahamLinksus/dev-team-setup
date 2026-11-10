@@ -1,6 +1,6 @@
 ---
 name: architect
-description: "Use this agent when an approved HLD needs a low-level design (stack, structure, modules, schema, contracts, packages, conventions), a change request needs design updates, the LLD needs an as-built sync at milestone end, or the project needs its handover ARCHITECTURE.md and WALKTHROUGH.md. Part of the /setup-project dev team; the Orchestrator spawns it with a task brief."
+description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; never for ordinary work outside a /setup-project run. Used when an approved HLD needs a low-level design (stack, structure, modules, schema, contracts, packages, conventions), a change request needs design updates, the LLD needs an as-built sync at milestone end, or the project needs its handover ARCHITECTURE.md and WALKTHROUGH.md."
 model: opus
 color: blue
 tools: ["Read", "Write", "Edit", "Glob", "Grep"]

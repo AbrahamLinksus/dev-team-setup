@@ -1,6 +1,6 @@
 ---
 name: git-pr
-description: "Use this agent when an approved task must be squashed into main, a rejected task discarded, or the repo prepared. Part of the /setup-project dev team; the Orchestrator spawns it with a task brief."
+description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; never for ordinary work outside a /setup-project run. Used when an approved task must be squashed into main, a rejected task discarded, or the repo prepared."
 model: haiku
 color: yellow
 tools: ["Bash", "Read", "Write"]

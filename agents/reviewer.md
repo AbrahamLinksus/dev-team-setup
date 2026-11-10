@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: "Use this agent when a task has passed its tests and needs a read-only review for bugs, security, edge cases, LLD violations and style. Part of the /setup-project dev team; the Orchestrator spawns it with a task brief."
+description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; never for ordinary work outside a /setup-project run. Used when a task has passed its tests and needs a read-only review for bugs, security, edge cases, LLD violations and style."
 model: opus
 color: red
 tools: ["Read", "Write", "Grep", "Glob"]

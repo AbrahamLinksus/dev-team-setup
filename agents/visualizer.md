@@ -1,6 +1,6 @@
 ---
 name: visualizer
-description: "Use this agent when results need publication-quality charts or an interactive dashboard (Plotly, Streamlit). Part of the /setup-project dev team; the Orchestrator spawns it with a task brief."
+description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; never for ordinary work outside a /setup-project run. Used when results need publication-quality charts or an interactive dashboard (Plotly, Streamlit)."
 model: sonnet
 color: magenta
 tools: ["Bash", "Read", "Write", "Edit", "Glob"]

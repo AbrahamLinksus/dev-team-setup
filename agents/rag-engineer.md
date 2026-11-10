@@ -1,6 +1,6 @@
 ---
 name: rag-engineer
-description: "Use this agent when a task involves document ingestion, chunking, embeddings, vector DBs, hybrid search or reranking. Part of the /setup-project dev team; the Orchestrator spawns it with a task brief."
+description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; never for ordinary work outside a /setup-project run. Used when a task involves document ingestion, chunking, embeddings, vector DBs, hybrid search or reranking."
 model: sonnet
 color: magenta
 tools: ["Bash", "Read", "Write", "Edit", "Glob", "Grep", "WebFetch"]

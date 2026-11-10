@@ -1,6 +1,6 @@
 ---
 name: debugger
-description: "Use this agent when tests fail, the app errors, or the reviewer reports a Critical issue. Part of the /setup-project dev team; the Orchestrator spawns it with a task brief."
+description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; never for ordinary work outside a /setup-project run. Used when tests fail, the app errors, or the reviewer reports a Critical issue."
 model: opus
 color: red
 tools: ["Read", "Edit", "Bash", "Glob", "Grep"]

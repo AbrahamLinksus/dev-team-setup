@@ -53,6 +53,8 @@ class StructureTest(unittest.TestCase):
                 self.assertIn(fm["model"], {"opus", "sonnet", "haiku", "inherit"})
                 # the Claude app rejects XML-like tags in descriptions
                 self.assertNotRegex(fm["description"], r"[<>]")
+                # K1: never picked for ordinary work outside /setup-project
+                self.assertTrue(fm["description"].startswith("Only when spawned by the /setup-project Orchestrator with a BRIEF"))
                 tools = fm.get("tools", [])
                 unknown = {t for t in tools if t not in KNOWN_TOOLS and not t.startswith("mcp__")}
                 self.assertFalse(unknown, unknown)

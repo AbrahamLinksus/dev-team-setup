@@ -1,6 +1,6 @@
 ---
 name: docs
-description: "Use this agent when the README, API docs or architecture notes need writing or updating, usually at the end of a milestone. Part of the /setup-project dev team; the Orchestrator spawns it with a task brief."
+description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; never for ordinary work outside a /setup-project run. Used when the README, API docs or architecture notes need writing or updating, usually at the end of a milestone."
 model: haiku
 color: green
 tools: ["Read", "Write", "Edit", "Glob"]

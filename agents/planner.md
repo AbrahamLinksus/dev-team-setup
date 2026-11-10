@@ -1,6 +1,6 @@
 ---
 name: planner
-description: "Use this agent when the project needs its spec interview (SPEC.md + wireframes), high-level breakdown (HLD), milestone task list, change-request doc updates, or a task re-plan. Part of the /setup-project dev team; the Orchestrator spawns it with a task brief."
+description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; never for ordinary work outside a /setup-project run. Used when the project needs its spec interview (SPEC.md + wireframes), high-level breakdown (HLD), milestone task list, change-request doc updates, or a task re-plan."
 model: opus
 color: blue
 tools: ["Read", "Write", "Edit", "Glob"]

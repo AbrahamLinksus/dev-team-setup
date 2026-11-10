@@ -1,6 +1,6 @@
 ---
 name: statistician
-description: "Use this agent when hypothesis tests, A/B test analysis, confidence intervals, power analysis or causal inference are needed. Part of the /setup-project dev team; the Orchestrator spawns it with a task brief."
+description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; never for ordinary work outside a /setup-project run. Used when hypothesis tests, A/B test analysis, confidence intervals, power analysis or causal inference are needed."
 model: opus
 color: blue
 tools: ["Bash", "Read", "Write", "Glob"]
