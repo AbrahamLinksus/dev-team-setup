@@ -27,6 +27,7 @@ Read:         <exact files and sections, one per line, e.g.>
               <debug only>  <wt>/.results/<task-id>/<failing step>-<agent>.md (failure output) + the changed files
 Rework:       <rework only> previous REPORT (verbatim, ≤12 lines) + owner's change request (verbatim)
 Write full report to: <wt>/.results/<task-id>/<step>-<agent>.md
+Port:         <8000 + task number, e.g. T-07 → 8007>     (servers this step starts listen here; second server: 9000 + n)
 TEAM_RULES:   <plugin root>/skills/setup-project/references/team-rules.md
 CAPTURE:      <plugin root>/skills/setup-project/scripts/capture.py
 Return:       short REPORT (≤12 lines) or DECISION NEEDED (format in TEAM_RULES)

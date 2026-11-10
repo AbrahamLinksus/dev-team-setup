@@ -259,6 +259,13 @@ class StructureTest(unittest.TestCase):
         self.assertNotIn("**git-pr** `$TASKGIT reject", skill)
         self.assertIn("run `$TASKGIT approve <repo> T-xx", skill)
 
+    def test_no_shared_default_ports(self):
+        # K14: parallel tasks all used 3000/8000/8501, so a screenshot could come from another task's server
+        for f in [SKILL / "references" / "visual-capture.md", *(ROOT / "agents").glob("*.md")]:
+            with self.subTest(file=f.name):
+                self.assertNotRegex(f.read_text(encoding="utf-8"), r"localhost:(3000|8000|8501)\b")
+        self.assertIn("Port:", (SKILL / "references" / "brief-template.md").read_text(encoding="utf-8"))
+
     def test_no_hardcoded_owner(self):
         for path in list((ROOT / "agents").glob("*.md")) + list(SKILL.rglob("*.md")):
             with self.subTest(file=str(path.relative_to(ROOT))):
