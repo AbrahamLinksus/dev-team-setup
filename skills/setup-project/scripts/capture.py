@@ -233,6 +233,15 @@ def load_mono_font(image_font, size: int):
         return image_font.load_default()
 
 
+def truncate_lines(lines: list[str], max_lines: int) -> list[str]:
+    """Keep the first and last lines, max_lines in all (C9: an odd count used to lose one)."""
+    if max_lines <= 0 or len(lines) <= max_lines:
+        return lines
+    head = (max_lines + 1) // 2
+    tail = max_lines - head
+    return lines[:head] + [f"... ({len(lines) - max_lines} lines omitted) ..."] + (lines[-tail:] if tail else [])
+
+
 def run_cmd(cmd: str, cwd: str | None, timeout: float) -> str:
     """Run `cmd` through the shell and return the transcript to render. C4: a command that never
     ends (e.g. one that starts a server) is stopped after `timeout` seconds, with its whole
@@ -266,9 +275,7 @@ def cmd_term(a):
     else:
         text = sys.stdin.read()
     lines = strip_ansi(text).expandtabs(4).splitlines() or [""]
-    if len(lines) > a.max_lines:
-        half = a.max_lines // 2
-        lines = lines[:half] + [f"... ({len(lines) - a.max_lines} lines omitted) ..."] + lines[-half:]
+    lines = truncate_lines(lines, a.max_lines)
     lines = [ln[:160] for ln in lines]
     font = load_mono_font(ImageFont, 28)
     cw = font.getbbox("M")[2]
