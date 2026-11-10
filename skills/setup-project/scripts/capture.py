@@ -24,6 +24,7 @@ from __future__ import annotations  # `str | None` annotations on Python 3.9 (ma
 import argparse
 import html as htmllib
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -159,6 +160,34 @@ def cmd_web(a):
     print("\n".join(outs))
 
 
+ANSI = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(\x07|\x1b\\)|\x1b[@-Z\\-_]")
+ZERO_BAD = re.compile(r"\b(0|no|zero) (failed|failures?|errors?|warnings?)\b|\bwithout errors\b")
+BAD = re.compile(r"\b(errors?|failed|failures?|failing|traceback|exception|fatal|panic)\b")
+GOOD = re.compile(r"\b(passed|passing|ok|success|successful|succeeded|done)\b|✓|✅")
+WARN = re.compile(r"\bwarn(ings?)?\b")
+
+
+def strip_ansi(text: str) -> str:
+    """C6: colour codes from pytest, npm, ruff … rendered as garbage like `[32m`."""
+    return ANSI.sub("", text)
+
+
+def line_color(line: str) -> str:
+    """Colour a terminal line by meaning, using whole words: "0 failed" and "no errors" are good news."""
+    low = line.lower()
+    if line.startswith("$ "):
+        return "#79c0ff"
+    if ZERO_BAD.search(low) and not BAD.search(ZERO_BAD.sub("", low)):
+        return "#7ee787"
+    if BAD.search(low):
+        return "#ff7b72"
+    if GOOD.search(low):
+        return "#7ee787"
+    if WARN.search(low):
+        return "#d29922"
+    return "#e6edf3"
+
+
 def run_cmd(cmd: str, cwd: str | None, timeout: float) -> str:
     """Run `cmd` through the shell and return the transcript to render. C4: a command that never
     ends (e.g. one that starts a server) is stopped after `timeout` seconds, with its whole
@@ -191,7 +220,7 @@ def cmd_term(a):
         text = Path(a.file).read_text(errors="replace")
     else:
         text = sys.stdin.read()
-    lines = text.expandtabs(4).splitlines() or [""]
+    lines = strip_ansi(text).expandtabs(4).splitlines() or [""]
     if len(lines) > a.max_lines:
         half = a.max_lines // 2
         lines = lines[:half] + [f"... ({len(lines) - a.max_lines} lines omitted) ..."] + lines[-half:]
@@ -212,17 +241,7 @@ def cmd_term(a):
         d.text((130, 12), a.title, font=font, fill="#8b949e")
     y = title_h + 20
     for ln in lines:
-        low = ln.lower()
-        color = "#e6edf3"
-        if ln.startswith("$ "):
-            color = "#79c0ff"
-        elif any(k in low for k in ("error", "failed", "traceback", "exception")):
-            color = "#ff7b72"
-        elif any(k in low for k in ("passed", " ok", "success", "done", "✓")):
-            color = "#7ee787"
-        elif "warn" in low:
-            color = "#d29922"
-        d.text((32, y), ln, font=font, fill=color)
+        d.text((32, y), ln, font=font, fill=line_color(ln))
         y += lh
     img.save(a.out)
     print(a.out)

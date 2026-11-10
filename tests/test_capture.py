@@ -43,6 +43,33 @@ class CaptureHelpersTest(unittest.TestCase):
         self.assertIn("[exit 0]", cap.run_cmd(f'"{sys.executable}" -c "print(1)"', None, 30))
 
 
+class TermColorsTest(unittest.TestCase):
+    # C6: ANSI codes weren't stripped and "0 failed" / "no errors" were painted red
+    RED, GREEN, YELLOW, PLAIN = "#ff7b72", "#7ee787", "#d29922", "#e6edf3"
+
+    def test_strip_ansi(self):
+        cap = load_capture()
+        self.assertEqual(cap.strip_ansi("\x1b[32m5 passed\x1b[0m in 0.1s"), "5 passed in 0.1s")
+        self.assertEqual(cap.strip_ansi("\x1b]8;;http://x\x07link\x1b]8;;\x07"), "link")
+
+    def test_line_colors(self):
+        cap = load_capture()
+        cases = {
+            "===== 5 passed, 0 failed in 0.21s =====": self.GREEN,
+            "Found no errors": self.GREEN,
+            "Success: no issues found in 12 source files": self.GREEN,
+            "1 failed, 4 passed": self.RED,
+            "Traceback (most recent call last):": self.RED,
+            "src/errorhandler.py ok": self.GREEN,          # "error" inside a word isn't an error
+            "terrorist_detector.py": self.PLAIN,
+            "2 warnings": self.YELLOW,
+            "$ pytest -q": "#79c0ff",
+        }
+        for line, want in cases.items():
+            with self.subTest(line=line):
+                self.assertEqual(cap.line_color(line), want)
+
+
 class CaptureCliTest(unittest.TestCase):
     def test_help_lists_doctor(self):
         p = run("--help")
