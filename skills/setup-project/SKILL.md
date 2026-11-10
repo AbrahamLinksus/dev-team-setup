@@ -99,7 +99,10 @@ Pushing `wip/*` branches is pre-approved. **main changes only through `$TASKGIT 
 ## 0 · Intake + repo
 
 1. `/setup-project resume <repo>` or "continue" → **Resume** below.
-2. Run `python3 $CAPTURE doctor` (the plugin's own tooling for visuals: Playwright + Chromium,
+2. Check `python3 --version` (3.9 or newer). The scope guard that keeps every agent in its lane
+   runs on it; without it, the guard blocks every agent call. Missing → tell the owner what to
+   install and stop: never build without the guard.
+   Then run `python3 $CAPTURE doctor` (the plugin's own tooling for visuals: Playwright + Chromium,
    Pillow, markdown, npm for Mermaid). If it reports anything missing, ask once (AskUserQuestion:
    **Install the visual tools** into the plugin's private venv / **Skip visuals** = text cards),
    then run `python3 $CAPTURE doctor --install`. It never touches the project's environment.

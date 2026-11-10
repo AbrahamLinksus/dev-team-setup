@@ -422,6 +422,28 @@ class GuardTest(unittest.TestCase):
         self.assertEqual(run({**push, "agent_type": "other:dev-team-setup:x"}), "")
         self.assertIn('"deny"', run({**push, "agent_type": "dev-team-setup:backend-coder"}))
 
+    def test_fails_closed_without_python(self):
+        # S14: with no python3, Claude Code would treat the failing hook as non-blocking
+        sh = shutil.which("sh")
+        if not sh or os.name == "nt":
+            self.skipTest("needs a POSIX sh and symlinked tools")
+        with tempfile.TemporaryDirectory() as bindir:
+            for tool in ("grep", "cat", "dirname"):   # just enough for the wrapper, and no python
+                src = shutil.which(tool)
+                if not src:
+                    self.skipTest(f"no {tool}")
+                Path(bindir, tool).symlink_to(src)
+            event = {"tool_name": "Bash", "tool_input": {"command": "ls"}, "cwd": str(self.repo),
+                     "agent_type": "dev-team-setup:backend-coder"}
+            out = subprocess.run([sh, str(ROOT / "hooks" / "scope_guard.sh")], input=json.dumps(event),
+                                 capture_output=True, text=True, env={"PATH": bindir}).stdout
+            self.assertIn('"deny"', out)
+            self.assertIn("Python", out)
+            other = subprocess.run([sh, str(ROOT / "hooks" / "scope_guard.sh")],
+                                   input=json.dumps({**event, "agent_type": "reviewer"}),
+                                   capture_output=True, text=True, env={"PATH": bindir}).stdout
+            self.assertEqual(other, "")   # other callers never need Python
+
     def test_no_shell_roles(self):
         for agent in ("reviewer", "researcher", "planner", "architect", "docs", "insights-reporter"):
             with self.subTest(agent=agent):
