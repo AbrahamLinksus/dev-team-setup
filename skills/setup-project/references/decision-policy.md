@@ -7,6 +7,9 @@
 - Adding, removing or upgrading any package
 - Model choice (ML algorithm, LLM, embedding model), training budget
 - Dropping or modifying data rows/columns, changing the target or metric
+- Where datasets and model files live: DVC with a remote, Git LFS, or not versioned at all
+  (git-ignored, re-created by a script). Ask before the first data or model file is written;
+  never commit them to git by default
 - Anything that costs money, uses an external account, or sends data outside
 - Deployment target and timing, repo visibility, any push
 - Anything irreversible or hard to undo
