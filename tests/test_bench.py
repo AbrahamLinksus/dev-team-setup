@@ -143,11 +143,14 @@ class AcceptanceTest(unittest.TestCase):
         port = free_port()
         p = subprocess.Popen([sys.executable, str(script)], cwd=Path(script).parent,
                              env={**os.environ, "PORT": str(port), **(env or {})})
-        for _ in range(50):
-            if bench.port_open(port):
-                break
-            time.sleep(0.1)
         self.addCleanup(lambda: (p.kill(), p.wait()))
+        deadline = time.time() + 30          # slow CI machines need more than the old 5s
+        while not bench.port_open(port):
+            if p.poll() is not None:
+                self.fail(f"{script} exited with code {p.returncode} before listening")
+            if time.time() > deadline:
+                self.fail(f"{script} wasn't listening on port {port} after 30s")
+            time.sleep(0.1)
         return f"http://127.0.0.1:{port}"
 
     def test_production_reference_passes(self):
