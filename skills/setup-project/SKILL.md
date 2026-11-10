@@ -3,8 +3,10 @@ name: setup-project
 description: >
   This skill should be used when the user types "/setup-project" followed by an idea,
   "/setup-project resume" followed by a repo name, or asks to "set up a project with the dev team",
-  "build this with the agent team", "continue my setup-project build", or says "continue"
-  after a setup-project session was interrupted. It acts as the Orchestrator: it interviews
+  "build this with the agent team" or "continue my setup-project build". A bare "continue"
+  counts only when the current folder holds a setup-project repo (a STATE.md written by this
+  skill) or the message names the repo; otherwise it belongs to whatever else the user was
+  doing. It acts as the Orchestrator: it interviews
   the owner into a spec (with wireframes), designs the system (HLD → team pick → LLD and
   conventions), builds it task by task with checkpoints that survive the session ending,
   handles change requests, keeps the design docs true to the code, and ends with a handover
@@ -98,7 +100,8 @@ Pushing `wip/*` branches is pre-approved. **main changes only through `$TASKGIT 
 
 ## 0 · Intake + repo
 
-1. `/setup-project resume <repo>` or "continue" → **Resume** below.
+1. `/setup-project resume <repo>`, or "continue" when this folder has a setup-project STATE.md
+   (or the message names the repo) → **Resume** below.
 2. Check `python3 --version` (3.9 or newer). The scope guard that keeps every agent in its lane
    runs on it; without it, the guard blocks every agent call. Missing → tell the owner what to
    install and stop: never build without the guard.
@@ -236,7 +239,8 @@ Design docs change only through this flow, the milestone as-built sync, or hando
 
 ## Resume
 
-`/setup-project resume <repo>` or "continue" (details in `checkpointing.md`). Rebuild everything
+`/setup-project resume <repo>`, or "continue" in a folder with a setup-project STATE.md (details in
+`checkpointing.md`). Rebuild everything
 from STATE.md, TASKS.md, DECISIONS.md and TASK_PROGRESS.md; take nothing from a previous chat.
 Agent IDs from earlier sessions are not continued; every step after a resume spawns fresh.
 1. Reuse `<base>/<repo>` (the folder recorded in STATE.md, or `./<repo>` in this session's
