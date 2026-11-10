@@ -45,7 +45,7 @@ it for the whole run: every owner question is answered from that file, never Ask
 
 References (read when the stage needs them): `spec-interview.md`, `agent-catalog.md`,
 `decision-policy.md`, `brief-template.md`, `result-card.md`, `visual-capture.md`,
-`checkpointing.md`, `approval-modes.md`, `change-requests.md`.
+`checkpointing.md`, `approval-modes.md`, `change-requests.md`, `agent-cards.md`.
 
 ## Pipeline
 
@@ -75,6 +75,8 @@ for them (git-pr stays available for a task whose commit message needs real summ
    absolute (`<wt>` = the worktree path `start` printed): subagents don't start in the worktree. Rework is the only exception
    (see **Rework continuation**). Record the returned agent ID in TASK_PROGRESS.md
    (`Agents: backend-coder=<id>, debugger=<id>`).
+   The first time a role works on this project, send its line from `agent-cards.md` with the step's
+   progress note (what it may change, what it can't, its shell): the guardrails, made visible.
 3. `$TASKGIT scope <repo> <id> <agent>`: reverts files outside the agent's scope. If anything
    was reverted, tell the agent what and why in its next brief.
 4. Mark ✅ / ❌ and copy the one-line result of the short REPORT into the step's note

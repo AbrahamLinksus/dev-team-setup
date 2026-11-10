@@ -539,6 +539,21 @@ class StructureTest(unittest.TestCase):
         self.assertEqual((bad.returncode, bad.stdout), (0, ""))
         self.assertIn('description: "<id> · <step>"', (SKILL / "SKILL.md").read_text(encoding="utf-8"))
 
+    def test_agent_id_cards_match_scopes(self):
+        # D25: one plain-language line per role, generated from scopes.json so it can't drift
+        sys.path.insert(0, str(ROOT / "tools"))
+        import gen_agents
+        with tempfile.TemporaryDirectory() as d:
+            fresh = Path(d) / "cards.md"
+            gen_agents.write_cards(fresh)
+            current = (SKILL / "references" / "agent-cards.md").read_text(encoding="utf-8")
+            self.assertEqual(current, fresh.read_text(encoding="utf-8"), "run python3 tools/gen_agents.py")
+        scopes = json.loads((SKILL / "scopes.json").read_text(encoding="utf-8"))
+        for name in scopes["agents"]:
+            self.assertIn(f"\n- {name} · may change:", current)
+        self.assertIn("- tester · may change: tests, its own reports · can't: anything else", current)
+        self.assertIn("agent-cards.md", (SKILL / "SKILL.md").read_text(encoding="utf-8"))
+
     def test_every_known_hole_keeps_its_regression_test(self):
         # M1: each problem fixed in code got a test that names it (S = scope guard, T = taskgit,
         # C = capture.py, G = gen_agents.py). Removing one of those tests should be a conscious act.
