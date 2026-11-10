@@ -46,10 +46,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: Plugin manifest (claude plugin validate)
+      - name: Plugin manifest (claude plugin validate --strict)
         run: |
           npm install -g @anthropic-ai/claude-code >/dev/null
-          claude plugin validate .
+          claude plugin validate --strict .
       - name: shellcheck
         run: shellcheck --severity=warning skills/setup-project/scripts/taskgit.sh hooks/scope_guard.sh tests/test_taskgit.sh
       - name: ruff
