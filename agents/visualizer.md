@@ -1,6 +1,6 @@
 ---
 name: visualizer
-description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; never for ordinary work outside a /setup-project run. Used when results need publication-quality charts or an interactive dashboard (Plotly, Streamlit)."
+description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; not for ordinary work. Charts and dashboards."
 model: sonnet
 color: magenta
 tools: ["Bash", "Read", "Write", "Edit", "Glob"]

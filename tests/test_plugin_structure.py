@@ -341,6 +341,11 @@ class StructureTest(unittest.TestCase):
         self.assertIn("## Pause or abandon", skill)
         self.assertIn("Paused", (SKILL / "templates" / "STATE.md").read_text(encoding="utf-8"))
 
+    def test_agent_descriptions_are_short(self):
+        # K23: all 26 descriptions are loaded into every session, even ones that never use the plugin
+        total = sum(len(frontmatter(p)["description"]) for p in AGENTS)
+        self.assertLess(total, 3500, f"agent descriptions total {total} characters")
+
     def test_no_hardcoded_owner(self):
         for path in list((ROOT / "agents").glob("*.md")) + list(SKILL.rglob("*.md")):
             with self.subTest(file=str(path.relative_to(ROOT))):

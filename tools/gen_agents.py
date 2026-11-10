@@ -334,8 +334,24 @@ AGENTS = [
 
 # K1: without this, Claude may hand ordinary coding in any session to these agents, which then
 # expect a BRIEF and run under the scope guard's limits.
-ONLY_ORCHESTRATOR = ("Only when spawned by the /setup-project Orchestrator with a BRIEF; never for ordinary "
-                     "work outside a /setup-project run.")
+ONLY_ORCHESTRATOR = "Only when spawned by the /setup-project Orchestrator with a BRIEF; not for ordinary work."
+# K23: every installed agent's description is loaded into every session, so keep them to a few
+# words. The Orchestrator picks agents by name (agent-catalog.md), not from these.
+SHORT = {
+    "planner": "Spec interview, HLD, task list.", "researcher": "Compares libraries, models and APIs.",
+    "architect": "LLD, conventions, as-built docs.", "env-setup": "Creates the project environment.",
+    "backend-coder": "Server, API, CLI and library code.", "frontend-coder": "UI code.",
+    "tester": "Tests a task against its criteria.", "reviewer": "Read-only code review.",
+    "debugger": "Fixes failing tests and errors.", "docs": "README and docs.", "devops": "CI, Docker, deployment.",
+    "git-pr": "Drafts squash commit messages.", "trainer": "Trains or fine-tunes models.",
+    "evaluator": "Measures models and LLM output.", "rag-engineer": "Retrieval pipelines.",
+    "prompt-engineer": "Prompts and structured outputs.", "agent-engineer": "LLM agents and MCP servers.",
+    "mlops": "Serves and monitors models.", "data-acquisition": "Pulls raw data in.",
+    "data-cleaner": "Cleans tabular data.", "eda": "Exploratory data analysis.",
+    "statistician": "Hypothesis tests and causal inference.", "modeler": "Features and classical ML.",
+    "explainer": "Explains trained models.", "visualizer": "Charts and dashboards.",
+    "insights-reporter": "Stakeholder report.",
+}
 
 
 def build(a, drive_server: str = DRIVE_SERVER):
@@ -344,7 +360,7 @@ def build(a, drive_server: str = DRIVE_SERVER):
     duties = "\n".join(f"{i}. {d}" for i, d in enumerate(a["duties"], 1))
     return f"""---
 name: {a['name']}
-description: {json.dumps(f"{ONLY_ORCHESTRATOR} Used when {a['when']}.", ensure_ascii=False)}
+description: {json.dumps(f"{ONLY_ORCHESTRATOR} {SHORT[a['name']]}", ensure_ascii=False)}
 model: {a['model']}
 color: {a['color']}
 tools: [{tools}]

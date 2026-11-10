@@ -1,6 +1,6 @@
 ---
 name: explainer
-description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; never for ordinary work outside a /setup-project run. Used when a trained model must be explained: SHAP, permutation importance, partial dependence, per-prediction explanations, fairness checks."
+description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; not for ordinary work. Explains trained models."
 model: opus
 color: cyan
 tools: ["Bash", "Read", "Write", "Glob"]

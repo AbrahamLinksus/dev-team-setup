@@ -1,6 +1,6 @@
 ---
 name: devops
-description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; never for ordinary work outside a /setup-project run. Used when CI, Docker builds or deployment (GCP, Vercel, Render) are needed."
+description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; not for ordinary work. CI, Docker, deployment."
 model: sonnet
 color: green
 tools: ["Bash", "Read", "Write", "Edit", "Glob"]

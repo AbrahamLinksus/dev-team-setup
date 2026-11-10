@@ -1,6 +1,6 @@
 ---
 name: agent-engineer
-description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; never for ordinary work outside a /setup-project run. Used when a task involves LLM agents: tool schemas, tool-calling loops, LangGraph state graphs, multi-agent routing, memory, guardrails, or building custom MCP servers."
+description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; not for ordinary work. LLM agents and MCP servers."
 model: sonnet
 color: magenta
 tools: ["Bash", "Read", "Write", "Edit", "Glob", "Grep", "WebFetch"]

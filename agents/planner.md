@@ -1,6 +1,6 @@
 ---
 name: planner
-description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; never for ordinary work outside a /setup-project run. Used when the project needs its spec interview (SPEC.md + wireframes), high-level breakdown (HLD), milestone task list, change-request doc updates, or a task re-plan."
+description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; not for ordinary work. Spec interview, HLD, task list."
 model: opus
 color: blue
 tools: ["Read", "Write", "Edit", "Glob"]

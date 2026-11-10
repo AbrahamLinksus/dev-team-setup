@@ -1,6 +1,6 @@
 ---
 name: backend-coder
-description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; never for ordinary work outside a /setup-project run. Used when a task involves server, API, CLI, data pipeline or library code."
+description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; not for ordinary work. Server, API, CLI and library code."
 model: sonnet
 color: magenta
 tools: ["Read", "Write", "Edit", "Bash", "Glob", "Grep"]
