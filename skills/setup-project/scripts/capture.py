@@ -188,6 +188,35 @@ def line_color(line: str) -> str:
     return "#e6edf3"
 
 
+# C7: the font used to be a Linux-only path; elsewhere the fallback was a tiny bitmap font
+MONO_FONTS = [
+    "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",            # Debian / Ubuntu
+    "/usr/share/fonts/dejavu-sans-mono-fonts/DejaVuSansMono.ttf",     # Fedora
+    "/usr/share/fonts/TTF/DejaVuSansMono.ttf",                        # Arch
+    "/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf",
+    "/System/Library/Fonts/Menlo.ttc", "/System/Library/Fonts/Monaco.ttf",   # macOS
+    "/Library/Fonts/Andale Mono.ttf",
+    "C:/Windows/Fonts/consola.ttf", "C:/Windows/Fonts/cour.ttf",      # Windows
+]
+
+
+def find_mono_font() -> str | None:
+    for f in [os.environ.get("DEVTEAM_FONT", ""), *MONO_FONTS]:
+        if f and Path(f).is_file():
+            return f
+    return None
+
+
+def load_mono_font(image_font, size: int):
+    path = find_mono_font()
+    if path:
+        return image_font.truetype(path, size)
+    try:
+        return image_font.load_default(size=size)   # Pillow >= 10.1: a scalable default font
+    except TypeError:
+        return image_font.load_default()
+
+
 def run_cmd(cmd: str, cwd: str | None, timeout: float) -> str:
     """Run `cmd` through the shell and return the transcript to render. C4: a command that never
     ends (e.g. one that starts a server) is stopped after `timeout` seconds, with its whole
@@ -225,10 +254,9 @@ def cmd_term(a):
         half = a.max_lines // 2
         lines = lines[:half] + [f"... ({len(lines) - a.max_lines} lines omitted) ..."] + lines[-half:]
     lines = [ln[:160] for ln in lines]
-    font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf"
-    font = ImageFont.truetype(font_path, 28) if Path(font_path).exists() else ImageFont.load_default()
+    font = load_mono_font(ImageFont, 28)
     cw = font.getbbox("M")[2]
-    lh = 38
+    lh = font.getbbox("Mgy|")[3] + 10   # from the font itself, not a fixed 38 px
     title_h = 56
     width = max(900, min(160, max(len(ln) for ln in lines)) * cw + 64)
     height = title_h + len(lines) * lh + 40
