@@ -375,6 +375,15 @@ class StructureTest(unittest.TestCase):
         self.assertIn("Dated example (plugin v0.2)", example)
         self.assertIn("v0.2", (ROOT / "README.md").read_text(encoding="utf-8"))
 
+    def test_every_known_hole_keeps_its_regression_test(self):
+        # M1: each problem fixed in code got a test that names it (S = scope guard, T = taskgit,
+        # C = capture.py, G = gen_agents.py). Removing one of those tests should be a conscious act.
+        ids = ([f"S{n}" for n in range(1, 21)] + [f"T{n}" for n in range(1, 13)] +
+               [f"C{n}" for n in range(1, 10)] + [f"G{n}" for n in range(1, 4)])
+        text = "\n".join(p.read_text(encoding="utf-8") for p in (ROOT / "tests").glob("test_*"))
+        missing = [i for i in ids if not re.search(rf"\b{i}\b", text)]
+        self.assertEqual(missing, [], "these fixed problems no longer have a regression test")
+
     def test_no_hardcoded_owner(self):
         for path in list((ROOT / "agents").glob("*.md")) + list(SKILL.rglob("*.md")):
             with self.subTest(file=str(path.relative_to(ROOT))):
