@@ -103,6 +103,18 @@ class GuardTest(unittest.TestCase):
                                   {"file_path": str(self.main / "tests" / "test_a.py")}, str(self.repo)))
         self.assertIsNone(self.write("backend-coder", "backend/app.py"))
 
+    def test_scopes_do_not_overlap_owners(self):
+        # S18: visualizer owned app/** (the Next.js app or a Python package) and prompt-engineer all of src/ and backend/
+        for agent, rel in [("visualizer", "app/page.tsx"), ("visualizer", "app/models.py"),
+                           ("prompt-engineer", "src/app.py"), ("prompt-engineer", "backend/api/routes.py")]:
+            with self.subTest(agent=agent, path=rel):
+                self.assertIsNotNone(self.write(agent, rel))
+        for agent, rel in [("visualizer", "src/viz/chart.py"), ("visualizer", "streamlit_app.py"),
+                           ("prompt-engineer", "prompts/summarise.v2.md"), ("prompt-engineer", "backend/app/prompts/system.md"),
+                           ("prompt-engineer", "src/llm/prompts.py"), ("prompt-engineer", "src/llm/answer_prompt.py")]:
+            with self.subTest(agent=agent, path=rel, expect="allow"):
+                self.assertIsNone(self.write(agent, rel))
+
     def test_outside_repo(self):
         self.assertIsNone(hook("dev-team-setup:statistician", "Write", {"file_path": "/tmp/scratch-x/a.py"}, "/"))
         self.assertIsNotNone(hook("dev-team-setup:backend-coder", "Write", {"file_path": "/root/elsewhere.py"}, "/"))
