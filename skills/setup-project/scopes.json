@@ -252,8 +252,10 @@
       "write": [
         "prompts/**",
         "**/prompts/**",
-        "src/**",
-        "backend/**",
+        "**/prompts.py",
+        "**/*_prompt.py",
+        "**/*_prompts.py",
+        "**/prompt_*.py",
         ".results/**"
       ],
       "deny": [
@@ -354,7 +356,6 @@
       "write": [
         "src/viz/**",
         "dashboards/**",
-        "app/**",
         "streamlit_app.py",
         "reports/**",
         "notebooks/**",
