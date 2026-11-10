@@ -362,6 +362,19 @@ class StructureTest(unittest.TestCase):
         self.assertIn("gh auth status && python3 --version", readme)
         self.assertNotIn("That's it.", readme)
 
+    def test_readme_config_instructions_exist(self):
+        # M6: options are prompted on enable; afterwards `/plugin configure <plugin>` (named by the CLI's own
+        # install message) or a row per option in `/config` change them
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertIn("/plugin configure dev-team-setup@dev-team-setup", readme)
+        self.assertIn("`/config`", readme)
+
+    def test_example_says_how_old_it_is(self):
+        # M7: the only example is from v0.2 (no spec stage, no build); readers must know that
+        example = (ROOT / "examples" / "todo-app" / "README.md").read_text(encoding="utf-8")
+        self.assertIn("Dated example (plugin v0.2)", example)
+        self.assertIn("v0.2", (ROOT / "README.md").read_text(encoding="utf-8"))
+
     def test_no_hardcoded_owner(self):
         for path in list((ROOT / "agents").glob("*.md")) + list(SKILL.rglob("*.md")):
             with self.subTest(file=str(path.relative_to(ROOT))):

@@ -115,4 +115,5 @@ python3 tools/gen_agents.py                 # regenerate agents/ after editing t
   one-liners, look-alike scripts). `tests/test_capture.py` covers capture.py without a browser.
 - CI (`.github/workflows/ci.yml`) runs all of it on every push and PR, on Linux and macOS
   (bash 3.2) with Python 3.9 and 3.13.
-- `examples/todo-app/` shows real planning output from a dry run.
+- `examples/todo-app/` shows real planning output from a v0.2 dry run (planning stages only;
+  its README lists what a current full-run example should contain).
