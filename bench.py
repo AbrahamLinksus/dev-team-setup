@@ -637,6 +637,19 @@ def find_file(root: Path, name: str) -> Path | None:
     return min(hits, key=lambda p: len(p.parts)) if hits else None
 
 
+def bash_exe() -> str:
+    """D34: on Windows, `bash` on PATH can be WSL's (C:/Windows/System32/bash.exe), which runs
+    start.sh in a different OS. Use Git Bash, next to git, as Claude Code itself does."""
+    if os.name == "nt" and shutil.which("git"):
+        git = Path(shutil.which("git")).resolve()
+        # git.exe sits in <Git>/cmd, <Git>/bin, or <Git>/<mingw64|ucrt64>/bin; bash.exe in <Git>/bin
+        for root in (git.parent, git.parent.parent, git.parent.parent.parent):
+            for cand in (root / "bin" / "bash.exe", root / "usr" / "bin" / "bash.exe"):
+                if cand.exists():
+                    return str(cand)
+    return "bash"
+
+
 class App:
     def __init__(self, start_sh: Path, log: Path):
         self.start_sh, self.log, self.proc, self.out = start_sh, log, None, None
@@ -646,7 +659,7 @@ class App:
             return f"port {PORT} is already in use; stop whatever is running there and re-run"
         self.log.parent.mkdir(parents=True, exist_ok=True)
         self.out = out = self.log.open("a")
-        self.proc = subprocess.Popen(["bash", str(self.start_sh)], cwd=self.start_sh.parent, stdout=out,
+        self.proc = subprocess.Popen([bash_exe(), str(self.start_sh)], cwd=self.start_sh.parent, stdout=out,
                                      stderr=subprocess.STDOUT, start_new_session=True,
                                      env={**os.environ, "PORT": str(PORT)})
         t0 = time.time()
