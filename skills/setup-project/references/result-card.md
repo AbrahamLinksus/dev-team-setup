@@ -1,5 +1,24 @@
 # Result cards
 
+## Every card, every time
+
+- **One progress line on top:** `Stage 7 Build · Milestone 2/3 · Task 4/12` (planning cards:
+  `Stage 4 LLD · planning 4/6`). The owner always knows where the project is.
+- **Fixed order:** what happened → what it means for you → what you decide. Images go with
+  "what happened"; the question is always last.
+- **Plain words.** The first time a card in this project uses one of these terms, add its gloss
+  once, in brackets, and never again:
+
+  | Term | Gloss |
+  |---|---|
+  | spec | what the app must do, in your words |
+  | HLD | the big-picture plan: the parts of the app and how they talk |
+  | LLD | the detailed plan: files, data, interfaces, packages |
+  | milestone | a group of tasks that ends in something you can try |
+  | worktree | a separate copy of the code where one task is built without touching the rest |
+  | check.sh | the project's automatic quality checks (tests, lint, types) |
+  | Tier 1 | a decision only you make |
+
 ## Per-task card
 
 Order: the image(s) first, then the card, then the approval question (AskUserQuestion).
