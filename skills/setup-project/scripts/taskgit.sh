@@ -248,7 +248,15 @@ case "$cmd" in
     blocked_files "$wt"
     # --no-verify: work in progress may not pass the project's pre-commit hooks yet (lint, auto-fixers
     # that rewrite files mid-commit); approve runs scripts/check.sh before anything reaches main.
-    gw commit -q --no-verify --allow-empty -m "wip($id): $msg" || die 1 "commit failed"
+    # T12: no empty commits; a step that changed nothing needs no commit (the push below still
+    # retries anything an earlier checkpoint couldn't push)
+    if gw diff --cached --quiet; then
+      mark_step_base
+      push_branch "$wt" "wip/$id" || die 7 "nothing new to commit, but earlier checkpoints are NOT pushed (see error above)"
+      echo "checkpoint wip/$id: $msg (nothing changed, no commit)"
+      exit 0
+    fi
+    gw commit -q --no-verify -m "wip($id): $msg" || die 1 "commit failed"
     mark_step_base
     push_branch "$wt" "wip/$id" || die 7 "checkpoint committed locally but NOT pushed (see error above)"
     echo "checkpoint wip/$id: $msg"
@@ -335,7 +343,11 @@ case "$cmd" in
     done
     g rm -q --cached --ignore-unmatch "$PROGRESS" >/dev/null; rm -f "$repo/$PROGRESS"
     blocked_files "$repo"
-    g commit -q --allow-empty -m "$msg" || { g reset -q --hard HEAD; die 6 "commit on $main failed; main restored"; }
+    if g diff --cached --quiet; then   # T12: never an empty commit on main
+      g reset -q --hard HEAD
+      die 6 "the squash of $br into $main is empty (the task only changed files main owns, or nothing at all); main restored. Reject the task, or record the shared-file changes on main with 'record'."
+    fi
+    g commit -q -m "$msg" || { g reset -q --hard HEAD; die 6 "commit on $main failed; main restored"; }
     # 4. push. If origin moved in the meantime, a rebased commit would reach main untested (T5):
     #    drop our squash commit and run the whole approve once more, so the task is synced with the
     #    new main and scripts/check.sh runs again before anything is pushed.

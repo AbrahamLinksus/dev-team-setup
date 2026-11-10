@@ -317,6 +317,17 @@ if scenario start_warns_on_diverged_branch; then
   rm -rf "$WORK/dv-other"
 fi
 
+if scenario no_empty_commits; then
+  # T12: --allow-empty made a commit and a push for every step, even when nothing changed
+  new_repo empty; E2=$(tg start "$R" T-28); echo "e = 1" > "$E2/e.py"; tgq checkpoint "$R" T-28 "coder done"
+  before=$(git -C "$E2" rev-list --count HEAD)
+  out=$(tg checkpoint "$R" T-28 "reviewer done")
+  check "a step that changed nothing makes no commit" test "$(git -C "$E2" rev-list --count HEAD)" = "$before"
+  check "and says so" contains "$out" "nothing changed"
+  check "the task still approves" expect_exit 0 tg approve "$R" T-28 "feat: e"
+  check "no empty commit on main" test -n "$(git -C "$R" show --stat --format= origin/main)"
+fi
+
 if scenario approve_keeps_untracked_files; then
   # T6: the dirty check ignored untracked files, then `worktree remove --force` deleted them
   new_repo untr; U=$(tg start "$R" T-22); echo "u = 1" > "$U/u.py"; tgq checkpoint "$R" T-22 x
