@@ -13,7 +13,7 @@ You answer questions and approve each step, from your laptop or your phone.
 
 | You need | Why |
 |---|---|
-| [Claude Code](https://claude.com/claude-code) | runs the plugin |
+| [Claude Code](https://claude.com/claude-code) 2.1.271 or later | runs the plugin (older versions can't load its settings' choice lists) |
 | `git` | every task is a branch with checkpoints |
 | [GitHub CLI](https://cli.github.com) `gh`, signed in (`gh auth login`) | creates the project's repo and pushes to it |
 | Python 3.9 or newer (`python3`) | the guard that keeps each agent in its lane runs on it |
@@ -36,11 +36,8 @@ claude plugin marketplace add AbrahamLinksus/dev-team-setup
 claude plugin install dev-team-setup@dev-team-setup
 ```
 
-**2. Add your details:** your name and GitHub username
-
-```
-/plugin configure dev-team-setup@dev-team-setup
-```
+**2. Add your details:** Claude Code asks for your name and GitHub username when the plugin is
+enabled. To change them later, open `/config`: each option has its own row there.
 
 **3. Start a project**
 
@@ -79,7 +76,7 @@ Mostly tap buttons. After every task you get a result like this:
 
 ## Settings
 
-Change these with `/plugin configure dev-team-setup@dev-team-setup`.
+Pick these when Claude Code asks after you enable the plugin, or change them later in `/config`.
 
 | Setting | Default | What it does |
 |---|---|---|

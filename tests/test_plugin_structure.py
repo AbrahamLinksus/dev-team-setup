@@ -362,6 +362,12 @@ class StructureTest(unittest.TestCase):
         self.assertIn("gh auth status && python3 --version", readme)
         self.assertNotIn("That's it.", readme)
 
+    def test_readme_config_instructions_exist(self):
+        # M6: `/plugin configure …` isn't a Claude Code command; options are prompted on enable and live in /config
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertNotIn("/plugin configure", readme)
+        self.assertIn("`/config`", readme)
+
     def test_no_hardcoded_owner(self):
         for path in list((ROOT / "agents").glob("*.md")) + list(SKILL.rglob("*.md")):
             with self.subTest(file=str(path.relative_to(ROOT))):
