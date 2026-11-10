@@ -375,6 +375,17 @@ class StructureTest(unittest.TestCase):
         self.assertIn("Dated example (plugin v0.2)", example)
         self.assertIn("v0.2", (ROOT / "README.md").read_text(encoding="utf-8"))
 
+    def test_readme_discloses_what_it_runs_and_sends(self):
+        # D1: the directory's security scan expects every network, install and repo action disclosed
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertIn("## What this plugin runs and sends", readme)
+        for must in ("gh repo create", "doctor --install", "telemetry", "scope_guard", "Google Drive"):
+            self.assertIn(must, readme)
+        web = {p.stem for p in (ROOT / "agents").glob("*.md")
+               if re.search(r"^tools:.*(WebFetch|WebSearch)", p.read_text(encoding="utf-8"), re.M)}
+        for agent in web:
+            self.assertIn(agent, readme, f"{agent} fetches the web but the README doesn't say so")
+
     def test_every_known_hole_keeps_its_regression_test(self):
         # M1: each problem fixed in code got a test that names it (S = scope guard, T = taskgit,
         # C = capture.py, G = gen_agents.py). Removing one of those tests should be a conscious act.
