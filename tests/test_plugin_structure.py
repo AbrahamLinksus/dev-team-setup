@@ -346,6 +346,14 @@ class StructureTest(unittest.TestCase):
         total = sum(len(frontmatter(p)["description"]) for p in AGENTS)
         self.assertLess(total, 3500, f"agent descriptions total {total} characters")
 
+    def test_how_it_works_describes_the_scope_check(self):
+        # M4: it claimed the scope check "reverts anything written some other way", which was false
+        # for edits an agent committed itself until S1
+        text = (ROOT / "docs" / "how-it-works.md").read_text(encoding="utf-8")
+        self.assertIn("step started from", " ".join(text.split()))
+        self.assertNotIn("reverts anything written some other way", " ".join(text.split()))
+        self.assertIn("scope_guard.sh", text)
+
     def test_no_hardcoded_owner(self):
         for path in list((ROOT / "agents").glob("*.md")) + list(SKILL.rglob("*.md")):
             with self.subTest(file=str(path.relative_to(ROOT))):
