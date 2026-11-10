@@ -3,6 +3,7 @@ BREAK=<name> breaks one behaviour; PORT sets the port."""
 import json, re, secrets, time
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import socketserver
 from urllib.parse import urlparse, parse_qs
 users, tokens, projects, members, issues, comments, fails = {}, {}, {}, set(), {}, {}, {}
 seq = {"u": 0, "p": 0, "i": 0, "c": 0}
@@ -87,4 +88,12 @@ class H(BaseHTTPRequestHandler):
     def do_POST(self): self.route("POST")
     def do_PATCH(self): self.route("PATCH")
     def do_DELETE(self): self.route("DELETE")
-ThreadingHTTPServer(("127.0.0.1", int(__import__("os").environ.get("PORT", "8766"))), H).serve_forever()
+class Server(ThreadingHTTPServer):
+    # No reverse-DNS lookup on start: HTTPServer.server_bind calls socket.getfqdn(), which can stall
+    # for seconds on CI machines (macOS) before the server starts listening.
+    def server_bind(self):
+        socketserver.TCPServer.server_bind(self)
+        self.server_name, self.server_port = "127.0.0.1", self.server_address[1]
+
+
+Server(("127.0.0.1", int(__import__("os").environ.get("PORT", "8766"))), H).serve_forever()
