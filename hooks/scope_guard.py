@@ -135,7 +135,42 @@ GIT_WRITE = re.compile(r"\bgit\b[^|;&\n]*?\s(" + "|".join(sorted(GIT_WRITE_SUBS,
 INSTALL = re.compile(r"\b(pip3?|uv\s+pip|python3?\s+-m\s+pip)\s+(install|uninstall)\b|\buv\s+(add|remove|sync|lock)\b|"
                      r"\b(npm|pnpm|yarn|bun)\s+(install|i|add|remove|uninstall|ci|update|up)\b|\bnpx\s+-y\b|"
                      r"\b(apt|apt-get|brew|conda|mamba)\s+install\b|\bcurl\b[^|]*\|\s*(ba)?sh\b|"
-                     r"\bcapture\.py\s+doctor\b[^|;&\n]*--install\b")  # the plugin's own deps: Orchestrator only
+                     r"\bcapture\.py\s+doctor\b[^|;&\n]*--install\b|"  # the plugin's own deps: Orchestrator only
+                     # S9: other package managers and one-shot runners that download packages
+                     r"\bpoetry\s+(add|remove|install|update|lock)\b|\bpipx\s+(install|run|inject|upgrade)\b|"
+                     r"\bpip3?\s+download\b|\bcargo\s+(add|install|remove)\b|\bgo\s+(get|install)\b|"
+                     r"\b(pnpm|yarn)\s+dlx\b|\bbunx\b|\bnpm\s+(exec|x)\b|\buvx\b|\buv\s+tool\s+(install|run)\b|"
+                     r"\buv\s+run\b[^|;&\n]*\s--with(-requirements)?\b|\bmake\s+install\b|\bgem\s+install\b|"
+                     r"\bcomposer\s+(require|install|update)\b|\bmicromamba\s+install\b|\bdotnet\s+add\s+package\b|"
+                     r"\b(curl|wget)\b[^|;&\n]*\|\s*(sudo\s+)?(ba|z|da)?sh\b|"
+                     r"\b(curl|wget)\b[^|;&\n]*\|\s*(sudo\s+)?python[0-9.]*\b")
+NPX_FETCH_FLAGS = {"-y", "--yes", "-p", "--package"}
+
+
+def npx_fetch(command: str, cwd: str | None) -> str | None:
+    """`npx <bin>` runs a local binary when node_modules/.bin has it, and otherwise downloads the
+    package. Returns the offending command when it would download, else None."""
+    here = cwd or os.getcwd()
+    for seg in segments(command) or []:
+        tok = strip_wrappers(seg)
+        if not tok:
+            continue
+        if os.path.basename(tok[0]) == "cd" and len(tok) == 2:
+            here = tok[1] if os.path.isabs(tok[1]) else os.path.join(here, tok[1])
+            continue
+        if os.path.basename(tok[0]) != "npx":
+            continue
+        args = tok[1:]
+        if set(args) & NPX_FETCH_FLAGS or any(a.startswith("--package=") for a in args):
+            return " ".join(tok)[:80]
+        name = next((a for a in args if not a.startswith("-")), "")
+        name = name.split("@")[0] if not name.startswith("@") else "@" + name[1:].split("@")[0]
+        binary = name.rsplit("/", 1)[-1]
+        found = any((Path(d) / "node_modules" / ".bin" / b).exists()
+                    for d in [here, *map(str, Path(here).parents)] for b in (binary, binary + ".cmd"))
+        if name and not found:
+            return " ".join(tok)[:80]
+    return None
 DESTRUCTIVE = re.compile(r"(^|[;&|\n]\s*)\s*(sudo\s+)?(rm\s+-[a-zA-Z]*r[a-zA-Z]*f|rm\s+-[a-zA-Z]*f[a-zA-Z]*r)\s+(/|~|\$HOME)(\s|$)")
 WRITE_CMDS = re.compile(r"(^|[;&|(\n]\s*)(rm|mv|cp|tee|touch|mkdir|rmdir|truncate|chmod|chown|ln|install|dd)\b|\bsed\s+(-[a-zA-Z]*i|--in-place)")
 WRITE_NAMES = {"rm", "mv", "cp", "tee", "touch", "mkdir", "rmdir", "truncate", "chmod", "chown", "ln", "install",
@@ -415,6 +450,9 @@ def bash_violation(name: str, command: str, scopes: dict, depth: int = 0, cwd: s
             return f"nested command blocked: {why}"
     if git_write_in(command):
         return "git history is managed by the Orchestrator (taskgit.sh) and git-pr; don't run git write commands"
+    if mode != "full" and npx_fetch(command, cwd):
+        return (f"npx would download a package that isn't in node_modules ({npx_fetch(command, cwd)}): "
+                "installing packages is a Tier 1 decision, return DECISION NEEDED instead")
     if mode != "full" and INSTALL.search(command):
         return "installing or removing packages is a Tier 1 decision: return DECISION NEEDED instead"
     if mode == "readonly":

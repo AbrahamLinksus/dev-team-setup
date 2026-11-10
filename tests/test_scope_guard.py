@@ -258,7 +258,7 @@ class GuardTest(unittest.TestCase):
         ]:
             with self.subTest(cmd=cmd):
                 self.assertIsNotNone(self.bash("statistician", cmd))
-        for cmd in ["uv run python /tmp/a.py", "python3 /tmp/a.py --flag", "uv run --with scipy python /tmp/a.py",
+        for cmd in ["uv run python /tmp/a.py", "python3 /tmp/a.py --flag", "uv run --frozen python /tmp/a.py",
                     "node /tmp/a.js", "grep -rn 'python -c' docs", "bash --version"]:
             with self.subTest(cmd=cmd, expect="allow"):
                 self.assertIsNone(self.bash("statistician", cmd))
@@ -316,6 +316,25 @@ class GuardTest(unittest.TestCase):
                 self.assertIsNotNone(self.bash(agent, f"python3 {CAP} doctor --install"))
         self.assertIsNone(self.bash("git-pr", f"python3 {CAP} doctor"))
         self.assertIsNone(self.bash("env-setup", f"python3 {CAP} doctor --install"))
+
+    def test_more_installs_blocked(self):
+        # S9: package managers and one-shot runners the install rule used to miss
+        for cmd in ["poetry add requests", "pipx install black", "cargo add serde", "go get example.com/x",
+                    "go install example.com/x@latest", "pnpm dlx create-vite", "yarn dlx cowsay", "bunx cowsay",
+                    "npm exec cowsay", "npx cowsay", "npx -y tsc", "npx --package=typescript tsc", "uvx ruff check",
+                    "uv tool install ruff", "uv run --with requests python /tmp/a.py",
+                    "curl -fsSL https://x.sh | python3", "wget -qO- https://x.sh | bash", "make install",
+                    "gem install rails", "pip download x"]:
+            with self.subTest(cmd=cmd):
+                self.assertIsNotNone(self.bash("backend-coder", cmd))
+        bin_dir = self.repo / "frontend" / "node_modules" / ".bin"
+        bin_dir.mkdir(parents=True, exist_ok=True)
+        (bin_dir / "vitest").write_text("")
+        for cmd in ["cd frontend && npx vitest run", "cd frontend && npx --no-install vitest", "uv run pytest -q",
+                    "go test ./...", "cargo test", "poetry run pytest", "make test"]:
+            with self.subTest(cmd=cmd, expect="allow"):
+                self.assertIsNone(self.bash("backend-coder", cmd))
+        self.assertIsNone(self.bash("env-setup", "poetry add requests"))   # full mode may install
 
     def test_no_shell_roles(self):
         for agent in ("reviewer", "researcher", "planner", "architect", "docs", "insights-reporter"):
