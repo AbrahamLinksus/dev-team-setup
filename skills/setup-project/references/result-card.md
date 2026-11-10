@@ -32,6 +32,7 @@ Conventions: lint ✅ · types ✅ · max complexity 7 · layers ✅ · SOLID re
 Reviewer: 1 minor — hardcoded token expiry (auth.py:41)
 Agent decisions: bcrypt for hashing (D-12)
 Cost: ≈$0.42 this task · $3.10 so far · budget $25 (12%)
+Guard: stopped tester once (tried to edit app code) · reverted 0 files
 ```
 
 Rules:
@@ -44,6 +45,10 @@ Rules:
   list the 3–5 most important changes in one line each.
 - If any goal is ⚠️ or ❌, put a line above the card: "⚠️ Not all goals met."
 - Offer the full diff on request (send it as a .diff file).
+- The Guard line shows the safety working. Count this task's lines in `<repo>/.git/devteam-guard.log`
+  (tab-separated: time, task id, agent, tool, target, reason; `grep -c $'	T-07	'`) plus the files
+  `$TASKGIT scope` reverted, and say in plain words what was stopped ("tried to edit app code",
+  "tried to read .env"). Nothing blocked or reverted → `Guard: nothing blocked`.
 - The Cost line is `python3 $COST` output, verbatim (task share is an estimate, hence ≈). If it
   can't read the logs, leave the line out rather than guess.
 

@@ -83,7 +83,8 @@ no telemetry. It sends nothing anywhere except what is listed here.
 file edit and shell command made by the plugin's own agents, and blocks anything outside that
 agent's role: for example, the tester can't edit app code, and no agent can read `.env` files,
 push to `main`, or delete outside the project. It runs locally, makes no network calls, and
-ignores tools used outside the plugin's agents. When it can't run (no Python 3.9+), it blocks
+ignores tools used outside the plugin's agents. Each block is noted in `.git/devteam-guard.log` (local, never
+pushed) so the result card can tell you about it. When it can't run (no Python 3.9+), it blocks
 the agent's action rather than letting it through. The full rules are in
 [how it works](docs/how-it-works.md).
 
