@@ -138,6 +138,25 @@ class StructureTest(unittest.TestCase):
                            check=True, capture_output=True)
             self.assertFalse(any(t.startswith("mcp__") for t in frontmatter(Path(d) / "data-acquisition.md")["tools"]))
 
+    def test_catalog_matches_the_agents(self):
+        # K16: the catalog drifted (git-pr, reviewer, statistician had Write but the catalog didn't list it)
+        catalog = SKILL / "references" / "agent-catalog.md"
+        with tempfile.TemporaryDirectory() as d:
+            copy = Path(d) / "agent-catalog.md"
+            copy.write_text(catalog.read_text(encoding="utf-8"), encoding="utf-8")
+            subprocess.run([sys.executable, str(ROOT / "tools" / "gen_agents.py"), "--out", d, "--catalog", str(copy)],
+                           check=True, capture_output=True)
+            self.assertEqual(copy.read_text(encoding="utf-8"), catalog.read_text(encoding="utf-8"),
+                             "agent-catalog.md is out of date: run python3 tools/gen_agents.py")
+        text = catalog.read_text(encoding="utf-8")
+        for path in AGENTS:
+            fm = frontmatter(path)
+            row = next(ln for ln in text.splitlines() if ln.startswith(f"| {fm['name']} |"))
+            for tool in fm["tools"]:
+                if not tool.startswith("mcp__"):
+                    with self.subTest(agent=fm["name"], tool=tool):
+                        self.assertIn(tool, row)
+
     def test_gen_agents_removes_stale_agents(self):
         with tempfile.TemporaryDirectory() as d:
             stale = Path(d) / "old-agent.md"
