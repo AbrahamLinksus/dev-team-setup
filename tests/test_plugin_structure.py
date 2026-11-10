@@ -7,6 +7,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -506,6 +507,32 @@ class StructureTest(unittest.TestCase):
         self.assertIn("run_in_background", build)
         self.assertIn("one\n  AskUserQuestion call", build)
         self.assertIn("Don't let the team idle", (SKILL / "references" / "approval-modes.md").read_text(encoding="utf-8"))
+
+    def test_subagent_status_line(self):
+        # D22: the agent panel shows who works on what, for this plugin's agents only
+        settings = json.loads((ROOT / "settings.json").read_text(encoding="utf-8"))
+        self.assertEqual(settings["subagentStatusLine"]["type"], "command")
+        self.assertIn("hooks/subagent_status.sh", settings["subagentStatusLine"]["command"])
+        now_ms = int(time.time() * 1000)
+        rows = {"columns": 60, "tasks": [
+            {"id": "a", "agentType": "dev-team-setup:tester", "status": "running",
+             "description": "T-04 · test", "startTime": now_ms - 75000, "tokenCount": 41234,
+             "contextWindowSize": 200000},
+            {"id": "b", "agentType": "Explore", "status": "running", "description": "x",
+             "startTime": now_ms, "tokenCount": 5},
+            {"id": "c", "agentType": "dev-team-setup:reviewer", "status": "completed",
+             "description": "T-04 · review " + "x" * 80, "startTime": now_ms, "tokenCount": 900}]}
+        out = subprocess.run([sys.executable, str(ROOT / "hooks" / "subagent_status.py")], input=json.dumps(rows),
+                             capture_output=True, text=True, encoding="utf-8").stdout
+        lines = [json.loads(ln) for ln in out.splitlines()]
+        self.assertEqual([ln["id"] for ln in lines], ["a", "c"])          # Explore keeps its default row
+        self.assertEqual(lines[0]["content"], "⏳ tester · T-04 · test · 1m15s · 41k tok · 21% ctx")
+        self.assertTrue(lines[1]["content"].startswith("✅ reviewer · T-04 · review"))
+        self.assertLessEqual(len(lines[1]["content"]), 60)
+        bad = subprocess.run([sys.executable, str(ROOT / "hooks" / "subagent_status.py")], input="not json",
+                             capture_output=True, text=True)
+        self.assertEqual((bad.returncode, bad.stdout), (0, ""))
+        self.assertIn('description: "<id> · <step>"', (SKILL / "SKILL.md").read_text(encoding="utf-8"))
 
     def test_every_known_hole_keeps_its_regression_test(self):
         # M1: each problem fixed in code got a test that names it (S = scope guard, T = taskgit,
