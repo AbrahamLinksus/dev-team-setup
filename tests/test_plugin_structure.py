@@ -584,6 +584,15 @@ class StructureTest(unittest.TestCase):
             self.assertTrue((ROOT / "tests" / test_file).exists())
         self.assertIn("docs/guardrails.md", (ROOT / "README.md").read_text(encoding="utf-8"))
 
+    def test_try_locally_needs_no_github(self):
+        # D29: a reviewer can see a full run with no GitHub account: a local bare repo is origin
+        intake = (SKILL / "references" / "stage-0-intake.md").read_text(encoding="utf-8")
+        self.assertIn("**Try locally (no\n   GitHub)**", intake)
+        self.assertIn("git init --bare -b main <base>/<repo>.git", intake)
+        manifest = json.loads((ROOT / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
+        self.assertFalse(manifest["userConfig"]["github_owner"].get("required", False))
+        self.assertIn("Try locally", (ROOT / "README.md").read_text(encoding="utf-8"))
+
     def test_every_known_hole_keeps_its_regression_test(self):
         # M1: each problem fixed in code got a test that names it (S = scope guard, T = taskgit,
         # C = capture.py, G = gen_agents.py). Removing one of those tests should be a conscious act.

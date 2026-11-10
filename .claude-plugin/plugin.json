@@ -25,8 +25,8 @@
     "github_owner": {
       "type": "string",
       "title": "GitHub user or org",
-      "description": "Owner for the project repos /setup-project creates (e.g. your GitHub username).",
-      "required": true
+      "description": "Owner for the project repos /setup-project creates (e.g. your GitHub username). Leave empty to try it locally, with no GitHub account.",
+      "required": false
     },
     "approval_mode": {
       "type": "string",
