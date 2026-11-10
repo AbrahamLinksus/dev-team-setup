@@ -233,6 +233,18 @@ if scenario precommit_hook_does_not_block_checkpoints; then
   check "sync merges main despite the hook" expect_exit 0 tg sync "$R" T-16
 fi
 
+if scenario scope_handles_odd_file_names; then
+  # S20: --porcelain quoted "my file.py" and "naïve.py", so scope checked and reverted the wrong names
+  new_repo odd; echo "a = 1" > "$R/my code.py"; git -C "$R" add -A; git -C "$R" commit -qm odd; git -C "$R" push -q 2>/dev/null
+  W=$(tg start "$R" T-19); mkdir -p "$W/tests" "$W/src"
+  echo "changed" >> "$W/my code.py"; echo "x" > "$W/src/naïve file.py"; echo "def test(): pass" > "$W/tests/test ok.py"
+  out=$(tg scope "$R" T-19 tester)
+  check "reports both out-of-scope files" contains "$out" "REVERTED 2"
+  check "tracked file with a space restored" test "$(cat "$W/my code.py")" = "a = 1"
+  check "untracked non-ASCII file removed" test ! -e "$W/src/naïve file.py"
+  check "in-scope file with a space kept" test -f "$W/tests/test ok.py"
+fi
+
 if scenario portable_to_macos; then
   # T3: macOS ships bash 3.2 and BSD tools: no mapfile/readarray, grep -P, stat -c, head -n -N, bare sed -i.
   code=$(grep -v '^ *#' "$TG")
