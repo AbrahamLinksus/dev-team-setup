@@ -28,7 +28,8 @@ Approving a task squashes its branch into main and pushes it.
   `DECISIONS.md`) are only edited on main by the Orchestrator. Before a card is shown, the
   task is merged with current main and `scripts/check.sh` is re-run.
 - **Enforced roles:** a PreToolUse hook (`hooks/scope_guard.sh` → `scope_guard.py`) blocks each
-  agent from writing outside its paths or its own worktree, reading or writing `.env` files,
+  agent from writing outside its paths or its own task's worktree (each agent is pinned to
+  the first worktree it touches), reading or writing `.env` files,
   running git or `gh` write commands, installing packages, deleting recursively outside the
   worktree, or leaving unbounded background jobs. It also inspects commands nested in
   `bash -c`, `eval`, `$(…)`, `xargs`, `find -exec` and `capture.py --cmd`, and fails closed if

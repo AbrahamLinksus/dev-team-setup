@@ -106,6 +106,18 @@ pull_rebase_main() {  # origin moved under us: replay local main on it; on a con
   return 1
 }
 
+unpin_agents() {  # forget the agent pins (S8, scope guard) of the worktree being removed; uses $id
+  local d f line
+  d="$(g rev-parse --absolute-git-dir)/devteam-agents"
+  [[ -d "$d" ]] || return 0
+  for f in "$d"/*; do
+    [[ -f "$f" ]] || continue
+    IFS= read -r line < "$f" || true
+    case "$line" in *-wt/"$id"|*-wt\\"$id") rm -f "$f" ;; esac
+  done
+  return 0
+}
+
 ensure_wt() {  # sets wt; fails if the worktree doesn't exist
   wt="$wtroot/$id"; [[ -d "$wt" ]] || die 1 "no worktree for $id; run: taskgit.sh start $repo $id"
 }
@@ -328,7 +340,7 @@ case "$cmd" in
     do_sync
     excl=(":(exclude)$PROGRESS"); for f in "${SHARED[@]}"; do is_owned "$f" || excl+=(":(exclude)$f"); done
     if g diff --quiet "$main" "$br" -- . "${excl[@]}"; then   # nothing left to merge: already on main
-      g worktree remove --force "$wt" 2>/dev/null || true; g branch -q -D "$br" 2>/dev/null || true
+      unpin_agents; g worktree remove --force "$wt" 2>/dev/null || true; g branch -q -D "$br" 2>/dev/null || true
       g push -q origin --delete "$br" 2>/dev/null || true; g worktree prune
       echo "approved: $id was already on $main ($(g log --oneline -1)); cleaned up"; exit 0
     fi
@@ -361,7 +373,7 @@ case "$cmd" in
       die 7 "approved commit $(g rev-parse --short HEAD) is on local $main but NOT pushed. Worktree and $br were kept. Fix the push, then re-run approve."
     fi
     # 5. clean up only after a successful push
-    g worktree remove --force "$wt" 2>/dev/null || true
+    unpin_agents; g worktree remove --force "$wt" 2>/dev/null || true
     g branch -q -D "$br" 2>/dev/null || true
     g push -q origin --delete "$br" 2>/dev/null || true
     g worktree prune
@@ -394,7 +406,7 @@ case "$cmd" in
 
   reject)
     id=${3:?id}; wt="$wtroot/$id"; br="wip/$id"
-    g worktree remove --force "$wt" 2>/dev/null || true
+    unpin_agents; g worktree remove --force "$wt" 2>/dev/null || true
     g worktree prune
     g branch -q -D "$br" 2>/dev/null || true
     g push -q origin --delete "$br" 2>/dev/null || true
