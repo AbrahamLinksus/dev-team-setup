@@ -446,6 +446,16 @@ class StructureTest(unittest.TestCase):
         version = json.loads((ROOT / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))["version"]
         self.assertEqual(frontmatter(SKILL / "SKILL.md")["metadata"]["version"], version)
 
+    def test_brief_puts_stable_lines_before_task_specific_ones(self):
+        # D12 (H3): the prompt cache matches the longest identical opening, so the lines that are
+        # the same in every brief come before the first task-specific one.
+        brief = (SKILL / "references" / "brief-template.md").read_text(encoding="utf-8")
+        block = brief[brief.index("```\nTEAM_RULES:"):]
+        block = block[:block.index("\n```", 4)]
+        stable_end = max(block.index(k) for k in ("TEAM_RULES:", "CAPTURE:", "Return:"))
+        for specific in ("BRIEF ·", "Worktree:", "Task:", "Read:", "Port:", "Write full report to:"):
+            self.assertLess(stable_end, block.index(specific), specific)
+
     def test_every_known_hole_keeps_its_regression_test(self):
         # M1: each problem fixed in code got a test that names it (S = scope guard, T = taskgit,
         # C = capture.py, G = gen_agents.py). Removing one of those tests should be a conscious act.
