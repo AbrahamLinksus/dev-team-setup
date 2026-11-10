@@ -15,6 +15,11 @@
     "data-science"
   ],
   "license": "MIT",
+  "icon": "./assets/icon.png",
+  "homepage": "https://github.com/AbrahamLinksus/dev-team-setup",
+  "documentationUrl": "https://github.com/AbrahamLinksus/dev-team-setup#readme",
+  "supportUrl": "https://github.com/AbrahamLinksus/dev-team-setup/issues",
+  "privacyPolicyUrl": "https://github.com/AbrahamLinksus/dev-team-setup/blob/main/docs/PRIVACY.md",
   "userConfig": {
     "owner_name": {
       "type": "string",
