@@ -604,6 +604,12 @@ class StructureTest(unittest.TestCase):
         self.assertIn("**batch-low-risk**", quick)
         self.assertIn("quick track", (SKILL / "SKILL.md").read_text(encoding="utf-8"))
 
+    def test_intake_opens_with_what_happens_next(self):
+        # D31: three lines before the first question; no unmeasured cost claims
+        intake = (SKILL / "references" / "stage-0-intake.md").read_text(encoding="utf-8")
+        self.assertLess(intake.index("three-line opener"), intake.index("One AskUserQuestion call: repo name"))
+        self.assertIn("Never state a cost that wasn't measured", intake)
+
     def test_every_known_hole_keeps_its_regression_test(self):
         # M1: each problem fixed in code got a test that names it (S = scope guard, T = taskgit,
         # C = capture.py, G = gen_agents.py). Removing one of those tests should be a conscious act.

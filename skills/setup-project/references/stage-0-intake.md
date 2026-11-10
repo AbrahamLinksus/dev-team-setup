@@ -14,7 +14,15 @@ Part of the /setup-project Orchestrator (SKILL.md). Read this file when the stag
    **Install the visual tools** into the plugin's private venv / **Skip visuals** = text cards),
    then run `python3 $CAPTURE doctor --install`. It never touches the project's environment.
    Record the answer in STATE.md.
-3. Restate the idea in one line. One AskUserQuestion call: repo name (2–3 kebab-case
+3. Before the first question, a three-line opener so the owner knows what they're starting:
+   ```
+   Here's how this goes: a short interview (about 5–15 minutes of your answers), then a plan you
+   approve, then the team builds it task by task and shows you each result to approve.
+   Small idea? There's a quick track. Each result shows its cost; you can pause any time.
+   ```
+   When the README publishes benchmark numbers (D8), add the measured range on the last line
+   ("a small app has cost about $X–Y"). Never state a cost that wasn't measured.
+   Then restate the idea in one line. One AskUserQuestion call: repo name (2–3 kebab-case
    suggestions) and where it lives: **Private** / **Public** (a GitHub repo) / **Try locally (no
    GitHub)**. **Always ask; never default it.** Offer *Try locally* first when `gh auth status`
    fails, and say what it means: everything works, nothing leaves this computer, and the repo can
