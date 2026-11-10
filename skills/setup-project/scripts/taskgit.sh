@@ -118,6 +118,11 @@ unpin_agents() {  # forget the agent pins (S8, scope guard) of the worktree bein
   return 0
 }
 
+log_time() {  # D10: one line per event, read by bench.py for time per step; never fails the command
+  printf '%s\t%s\t%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$id" "$1" \
+    >> "$(g rev-parse --absolute-git-dir 2>/dev/null)/devteam-timing.log" 2>/dev/null || true
+}
+
 ensure_wt() {  # sets wt; fails if the worktree doesn't exist
   wt="$wtroot/$id"; [[ -d "$wt" ]] || die 1 "no worktree for $id; run: taskgit.sh start $repo $id"
 }
@@ -216,6 +221,7 @@ do_sync() {  # merge origin/main into wip/<id>, run check.sh; uses $id $wt
 case "$cmd" in
   start)
     id=${3:?id}; wt="$wtroot/$id"; br="wip/$id"
+    log_time "start"
     mkdir -p "$wtroot"
     g worktree prune                                   # forget worktrees whose folder was deleted
     g fetch -q origin "$main" 2>/dev/null || true
@@ -255,6 +261,7 @@ case "$cmd" in
 
   checkpoint)
     id=${3:?id}; msg=${4:?step message}; ensure_wt
+    log_time "$msg"
     revert_shared_in_wt
     gw add -A
     blocked_files "$wt"
@@ -317,6 +324,7 @@ case "$cmd" in
 
   approve)
     id=${3:?id}; msg=${4:?commit message}; ensure_wt; br="wip/$id"
+    if [[ -z "${TASKGIT_APPROVE_RETRY:-}" ]]; then log_time "approved"; fi
     if [[ "$id" != plan && "$id" != CR-* ]]; then
       crs=$(open_crs) || die 3 "can't reach origin to check for open change requests (see the error above); nothing was approved. Retry when origin is reachable."
       crs=$(printf '%s' "$crs" | tr '\n' ' ')
@@ -406,6 +414,7 @@ case "$cmd" in
 
   reject)
     id=${3:?id}; wt="$wtroot/$id"; br="wip/$id"
+    log_time "rejected"
     unpin_agents; g worktree remove --force "$wt" 2>/dev/null || true
     g worktree prune
     g branch -q -D "$br" 2>/dev/null || true

@@ -1030,12 +1030,57 @@ def cmd_run(args) -> None:
         ui = ask("Did the UI work? [y]es / [p]artly / [n]o / [s]kip", "s")[:1]
     run_state = state.setdefault("runs", {}).setdefault(key, {})
     run_state.update({"start": start.isoformat(), "end": end.isoformat(), "folder": str(folder),
-                      "project": str(project), "tokens": tokens, "test": tested, "quality": q, "ui": ui})
+                      "project": str(project), "tokens": tokens, "test": tested, "quality": q, "ui": ui,
+                      "step_minutes": step_times(project)})
+    if run_state["step_minutes"]:
+        say("Time per step (from taskgit's timing log):")
+        say(times_table(run_state["step_minutes"]))
     if mode == "plugin":
         run_state["stopped"] = run_state.get("stopped", False)
     save_state(state)
     write_report(state)
     say(f"\nSaved. Results so far: {RESULTS}")
+
+
+def step_times(project: Path) -> dict:
+    """D10: minutes per step from taskgit's timing log (<git dir>/devteam-timing.log): each
+    "<step> started" → "<step> done" pair, plus "waiting for you": the last event before an
+    approve or reject (the card was out) → that answer."""
+    log = project / ".git" / "devteam-timing.log"
+    if not log.exists():
+        return {}
+    events = defaultdict(list)
+    for line in log.read_text(encoding="utf-8").splitlines():
+        parts = line.split("\t")
+        ts = parse_ts(parts[0]) if len(parts) == 3 else None
+        if ts:
+            events[parts[1]].append((ts, parts[2]))
+    out = defaultdict(lambda: {"minutes": 0.0, "count": 0})
+
+    def add(label: str, a: datetime, b: datetime) -> None:
+        out[label]["minutes"] += (b - a).total_seconds() / 60
+        out[label]["count"] += 1
+
+    for evs in events.values():
+        evs.sort()
+        open_steps: dict[str, datetime] = {}
+        for i, (ts, ev) in enumerate(evs):
+            m = re.match(r"(.+?) (started|done)$", ev)
+            if m and m.group(2) == "started":
+                open_steps[m.group(1)] = ts
+            elif m and m.group(1) in open_steps:
+                add(m.group(1), open_steps.pop(m.group(1)), ts)
+            elif ev in ("approved", "rejected") and i:
+                add("waiting for you (card → answer)", evs[i - 1][0], ts)
+    return {k: {"minutes": round(v["minutes"], 1), "count": v["count"]} for k, v in out.items()}
+
+
+def times_table(t: dict) -> str:
+    if not t:
+        return ""
+    rows = ["| step | times | minutes |", "|---|---|---|"]
+    rows += [f"| {k} | {v['count']} | {v['minutes']:.1f} |" for k, v in sorted(t.items(), key=lambda kv: -kv[1]["minutes"])]
+    return "\n".join(rows)
 
 
 def per_check(run_state: dict) -> str:

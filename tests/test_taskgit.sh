@@ -409,6 +409,21 @@ HOOK
   check "record clears a leftover rebase" bash -c "[[ ! -d '$R/.git/rebase-merge' && ! -d '$R/.git/rebase-apply' ]]"
 fi
 
+if scenario timing_log; then
+  # D10: every start, checkpoint, approve and reject leaves a line for bench.py's time per step
+  new_repo timing
+  T=$(tg start "$R" T-01); echo "a = 1" > "$T/a.py"
+  tgq checkpoint "$R" T-01 "implement started"; tgq checkpoint "$R" T-01 "implement done"
+  tgq approve "$R" T-01 "feat: a"
+  tg start "$R" T-02 >/dev/null; tgq reject "$R" T-02
+  LOG="$R/.git/devteam-timing.log"
+  check "timing log exists in the main git dir" test -f "$LOG"
+  check "checkpoint lines carry the step message" grep -q $'\tT-01\timplement started$' "$LOG"
+  check "approve is logged once" test "$(grep -c $'\tT-01\tapproved$' "$LOG")" = 1
+  check "reject is logged" grep -q $'\tT-02\trejected$' "$LOG"
+  check "lines are timestamp, id, event" bash -c "awk -F'\t' 'NF!=3 || \$1 !~ /^20[0-9-]+T[0-9:]+Z\$/ {exit 1}' '$LOG'"
+fi
+
 # ---- summary ---------------------------------------------------------------------------
 echo
 echo "taskgit scenarios: $PASS passed, $FAIL failed"

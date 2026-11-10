@@ -43,6 +43,9 @@ exactly those questions. On `wip/CR-<n>` it records the CR text verbatim and the
 ## Protocol for each step
 
 1. Set the step to ⏳ and checkpoint: `$TASKGIT checkpoint <repo> <id> "<step> started"`.
+   Keep the messages exactly `<step> started` and `<step> done` (step in lower case, e.g.
+   `implement`, `test`, `review`, `debug`): taskgit logs each one with a timestamp in
+   `<repo>/.git/devteam-timing.log`, and the benchmark pairs them to measure time per step.
 2. Spawn the agent.
 3. When it returns: `$TASKGIT scope <repo> <id> <agent>` (reverts out-of-scope files).
 4. Set ✅ (or ❌ with the reason), add the note, checkpoint `"<step> done"`.
