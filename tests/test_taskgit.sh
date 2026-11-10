@@ -290,6 +290,18 @@ if scenario conflicts_in_odd_names; then
   check "record refuses a modified TASKSxmd (exit 3)" expect_exit 3 tg record "$R" "chore: record"
 fi
 
+if scenario offline_cr_check_holds_approval; then
+  # T10: with origin unreachable, ls-remote's error was hidden and approvals weren't held
+  new_repo off; O=$(tg start "$R" T-26); echo "o = 1" > "$O/o.py"; tgq checkpoint "$R" T-26 x
+  git -C "$R" remote set-url origin "$WORK/no-such-origin.git"
+  out=$(bash "$TG" approve "$R" T-26 "feat: o" 2>&1); code=$?
+  check "approve stops with exit 3 when origin can't be asked" test "$code" = 3
+  check "the message says why" contains "$out" "change requests"
+  check "main untouched" clean_main
+  git -C "$R" remote set-url origin "$ORIGIN"
+  check "approve works again once origin is back" expect_exit 0 tg approve "$R" T-26 "feat: o"
+fi
+
 if scenario approve_keeps_untracked_files; then
   # T6: the dirty check ignored untracked files, then `worktree remove --force` deleted them
   new_repo untr; U=$(tg start "$R" T-22); echo "u = 1" > "$U/u.py"; tgq checkpoint "$R" T-22 x
