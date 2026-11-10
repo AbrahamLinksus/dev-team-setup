@@ -12,6 +12,27 @@ where sensible) and send a one-line progress note between rounds.
 UI projects: planner writes lo-fi wireframes; render them (mobile + desktop).
 Spec card: wireframes + spec summary + every *(assumed)* line → Approve / Request changes /
 Answer more questions. Nothing is designed before the spec is approved.
+**Small idea?** When the spec has **at most 5 user stories** and no AI/ML or data-science work,
+split Approve into **Approve · quick track (Recommended)** / **Approve · full track**, saying in
+one line what quick track skips. Record the track in STATE.md.
+
+## Quick track (small ideas)
+
+Same guardrails, checkpoints and per-task cards; fewer planning stops. Replaces stages 2–4 and
+trims 6:
+- **One design step:** the **architect** writes `docs/HLD.md` (short: modules and data flow) and
+  `docs/LLD.md` + `docs/CONVENTIONS.md` in one go. The **researcher** runs only if a needed
+  package isn't pinned by the spec's stack.
+- **Default team, no team-pick card:** the coders the HLD's modules need (backend-coder and/or
+  frontend-coder), plus tester, reviewer, debugger and docs, with their catalog models.
+- **One design card ⏸:** the data-flow diagram, the team line, the package table and every
+  Tier 1 item from the architect → Approve design / Request changes. Real trade-offs still get
+  their own decision cards (Tier 1 never shrinks).
+- Stage 5 (install) is unchanged: installing is Tier 1.
+- **Stage 6:** one milestone. Approval mode for this project is **batch-low-risk** unless the
+  owner picks every-task on the design card (record it in STATE.md).
+- The owner can switch to the full track at any card ("let's do this properly"): carry on from
+  stage 3 with the docs written so far.
 
 ## 2 · High-level breakdown ⏸
 

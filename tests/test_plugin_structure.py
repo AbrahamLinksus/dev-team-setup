@@ -598,6 +598,17 @@ class StructureTest(unittest.TestCase):
         self.assertFalse(manifest["userConfig"]["github_owner"].get("required", False))
         self.assertIn("Try locally", (ROOT / "README.md").read_text(encoding="utf-8"))
 
+    def test_quick_track_for_small_ideas(self):
+        # D30: small ideas skip the separate HLD, team-pick and LLD stops, never the Tier 1 ones
+        planning = (SKILL / "references" / "stage-1-6-planning.md").read_text(encoding="utf-8")
+        quick = planning[planning.index("## Quick track"):planning.index("## 2 ·")]
+        self.assertIn("at most 5 user stories", planning)
+        self.assertIn("**One design card ⏸:**", quick)
+        self.assertIn("Tier 1 never shrinks", quick)
+        self.assertIn("installing is Tier 1", quick)
+        self.assertIn("**batch-low-risk**", quick)
+        self.assertIn("quick track", (SKILL / "SKILL.md").read_text(encoding="utf-8"))
+
     def test_every_known_hole_keeps_its_regression_test(self):
         # M1: each problem fixed in code got a test that names it (S = scope guard, T = taskgit,
         # C = capture.py, G = gen_agents.py). Removing one of those tests should be a conscious act.
