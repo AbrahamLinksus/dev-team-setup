@@ -7,7 +7,7 @@ Subcommands (all write PNGs; print the output paths):
   term    OUT.png (--cmd "pytest -q" | --file log.txt | stdin) [--title T] [--max-lines N] [--cwd DIR]
           Render terminal output as a dark terminal image.
   mermaid IN.mmd OUT.png [--width PX]
-          Render a Mermaid diagram (installs mermaid via npm into a cache dir on first use).
+          Render a Mermaid diagram (needs mermaid from `doctor --install`).
   md      IN.md OUT.png [--width PX]
           Render Markdown (tables, cards, package lists) as a clean image.
   html    IN.html OUT.png [--width PX]
@@ -34,6 +34,8 @@ CACHE = Path(os.environ.get("DEVTEAM_CACHE", Path.home() / ".cache" / "dev-team-
 DATA = Path(os.environ.get("CLAUDE_PLUGIN_DATA") or CACHE)
 VENV = DATA / "venv"
 PY_DEPS = {"playwright": "playwright==1.49.1", "PIL": "pillow==11.0.0", "markdown": "markdown==3.7"}
+MERMAID = "mermaid@11.4.1"   # pinned (C3); installed by `doctor --install`, never mid-task
+MERMAID_JS = CACHE / "node_modules" / "mermaid" / "dist" / "mermaid.min.js"
 
 
 def venv_python() -> Path:
@@ -62,18 +64,24 @@ def cmd_doctor(a):
         py = str(venv_python())
         subprocess.run([py, "-m", "pip", "install", "-q", *PY_DEPS.values()], check=True)
         subprocess.run([py, "-m", "playwright", "install", "chromium"], check=True)
+        from shutil import which
+        if which("npm") and not MERMAID_JS.exists():
+            CACHE.mkdir(parents=True, exist_ok=True)
+            subprocess.run(["npm", "install", "--prefix", str(CACHE), MERMAID, "--silent", "--no-audit", "--no-fund"], check=True)
         os.environ["DEVTEAM_CAPTURE_IN_VENV"] = "1"
         return subprocess.run([py, str(Path(__file__).resolve()), "doctor"]).returncode
     problems = [f"python module {m} ({PY_DEPS[m]})" for m in missing_modules()]
     if "playwright" not in missing_modules():
         try:
-            pw, browser = _browser(install=False)
+            pw, browser = _browser()
             browser.close(); pw.stop()
-        except Exception as exc:  # noqa: BLE001 - any launch failure means "not ready"
+        except (Exception, SystemExit) as exc:  # noqa: BLE001 - any launch failure means "not ready"
             problems.append(f"Chromium for Playwright ({type(exc).__name__})")
     from shutil import which
     if not which("npm"):
         problems.append("npm (only needed for Mermaid diagrams)")
+    elif not MERMAID_JS.exists():
+        problems.append(f"{MERMAID} (only needed for Mermaid diagrams)")
     for p in problems:
         print(f"missing: {p}")
     if problems:
@@ -95,17 +103,16 @@ h1,h2,h3{margin:12px 0 8px}
 """
 
 
-def _browser(install: bool = True):
+def _browser():
+    """Launch Chromium. Never installs it mid-task (C3): that's `doctor --install`'s job."""
     from playwright.sync_api import sync_playwright
     pw = sync_playwright().start()
     try:
         browser = pw.chromium.launch(args=["--no-sandbox"])
-    except Exception:
-        if not install:
-            pw.stop()
-            raise
-        subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"], check=False)
-        browser = pw.chromium.launch(args=["--no-sandbox"])
+    except Exception as exc:
+        pw.stop()
+        raise SystemExit(f"Chromium isn't installed for Playwright ({type(exc).__name__}). "
+                         f"Run: python3 {Path(__file__).resolve()} doctor --install") from exc
     return pw, browser
 
 
@@ -197,11 +204,9 @@ def cmd_term(a):
 
 
 def _mermaid_js() -> Path:
-    js = CACHE / "node_modules" / "mermaid" / "dist" / "mermaid.min.js"
-    if not js.exists():
-        CACHE.mkdir(parents=True, exist_ok=True)
-        subprocess.run(["npm", "install", "--prefix", str(CACHE), "mermaid@11", "--silent"], check=True)
-    return js
+    if not MERMAID_JS.exists():
+        raise SystemExit(f"{MERMAID} isn't installed. Run: python3 {Path(__file__).resolve()} doctor --install")
+    return MERMAID_JS
 
 
 def cmd_mermaid(a):
