@@ -43,6 +43,11 @@ A project can only **narrow** these rules (`.devteam/scopes.json`, approved with
 | trainer | any project file | the task and state files, the design docs, raw data, the quality gates (check.sh, lint/test configs, CI), tests, git internals, .env files | runs code and tests (no git writes, no installs) |
 | visualizer | `src/viz/**`, `dashboards/**`, `streamlit_app.py`, `reports/**`, `notebooks/**`, its own reports | anything else, git internals, .env files | runs code and tests (no git writes, no installs) |
 
+**One per-task exception:** on a low-risk task of a small or medium project, the Orchestrator
+can let that task's coder (backend, frontend, RAG or agent engineer) write the tests too
+(`taskgit.sh coder-tests`, a marker no agent can write). The gates (`scripts/check.sh`, coverage,
+lint and type configs) stay closed, and the milestone's batched review reads the tests.
+
 ## Blocked for every agent
 
 - git internals, .env files

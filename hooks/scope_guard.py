@@ -100,7 +100,36 @@ def load_scopes(project_root: Path | None) -> dict:
                             cur[key] = val
             except (OSError, ValueError, TypeError, AttributeError):
                 pass
+        if coder_tests_enabled(project_root):
+            for name in CODER_TEST_ROLES:
+                spec = data["agents"].get(name)
+                if spec:
+                    spec["deny"] = [g for g in spec.get("deny", []) if g != "@tests"]
     return data
+
+
+# O5: on a low-risk task of a small or medium project the coder writes and runs its own tests
+# (one agent per task instead of coder + tester). Switched on per task by `taskgit.sh coder-tests`,
+# which writes a marker in the worktree's private git dir (outside the worktree, so no agent can
+# write it). Only the tests open up: the gates (check.sh, coverage and lint configs) stay denied,
+# and the milestone's batched review reads the tests with the code.
+CODER_TEST_ROLES = ("backend-coder", "frontend-coder", "rag-engineer", "agent-engineer")
+
+
+def coder_tests_enabled(root: Path) -> bool:
+    git = root / ".git"
+    try:
+        if not git.is_file():
+            return False   # only linked task worktrees; a main checkout never
+        line = git.read_text(encoding="utf-8").strip()
+        if not line.startswith("gitdir:"):
+            return False
+        gitdir = Path(line[len("gitdir:"):].strip())
+        if not gitdir.is_absolute():
+            gitdir = (root / gitdir).resolve()
+        return (gitdir / "devteam-coder-tests").is_file()
+    except OSError:
+        return False
 
 
 def agent_name(agent_type: str | None, scopes: dict) -> str | None:

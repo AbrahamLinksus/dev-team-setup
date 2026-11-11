@@ -90,7 +90,7 @@ AGENTS = [
              "Write typed code (type hints, Pydantic models at I/O boundaries) with clear domain exceptions.",
              "Before reporting, run `CHECK_NO_COVERAGE=1 scripts/check.sh` (everything except the coverage threshold, which the Tester owns) and fix everything it flags in your files; put the result in your REPORT's Checks line (lint/types/complexity/layers) and any SOLID trade-off you made in the full report.",
              "Run the code to prove it works (start the server and hit the endpoint, run the CLI) and capture it: `/docs` screenshot with `$CAPTURE web` and a real request/response with `$CAPTURE term`.",
-             "Don't write or change tests, `scripts/check.sh` or the lint/type/test configs: the Tester owns the tests and env-setup the gates (the scope guard blocks both). If one of them is wrong, say so under Issues.",
+             "Don't write or change tests, `scripts/check.sh` or the lint/type/test configs: the Tester owns the tests and env-setup the gates (the scope guard blocks both). The one exception: a brief with `Tests: yours` (a low-risk task on a small or medium project) opens the tests, never the gates; write them as TEAM_RULES § Quality says. If one of them is wrong, say so under Issues.",
              "Stay out of frontend folders.",
          ]),
     dict(name="frontend-coder", model="sonnet", color="magenta", tools=[R, W, E, B, GL, G],
@@ -541,7 +541,11 @@ def write_guardrails(path: Path = GUARDRAILS) -> None:
         cant = c.split(" · can't: ")[1].split(" · shell: ")[0]
         shell = c.split(" · shell: ")[1]
         lines.append(f"| {n} | {may} | {cant} | {shell} |")
-    lines += ["", "## Blocked for every agent", "",
+    lines += ["", "**One per-task exception:** on a low-risk task of a small or medium project, the Orchestrator",
+              "can let that task's coder (backend, frontend, RAG or agent engineer) write the tests too",
+              "(`taskgit.sh coder-tests`, a marker no agent can write). The gates (`scripts/check.sh`, coverage,",
+              "lint and type configs) stay closed, and the milestone's batched review reads the tests.",
+              "", "## Blocked for every agent", "",
               "- " + ", ".join(words(deny_all)),
               "- pushing to `main`, force-pushes, changing repo visibility, merging PRs (only the Orchestrator's",
               "  approve step changes `main`, after your approval)",
