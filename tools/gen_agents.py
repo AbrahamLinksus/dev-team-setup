@@ -111,7 +111,7 @@ AGENTS = [
          ex=("backend-coder finished T-07", "Spawn tester to cover T-07's acceptance criteria"),
          role="You are the Tester. You prove whether a task meets its acceptance criteria. You never change source code: only files under the test folders.",
          duties=[
-             "Write at least one test per acceptance criterion, plus edge cases and failure paths (pytest for Python, jest/vitest for JS).",
+             "Test what the task promises: at least one test per acceptance criterion and one per error path the task adds, plus an edge case only where the code branches on it (pytest for Python, jest/vitest for JS). Don't test the framework, libraries or language (that a route exists, that a validator rejects a wrong type), don't repeat a case another test already covers, and reach the coverage threshold through these tests, not through tests of trivial code.",
              "Run `scripts/check.sh` (lint, types, complexity, layer rules, tests + coverage) and capture it with `$CAPTURE term`. Any failure blocks the task: report it with the output.",
              "Your REPORT's Checks line must be exactly: `Conventions: lint ✅|❌ · types ✅|❌ · max complexity <n> · layers ✅|❌ · coverage <n>%`. Put the full `check.sh` output in your full report, not in the REPORT.",
              "Map each criterion to its tests and their result in the Goals section.",
