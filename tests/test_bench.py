@@ -339,6 +339,22 @@ class EndToEndTest(unittest.TestCase):
         self.assertEqual(p["tokens"]["interventions"], 3)    # the answers logged, not the markers
         self.assertEqual(p["test"]["acceptance"], 8)
 
+    def test_signed_out_cli_stops_the_run(self):
+        # A friend's run recorded an empty 0/8 "result" because the CLI wasn't signed in
+        for mode in ("status", "silent"):   # `auth status` says so / an older CLI only fails in -p
+            with self.subTest(mode=mode):
+                self.env["FAKE_CLAUDE_LOGGED_OUT"] = mode
+                p = subprocess.run([sys.executable, str(BENCH), "run", "small", "normal"], input="y\ny\ny\n10\ny\n",
+                                   capture_output=True, text=True, encoding="utf-8", env=self.env, timeout=120)
+                self.assertEqual(p.returncode, 2, p.stdout + p.stderr)
+                self.assertIn("claude auth login", p.stdout)
+                state = self.t / "bench" / "state.json"
+                runs = json.loads(state.read_text(encoding="utf-8")).get("runs", {}) if state.exists() else {}
+                self.assertNotIn("small-normal", runs, "a signed-out run must not be recorded")
+                if mode == "silent":
+                    self.assertEqual((self.t / "plugin-state").read_text(), "enabled")   # restored on the way out
+        del self.env["FAKE_CLAUDE_LOGGED_OUT"]
+
     def test_overhead(self):
         self.bench("overhead")
         o = self.state()["overhead"]
