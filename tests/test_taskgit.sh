@@ -489,6 +489,34 @@ if scenario undo_an_approved_task; then
   check "not mid-revert" test ! -f "$R/.git/REVERT_HEAD"
 fi
 
+if scenario step_command; then
+  # O9: one call per agent step (scope + mark TASK_PROGRESS.md + checkpoint) instead of 3–4 turns
+  new_repo step
+  T=$(tg start "$R" T-01)
+  printf '# T-01 · A\n\n| Step | Agent | Status | Note |\n|---|---|---|---|\n| 1 Implement | backend-coder | ⬜ | |\n| 2 Tests + checks | tester | ⬜ | |\n| 3 Review | reviewer | ⬜ | |\n\nAgents: none\n' > "$T/TASK_PROGRESS.md"
+  tgq checkpoint "$R" T-01 "progress file"
+  tgq step "$R" T-01 implement started
+  check "started marks the row ⏳" grep -q '^| 1 Implement | backend-coder | ⏳ |' "$T/TASK_PROGRESS.md"
+  check "started checkpoints" test "$(git -C "$T" log -1 --format=%s)" = "wip(T-01): implement started"
+  check "started is timed" grep -q $'\tT-01\timplement started$' "$R/.git/devteam-timing.log"
+  mkdir -p "$T/tests"; echo "def test_a(): pass" > "$T/tests/test_a.py"; echo "a = 1" > "$T/a.py"
+  sedi 's/^Agents: none$/Agents: tester=abc123/' "$T/TASK_PROGRESS.md"
+  tgq step "$R" T-01 test+review started
+  check "test+review marks both rows" bash -c "grep -q '^| 2 Tests + checks | tester | ⏳ |' '$T/TASK_PROGRESS.md' && grep -q '^| 3 Review | reviewer | ⏳ |' '$T/TASK_PROGRESS.md'"
+  echo "def test_b(): pass" > "$T/tests/test_b.py"; echo "b = 1" > "$T/b.py"
+  out=$(tg step "$R" T-01 test+review done tester "checks pass · 2 tests" 2>&1)
+  check "done scopes as the agent first" contains "$out" "REVERTED 1 file"
+  check "the out-of-scope file is gone" test ! -e "$T/b.py"
+  check "the in-scope test stays" test -f "$T/tests/test_b.py"
+  check "done marks both rows ✅ with the note" bash -c "grep -q '^| 2 Tests + checks | tester | ✅ | checks pass · 2 tests |' '$T/TASK_PROGRESS.md' && grep -q '^| 3 Review | reviewer | ✅ |' '$T/TASK_PROGRESS.md'"
+  check "scope keeps the Orchestrator's notes" grep -q '^Agents: tester=abc123$' "$T/TASK_PROGRESS.md"
+  check "done checkpoints" test "$(git -C "$T" log -1 --format=%s)" = "wip(T-01): test+review done"
+  check "a | in the note can't break the table" bash -c "bash '$TG' step '$R' T-01 review failed reviewer 'a | b' >/dev/null 2>&1; grep -q '^| 3 Review | reviewer | ❌ | a / b |' '$T/TASK_PROGRESS.md'"
+  tgq step "$R" T-01 debug started
+  check "a step with no row gets one" grep -q '^| debug |  | ⏳ |' "$T/TASK_PROGRESS.md"
+  check "an unknown state is refused" expect_exit 1 tg step "$R" T-01 test finished
+fi
+
 # ---- summary ---------------------------------------------------------------------------
 echo
 echo "taskgit scenarios: $PASS passed, $FAIL failed"
