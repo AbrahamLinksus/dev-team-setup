@@ -650,6 +650,13 @@ class StructureTest(unittest.TestCase):
         self.assertIn("step <repo> <id> <step> started", (SKILL / "references" / "checkpointing.md").read_text(encoding="utf-8"))
         self.assertIn("  step)", (SKILL / "scripts" / "taskgit.sh").read_text(encoding="utf-8"))
 
+    def test_agents_read_only_the_sections_their_brief_lists(self):
+        # O13: briefs name LLD sections, but Read loads a whole file; every start pays for it
+        rules = (SKILL / "references" / "team-rules.md").read_text(encoding="utf-8")
+        self.assertIn("read only those sections, not the whole file", rules)
+        self.assertIn("Read with `offset` and `limit`", rules)
+        self.assertIn("Every agent start pays for what it reads", rules)
+
     def test_quick_track_for_small_ideas(self):
         # D30: small ideas skip the separate HLD, team-pick and LLD stops, never the Tier 1 ones
         planning = (SKILL / "references" / "stage-1-6-planning.md").read_text(encoding="utf-8")
