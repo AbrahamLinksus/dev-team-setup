@@ -16,7 +16,8 @@ Answer more questions. Nothing is designed before the spec is approved.
 spec card and into STATE.md "Size". It sets how much process the build gets: milestones, design
 depth, and who tests and reviews low-risk tasks. High-risk tasks always get the full team. At
 stage 6, update it from the real task count; the owner can change it on the planning card.
-**Small idea?** When the spec has **at most 5 user stories** and no AI/ML or data-science work,
+**Small idea?** When the size is **small** (or the spec has at most 5 user stories) and there is no
+AI/ML or data-science work,
 split Approve into **Approve · quick track (Recommended)** / **Approve · full track**, saying in
 one line what quick track skips. Record the track in STATE.md.
 
@@ -25,8 +26,9 @@ one line what quick track skips. Record the track in STATE.md.
 Same guardrails, checkpoints and per-task cards; fewer planning stops. Replaces stages 2–4 and
 trims 6:
 - **One design step:** the **architect** writes `docs/HLD.md` (short: modules and data flow) and
-  `docs/LLD.md` + `docs/CONVENTIONS.md` in one go. The **researcher** runs only if a needed
-  package isn't pinned by the spec's stack.
+  `docs/LLD.md` + `docs/CONVENTIONS.md` in one go, **short**: HLD about one screen, LLD only the
+  sections the tasks will read (the brief says "quick track: keep it short"). The **researcher**
+  runs only if a needed package isn't pinned by the spec's stack.
 - **Default team, no team-pick card:** the coders the HLD's modules need (backend-coder and/or
   frontend-coder), plus tester, reviewer, debugger and docs, with their catalog models.
 - **One design card ⏸:** the data-flow diagram, the team line, the package table and every

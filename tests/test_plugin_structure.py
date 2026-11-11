@@ -632,6 +632,11 @@ class StructureTest(unittest.TestCase):
         planning = (SKILL / "references" / "stage-1-6-planning.md").read_text(encoding="utf-8")
         quick = planning[planning.index("## Quick track"):planning.index("## 2 ·")]
         self.assertIn("at most 5 user stories", planning)
+        # O7: runs B and C (9 and 7 stories, 5 tasks) missed it on the story count alone; offer it
+        # by size, and keep its one design pass short
+        self.assertIn("When the size is **small**", planning)
+        self.assertIn("**short**: HLD about one screen", quick)
+        self.assertIn("only the sections the tasks will read", (ROOT / "agents" / "architect.md").read_text(encoding="utf-8"))
         self.assertIn("**One design card ⏸:**", quick)
         self.assertIn("Tier 1 never shrinks", quick)
         self.assertIn("installing is Tier 1", quick)
