@@ -50,7 +50,8 @@ Per task `T-xx`:
    Run `python3 $COST …` for the card's Cost line. **Exit 3 (over budget)** → before the card, a
    decision card ⏸: "Spent $X of your $B budget" → **Raise the budget to …** (suggest 1.5×; record it
    in STATE.md and use it from now on) / **Pause** (`anytime.md`). Never continue over budget unasked.
-6. Result card now or queued for a batch, per approval mode. Then:
+6. Result card now, queued for a batch, or (autopilot, low-risk with every goal ✅) approved first
+   and sent afterwards with Undo, per approval mode (`approval-modes.md`). Then:
    - **Approve** → run `$TASKGIT approve <repo> T-xx "<msg>"` yourself, with a conventional-commit
      message built from the card (`feat(auth): add login endpoint [T-07]`); then update `TASKS.md`,
      `DECISIONS.md`, `STATE.md` in the main checkout and `$TASKGIT record <repo> "chore: record T-xx"`.

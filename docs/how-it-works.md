@@ -91,7 +91,7 @@ When you enable the plugin, it asks for:
 |---|---|
 | `owner_name` | How the Orchestrator addresses you |
 | `github_owner` | GitHub user/org for new project repos (visibility is asked every time) |
-| `approval_mode` | `every-task` (default) or `batch-low-risk` (low-risk tasks approved together) |
+| `approval_mode` | `every-task` (default), `batch-low-risk` (low-risk tasks approved together) or `autopilot` (low-risk tasks with every goal met approved automatically; card afterwards with Undo) |
 | `cost_mode` | `quality` (default) or `balanced` (Sonnet reviewer/debugger on low-risk tasks, 2 debug rounds) |
 
 Other notes:

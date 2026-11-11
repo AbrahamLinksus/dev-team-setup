@@ -36,11 +36,12 @@
     "approval_mode": {
       "type": "string",
       "title": "Approval mode",
-      "description": "every-task = a result card and approval for every task. batch-low-risk = low-risk tasks are approved together in one batch card (high-risk tasks still get their own card).",
+      "description": "every-task = a result card and approval for every task. batch-low-risk = low-risk tasks are approved together in one batch card. autopilot = low-risk tasks with every goal met are approved on their own and you get the card afterwards, with one-tap Undo; high-risk tasks, decisions, milestones and handover still wait for you.",
       "default": "every-task",
       "options": [
         "every-task",
-        "batch-low-risk"
+        "batch-low-risk",
+        "autopilot"
       ]
     },
     "cost_mode": {

@@ -34,6 +34,20 @@ keep moving while a card waits (`stage-7-build.md`, "Don't let the team idle").
 - Approve the ticked tasks one at a time with `$TASKGIT approve` (each one re-syncs and
   re-checks against the main the previous one produced).
 
+**autopilot** (fastest: the owner stops the build only for what needs them):
+- **Auto-approved:** a task that is low-risk (above) **and** has every goal ✅ **and** passed `sync`.
+  Run `$TASKGIT approve` yourself straight away, record it, and start the next task. Then send its
+  card as usual, headed `✅ Auto-approved T-07 · Undo?`, with AskUserQuestion: **Keep** (default) /
+  **Undo**. Don't wait for the answer: carry on, and handle it whenever it comes.
+- **Undo** → `$TASKGIT undo <repo> T-07` (a new commit on main that reverts the task's commit),
+  then TASKS.md: the task back to `Backlog` with "undone by the owner", `record`. Exit 4 = a later
+  task changed the same lines: tell the owner, and offer to undo the later task first or to make
+  the change as a new task.
+- **Still stops, exactly as in every-task:** any ⚠️/❌ goal, every high-risk task, every Tier 1
+  decision card, change requests, milestone cards and the handover card. Tier 1 never shrinks.
+- Never auto-approve when a change request is open, the task needed a debugger round, or the
+  scope check reverted anything (all three already make it high-risk).
+
 ## cost_mode
 
 **quality** (default): agents use the models in their definitions; debugger max 3 rounds.
