@@ -464,6 +464,31 @@ if scenario check_cache_by_tree; then
   check "approved" contains "$(on_main a.py)" "a = 1"
 fi
 
+if scenario undo_an_approved_task; then
+  # P1: autopilot approves low-risk tasks on its own; the owner can take one back with one tap
+  new_repo undo
+  T=$(tg start "$R" T-01); echo "a = 1" > "$T/a.py"; tgq checkpoint "$R" T-01 "implement done"
+  tgq approve "$R" T-01 "feat: a [T-01]"
+  check "approve tags its commit with the task" bash -c "git -C '$R' log -1 --format=%B | grep -qx 'Task: T-01'"
+  T=$(tg start "$R" T-02); echo "b = 2" > "$T/b.py"; tgq checkpoint "$R" T-02 "implement done"
+  tgq approve "$R" T-02 "feat: b [T-02]"
+  out=$(tg undo "$R" T-01 2>&1)
+  check "undo reverts T-01 on main" test -z "$(on_main a.py)"
+  check "and keeps the later T-02" contains "$(on_main b.py)" "b = 2"
+  check "undo is pushed" bash -c "git -C '$R' log -1 --format=%s origin/main | grep -q '^Revert'"
+  check "says what it undid" contains "$out" "undone:"
+  check "undoing twice is refused" expect_exit 1 tg undo "$R" T-01
+  check "unknown task is refused" expect_exit 1 tg undo "$R" T-99
+  check "main checkout clean" clean_main
+  # a later task changed the same line: undo can't be clean, and nothing changes
+  T=$(tg start "$R" T-03); echo "b = 3" > "$T/b.py"; tgq checkpoint "$R" T-03 "implement done"
+  tgq approve "$R" T-03 "feat: b3 [T-03]"
+  before=$(git -C "$R" rev-parse HEAD)
+  check "conflicting undo exits 4" expect_exit 4 tg undo "$R" T-02
+  check "and leaves main as it was" test "$(git -C "$R" rev-parse HEAD)" = "$before"
+  check "not mid-revert" test ! -f "$R/.git/REVERT_HEAD"
+fi
+
 # ---- summary ---------------------------------------------------------------------------
 echo
 echo "taskgit scenarios: $PASS passed, $FAIL failed"

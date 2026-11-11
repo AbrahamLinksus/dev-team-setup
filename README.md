@@ -108,7 +108,7 @@ Pick these when Claude Code asks after you enable the plugin, or change them lat
 
 | Setting | Default | What it does |
 |---|---|---|
-| `approval_mode` | `every-task` | Set `batch-low-risk` to approve small, safe tasks together |
+| `approval_mode` | `every-task` | `batch-low-risk` approves small, safe tasks together. `autopilot` approves them on its own and shows you each one afterwards, with Undo: the fastest way to run |
 | `cost_mode` | `quality` | Set `balanced` to use cheaper models where it's safe |
 | `budget_usd` | `0` (no cap) | Spend at which it pauses and asks. Every result also shows that task's cost and the total so far |
 

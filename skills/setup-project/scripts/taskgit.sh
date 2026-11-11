@@ -26,6 +26,7 @@
 #   taskgit.sh approve    <repo> <id> "<msg>"            sync, squash into main, push, clean up
 #   taskgit.sh record     <repo> "<msg>"                 commit + push shared-file updates on main
 #   taskgit.sh reject     <repo> <id>                    drop wip/<id> (local + remote) and its worktree
+#   taskgit.sh undo       <repo> <id>                    revert an approved task's commit on main and push
 #   taskgit.sh list       <repo>                         open wip/* branches on origin + last step
 # Exit codes: 0 ok · 1 usage · 2 blocked files · 3 main not clean/diverged · 4 merge conflict
 #             5 check.sh failed after sync · 6 squash failed · 7 committed locally but not pushed
@@ -382,7 +383,8 @@ case "$cmd" in
       g reset -q --hard HEAD
       die 6 "the squash of $br into $main is empty (the task only changed files main owns, or nothing at all); main restored. Reject the task, or record the shared-file changes on main with 'record'."
     fi
-    g commit -q -m "$msg" || { g reset -q --hard HEAD; die 6 "commit on $main failed; main restored"; }
+    # the Task: trailer lets `undo` find exactly this commit later (P1, autopilot approvals)
+    g commit -q -m "$msg" -m "Task: $id" || { g reset -q --hard HEAD; die 6 "commit on $main failed; main restored"; }
     # 4. push. If origin moved in the meantime, a rebased commit would reach main untested (T5):
     #    drop our squash commit and run the whole approve once more, so the task is synced with the
     #    new main and scripts/check.sh runs again before anything is pushed.
@@ -425,6 +427,29 @@ case "$cmd" in
     push_branch "$repo" "$main" || { pull_rebase_main && push_branch "$repo" "$main"; } \
       || die 7 "recorded commit is local only; NOT pushed (if origin/$main changed the same lines, the rebase was undone: the main checkout is clean, not mid-rebase)"
     echo "recorded: $(g log --oneline -1)"
+    ;;
+
+  undo)
+    # P1: an auto-approved task the owner doesn't want after all. Reverts its squash commit (found by
+    # the "Task: <id>" trailer approve writes) with a new commit on main; history is never rewritten.
+    id=${3:?id}
+    [[ "$(g rev-parse --abbrev-ref HEAD)" == "$main" ]] || die 3 "the main checkout isn't on $main; nothing was undone"
+    dirty=$(g status --porcelain --untracked-files=no)
+    [[ -z "$dirty" ]] || die 3 "main checkout has uncommitted changes; nothing was undone:\n$dirty"
+    g fetch -q origin "$main" || die 3 "fetch failed; nothing was undone"
+    g merge -q --ff-only "origin/$main" 2>/dev/null || die 3 "local $main has diverged from origin/$main; nothing was undone"
+    sha=$(g log --format=%H --grep="^Task: $id\$" "$main" | head -1)
+    [[ -n "$sha" ]] || die 1 "no approved commit for $id on $main (looked for a 'Task: $id' trailer)"
+    if g log --format=%B "$sha..$main" | grep -qF "This reverts commit $sha."; then
+      die 1 "$id was already undone on $main"
+    fi
+    if ! g revert --no-edit "$sha" >/dev/null 2>&1; then
+      g revert --abort 2>/dev/null
+      die 4 "can't undo $id cleanly: later approved work changed the same lines. Nothing changed. Undo the later task first, or make the change as a new task."
+    fi
+    log_time "undone"
+    push_branch "$repo" "$main" || { g reset -q --hard HEAD~1; die 7 "the revert of $id couldn't be pushed; it was dropped again, so main is unchanged"; }
+    echo "undone: $(g log --oneline -1)"
     ;;
 
   reject)

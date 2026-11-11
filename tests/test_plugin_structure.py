@@ -53,7 +53,7 @@ class StructureTest(unittest.TestCase):
     def test_modes_are_choices(self):
         # K15: approval_mode and cost_mode accepted any text, so a typo went unnoticed
         uc = json.loads((ROOT / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))["userConfig"]
-        self.assertEqual(uc["approval_mode"]["options"], ["every-task", "batch-low-risk"])
+        self.assertEqual(uc["approval_mode"]["options"], ["every-task", "batch-low-risk", "autopilot"])
         self.assertEqual(uc["cost_mode"]["options"], ["quality", "balanced"])
         for key in ("approval_mode", "cost_mode"):
             self.assertIn(uc[key]["default"], uc[key]["options"])
@@ -643,6 +643,18 @@ class StructureTest(unittest.TestCase):
         self.assertLess(len(data), 2 * 1024 * 1024)
         self.assertTrue(manifest["privacyPolicyUrl"].endswith("docs/PRIVACY.md"))
         self.assertTrue((ROOT / "docs" / "PRIVACY.md").exists())
+
+    def test_autopilot_approves_only_safe_tasks_and_keeps_undo(self):
+        # P1: the biggest wait is the owner; autopilot removes it for low-risk, all-✅ tasks only
+        manifest = json.loads((ROOT / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
+        self.assertIn("autopilot", manifest["userConfig"]["approval_mode"]["options"])
+        modes = (SKILL / "references" / "approval-modes.md").read_text(encoding="utf-8")
+        auto = modes[modes.index("**autopilot**"):modes.index("## cost_mode")]
+        for must in ("low-risk (above) **and** has every goal ✅", "$TASKGIT undo", "Tier 1 never shrinks",
+                     "milestone cards and the handover card"):
+            self.assertIn(must, auto)
+        self.assertIn("taskgit.sh undo", (SKILL / "scripts" / "taskgit.sh").read_text(encoding="utf-8"))
+        self.assertIn("autopilot", (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8"))
 
     def test_every_known_hole_keeps_its_regression_test(self):
         # M1: each problem fixed in code got a test that names it (S = scope guard, T = taskgit,
