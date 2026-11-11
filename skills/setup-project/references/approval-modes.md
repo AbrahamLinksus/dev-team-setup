@@ -71,6 +71,14 @@ keep moving while a card waits (`stage-7-build.md`, "Don't let the team idle").
 - Researcher is skipped when the LLD already pins every needed package.
 - Pairs well with `approval_mode: autopilot`, which removes most waits for the owner.
 
+## Build model tip (balanced and fast only)
+
+The build stage mostly dispatches agents, and the Orchestrator is the session's model: about 40%
+of a run's cost. Sonnet costs half as much as Opus per token. On the planning card (stage 6) in
+`balanced` or `fast`, add one line: "Tip: planning is done; for the build you can switch this
+session to Sonnet (`/model sonnet`) to roughly halve its cost. Switch back for a change request."
+Say it once, never switch it yourself, and never in `quality`: the session's model is the owner's.
+
 ## Things that never batch or downgrade
 Tier 1 decision cards, the HLD/LLD/install checkpoints, milestone cards, any reject, and
 anything the owner asked to see individually.
