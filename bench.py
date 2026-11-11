@@ -800,9 +800,16 @@ def claude_p(prompt: str, cwd: Path, skip_permissions: bool) -> dict:
         out = out_f.read().decode("utf-8", "replace")
         err = err_f.read().decode("utf-8", "replace")
     try:
-        return json.loads(out)
+        result = json.loads(out)
     except ValueError:
-        return {"is_error": True, "result": (out + err)[-500:]}
+        result = {"is_error": True, "result": (out + err)[-500:]}
+    # Older Claude Code versions have no `auth status`, so the sign-in problem may only show here.
+    # Stop the run instead of measuring and recording a session that never did anything.
+    if result.get("is_error") and re.search(r"not logged in|please run /login", str(result.get("result")), re.I):
+        say("\n  ! The Claude Code CLI isn't signed in. Run: claude auth login   then run this again.")
+        say("    Nothing was recorded for this run.")
+        sys.exit(2)
+    return result
 
 
 def claude_interactive(prompt: str, cwd: Path, skip_permissions: bool) -> int:
@@ -870,6 +877,10 @@ def cmd_check(_=None) -> bool:
         good = code == 0
         ok &= good or not required
         say(f"  {'✅' if good else ('❌' if required else '➖')} {name}{'' if good else ' (' + out.strip().splitlines()[0][:80] + ')' if out.strip() else ''}")
+    auth = claude_auth()
+    ok &= not auth.get("error")
+    say(f"  {'❌ ' + auth['error'] if auth.get('error') else '✅ claude signed in'}"
+        + (f" ({auth['authMethod']})" if auth.get("authMethod") else ""))
     code, out = run([CLAUDE, "plugin", "list"], timeout=60)
     installed = "dev-team-setup@" in out
     say(f"  {'✅' if installed else '❌'} plugin {PLUGIN} installed")
@@ -982,9 +993,30 @@ def run_normal(folder: Path, s: dict) -> None:
         claude_interactive(NORMAL_PROMPT, folder, s["skip_permissions"])
 
 
+def claude_auth() -> dict:
+    """`claude auth status` (no model call). {"error": …} when the CLI is missing or signed out;
+    an empty dict when this Claude Code version can't say (older than `auth status`)."""
+    code, out = run([CLAUDE, "auth", "status"], timeout=60)
+    if code == 127:
+        return {"error": f"Claude Code CLI not found ({CLAUDE}). Install it, or set CLAUDE_BIN to its path."}
+    try:
+        info = json.loads(out[out.index("{"):out.rindex("}") + 1])
+    except ValueError:
+        return {}
+    if info.get("loggedIn") is False:
+        return {"error": "the Claude Code CLI isn't signed in (the desktop app's sign-in isn't shared "
+                         "with it). Run: claude auth login   then run this again."}
+    return info
+
+
 def cmd_run(args) -> None:
     app, mode = args.app, args.mode
     key = f"{app}-{mode}"
+    # A signed-out CLI used to "run" for 5 s and get recorded as a real 0/8 result.
+    auth = claude_auth()
+    if auth.get("error"):
+        say(f"Can't start {key}: {auth['error']}")
+        sys.exit(2)
     state = load_state()
     s = settings(state)
     folder = BENCH / key

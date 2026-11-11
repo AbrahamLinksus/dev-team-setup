@@ -62,7 +62,16 @@ def write_session(cwd: Path, prompt: str, replies, cost, model_usage, ask=False,
                                                                   "usage": subagent}}]) + "\n")
 
 
-if args[:1] == ["--version"]:
+LOGGED_OUT = os.environ.get("FAKE_CLAUDE_LOGGED_OUT")   # "status": auth status says so; "silent": only -p fails
+
+if args[:2] == ["auth", "status"]:
+    if LOGGED_OUT == "silent":
+        print("error: unknown command 'status'")      # an older CLI without `auth status`
+        sys.exit(1)
+    print(json.dumps({"loggedIn": LOGGED_OUT != "status", "authMethod": "claude.ai"}))
+elif "-p" in args and LOGGED_OUT:
+    print(json.dumps({"is_error": True, "result": "Not logged in · Please run /login"}))
+elif args[:1] == ["--version"]:
     print("2.1.312 (Claude Code)")
 elif args[:1] == ["plugin"]:
     sub = args[1] if len(args) > 1 else ""
