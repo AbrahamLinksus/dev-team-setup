@@ -69,7 +69,7 @@ for them (git-pr stays available for a task whose commit message needs real summ
 ## Step protocol (every agent step on branch `<id>`)
 
 1. Mark the step ⏳ in the worktree's `TASK_PROGRESS.md`; `$TASKGIT checkpoint <repo> <id> "<step> started"`.
-2. Spawn the agent **fresh** with `description: "<id> · <step>"` (e.g. `T-04 · implement`: the agent
+2. Spawn the agent **fresh** (with `model:` per **Modes** below) with `description: "<id> · <step>"` (e.g. `T-04 · implement`: the agent
    panel shows it on the agent's status row) and always `subagent_type: "dev-team-setup:<agent>"` (the scope guard
    only recognises the prefixed name, so a bare name would run unguarded) with a brief from `brief-template.md`: `Read:` built from
    the role default + the task's `Context:` + STATE.md "Context additions", and
@@ -85,6 +85,20 @@ for them (git-pr stays available for a task whose commit message needs real summ
    (e.g. `5/5 goals ✅ · checks pass · 2 decisions`). A `Context gap:` in the REPORT → add a row
    to STATE.md "Context additions". Checkpoint `"<step> done"`. Only then spawn the next agent
    (the one exception: tester and reviewer run together, see `stage-7-build.md` step 3).
+
+## Modes (apply on every spawn and card)
+
+The project's modes in STATE.md win over Config. Any mode other than `every-task` / `quality` →
+read `references/approval-modes.md` once (stage 3 or on resume) for risk classes and card
+wording. These always apply:
+- **fast**: every Opus agent except planner and architect spawns with `model: "sonnet"`.
+  High-risk tasks get an Opus reviewer; debugger round 2 runs on Opus; max 2 rounds.
+- **balanced**: reviewer and debugger on `model: "sonnet"` for low-risk-looking tasks; max 2 rounds.
+- **autopilot**: a low-risk task with every goal ✅ that passed `sync` → `$TASKGIT approve` first,
+  then its card headed `✅ Auto-approved <id> · Undo?` (Keep / Undo); don't wait for the answer.
+- **batch-low-risk**: low-risk cards queue; one batch card at 3 tasks or at milestone end.
+- Never auto-approved, batched or downgraded: Tier 1 decisions, high-risk tasks, milestone and
+  handover cards.
 
 ## Context budget (Orchestrator)
 

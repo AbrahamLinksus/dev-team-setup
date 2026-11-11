@@ -432,7 +432,7 @@ class StructureTest(unittest.TestCase):
     def test_skill_core_is_small_and_wired_to_every_stage_file(self):
         # D11: the core is re-read on every Orchestrator call (H2); stage files are read on demand.
         core = (SKILL / "SKILL.md").read_text(encoding="utf-8")
-        self.assertLess(len(core), 9000, "SKILL.md core grew; move stage detail into references/stage-*.md")
+        self.assertLess(len(core), 10000, "SKILL.md core grew; move stage detail into references/stage-*.md")
         for f in STAGE_FILES:
             self.assertIn(f"references/{f}", core)
             self.assertTrue((SKILL / "references" / f).read_text(encoding="utf-8").startswith("# "))
@@ -646,6 +646,18 @@ class StructureTest(unittest.TestCase):
             self.assertIn(must, auto)
         self.assertIn("taskgit.sh undo", (SKILL / "scripts" / "taskgit.sh").read_text(encoding="utf-8"))
         self.assertIn("autopilot", (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8"))
+
+    def test_modes_are_in_the_core(self):
+        # Run C (fast + autopilot) ran like the defaults: the rules lived only in approval-modes.md,
+        # which nothing made the Orchestrator read before spawning. The core is always read.
+        core = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+        modes = core[core.index("## Modes"):core.index("## Context budget")]
+        for must in ('**fast**', 'model: "sonnet"', "except planner and architect", "Opus reviewer",
+                     "**autopilot**", "Auto-approved <id> · Undo?", "**balanced**", "**batch-low-risk**",
+                     "STATE.md win over Config", "references/approval-modes.md"):
+            self.assertIn(must, modes)
+        protocol = core[core.index("## Step protocol"):core.index("## Modes")]
+        self.assertIn("`model:` per **Modes**", protocol)
 
     def test_independent_tasks_start_in_one_message(self):
         # P2: agents only run concurrently when spawned in the same message
