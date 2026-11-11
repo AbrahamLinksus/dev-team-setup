@@ -59,6 +59,7 @@ or
 SPEC COMPLETE
 Assumptions: <list of (assumed) lines>
 Screens: <list> (or "no UI")
+Size: <small|medium|large> · ≈<n> tasks · <one-line reason>
 ```
 
 Rules for good questions: one decision per question; options must be concrete and

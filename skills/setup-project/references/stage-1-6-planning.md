@@ -12,6 +12,10 @@ where sensible) and send a one-line progress note between rounds.
 UI projects: planner writes lo-fi wireframes; render them (mobile + desktop).
 Spec card: wireframes + spec summary + every *(assumed)* line → Approve / Request changes /
 Answer more questions. Nothing is designed before the spec is approved.
+**Project size.** The planner's `Size:` line (small ≤6 tasks, medium 7–20, large >20) goes on the
+spec card and into STATE.md "Size". It sets how much process the build gets: milestones, design
+depth, and who tests and reviews low-risk tasks. High-risk tasks always get the full team. At
+stage 6, update it from the real task count; the owner can change it on the planning card.
 **Small idea?** When the spec has **at most 5 user stories** and no AI/ML or data-science work,
 split Approve into **Approve · quick track (Recommended)** / **Approve · full track**, saying in
 one line what quick track skips. Record the track in STATE.md.
@@ -67,6 +71,7 @@ check with terminal images.
 
 ## 6 · Tasks + plan merge ⏸
 
-**planner** → `TASKS.md`. Planning card (spec, HLD, team, LLD, env, task count per milestone).
+**planner** → `TASKS.md`. Planning card (spec, HLD, team, LLD, env, task count per milestone, project size).
+When the real task count puts the project in another size, update STATE.md "Size" and say so on the card.
 On approval run `$TASKGIT approve <repo> plan "chore: spec, design, environment and tasks"` yourself.
 Mirror the current milestone in the task widget.
