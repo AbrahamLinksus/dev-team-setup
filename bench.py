@@ -817,6 +817,36 @@ def claude_interactive(prompt: str, cwd: Path, skip_permissions: bool) -> int:
     return subprocess.call(cmd, cwd=cwd)
 
 
+def make_budget(normal: dict, factor: float) -> dict | None:
+    """The plugin run's cap: factor × the plain run. In dollars when Claude Code logged the plain
+    run's cost; otherwise in price-weighted tokens. On subscription plans (claude.ai sign-in) no
+    cost is logged, and a dollar cap of factor × $0 used to mean no cap at all."""
+    tokens = (normal or {}).get("tokens") or {}
+    units = weighted(tokens) * factor if tokens else 0
+    usd = normal.get("cost_usd", 0) * factor if normal and normal.get("cost_complete") and normal.get("cost_usd") else None
+    return {"usd": usd, "units": units, "factor": factor} if (usd or units) else None
+
+
+def budget_status(m: dict, b: dict | None) -> tuple[str, bool]:
+    """('so far' text, over?) for a measurement against a budget."""
+    if b and b["usd"] and m.get("cost_usd"):
+        return f"cost so far ${m['cost_usd']:.2f} of ${b['usd']:.2f}", m["cost_usd"] > b["usd"]
+    used = weighted(m.get("tokens") or {})
+    if b and b["units"]:
+        return (f"usage so far {used / 1e6:.2f}M of {b['units'] / 1e6:.2f}M price-weighted tokens",
+                used > b["units"])
+    return f"usage so far {used / 1e6:.2f}M price-weighted tokens (no budget)", False
+
+
+def budget_line(b: dict | None) -> str:
+    if not b:
+        return "No budget: the plain run has no usage recorded. Run it first for a cap."
+    if b["usd"]:
+        return f"Budget: ${b['usd']:.2f} ({b['factor']:g} × the plain run)."
+    return (f"Budget: {b['units'] / 1e6:.2f}M price-weighted tokens ({b['factor']:g} × the plain run; "
+            "no dollar cost is logged on this plan, so the cap counts tokens weighted by price).")
+
+
 MAX_UNATTENDED_SESSIONS = 20   # milestones plus a fresh session every 6 tasks (D15)
 MARKERS = ("MILESTONE DONE", "SESSION DONE", "HANDOVER DONE", "STOPPED")
 
@@ -830,7 +860,7 @@ def logged_answers(folder: Path) -> list[str]:
     return [ln for ln in answers_log(folder) if ln.strip() and not ln.startswith(MARKERS)]
 
 
-def run_unattended(key: str, folder: Path, repo: str, start: datetime, budget: float | None,
+def run_unattended(key: str, folder: Path, repo: str, start: datetime, budget: dict | None,
                    skip_permissions: bool, state: dict) -> None:
     """D7: headless plugin sessions that answer their own cards from ANSWERS.md
     (skills/setup-project/references/unattended.md), resumed until the handover is done."""
@@ -845,13 +875,12 @@ def run_unattended(key: str, folder: Path, repo: str, start: datetime, budget: f
             say(f"  ! the session ended with an error: {str(result.get('result'))[:300]}")
         lines = answers_log(folder)
         m = measure(log_dir_for(folder), sessions_in(log_dir_for(folder), start))
-        say(f"  {len(lines) - before} new answer-log lines · cost so far ${m['cost_usd']:.2f}"
-            + (f" of ${budget:.2f}" if budget else ""))
+        so_far, over = budget_status(m, budget)
+        say(f"  {len(lines) - before} new answer-log lines · {so_far}")
         if any(ln.startswith("HANDOVER DONE") for ln in lines):
             say("  Handover done.")
             return
         stop = next((ln for ln in lines if ln.startswith("STOPPED")), None)
-        over = budget is not None and m["cost_usd"] > budget
         stalled = stalled + 1 if len(lines) == before else 0
         if stop or over or stalled >= 2:
             say(f"  Stopping: {stop or ('over budget' if over else 'two sessions in a row made no progress')}.")
@@ -1048,12 +1077,10 @@ def cmd_run(args) -> None:
             shutil.rmtree(PROJECTS / f"{repo}-wt", ignore_errors=True)
         answers = ANSWERS.format(app=app, repo=repo)
         (folder / "ANSWERS.md").write_text(answers, encoding="utf-8")
-        normal_cost = (state.get("runs", {}).get(f"{app}-normal", {}).get("tokens") or {}).get("cost_usd") or 0
-        budget = normal_cost * s["budget_factor"] if normal_cost else None
+        budget = make_budget(state.get("runs", {}).get(f"{app}-normal", {}).get("tokens") or {}, s["budget_factor"])
         say(answers)
         say(f"(Also saved to {folder / 'ANSWERS.md'}.)")
-        if budget:
-            say(f"Budget: ${budget:.2f} ({s['budget_factor']:g} × the normal run).")
+        say(budget_line(budget))
         prompt = PLUGIN_PROMPT.format(repo=repo)
         sessions_done = 0
         if s.get("plugin_unattended"):
@@ -1065,9 +1092,9 @@ def cmd_run(args) -> None:
             claude_interactive(prompt, folder, s["skip_permissions"])
             sessions_done += 1
             m = measure(log_dir_for(folder), sessions_in(log_dir_for(folder), start))
-            say(f"\nSession {sessions_done} ended · cost so far ${m['cost_usd']:.2f}"
-                + (f" of ${budget:.2f} budget" if budget else ""))
-            if budget and m["cost_usd"] > budget:
+            so_far, over = budget_status(m, budget)
+            say(f"\nSession {sessions_done} ended · {so_far}")
+            if over:
                 say("  Over budget.")
             choice = ask("Next: [r]esume in a fresh session · [d]one (handover approved) · [s]top here (unfinished)", "r").lower()
             if choice.startswith("d"):
@@ -1081,6 +1108,11 @@ def cmd_run(args) -> None:
     end = datetime.now(timezone.utc)
     say("Measuring tokens and cost…")
     tokens = measure(log_dir_for(folder), sessions_in(log_dir_for(folder), start))
+    # Which model did the work: runs on different models aren't comparable (a friend's Sonnet run
+    # used ~4x the tokens of an Opus run on the same spec), so record it with the numbers
+    tokens["models"] = [m for m, _ in sorted(tokens.get("by_model", {}).items(), key=lambda kv: -weighted(kv[1]))
+                        if not m.startswith("(")]
+    tokens["weighted_units"] = round(weighted(tokens.get("tokens") or {}))
     if mode == "plugin" and s.get("plugin_unattended"):
         # Unattended: the owner's interventions are the answers the plugin logged in their place.
         n = len(logged_answers(folder))
@@ -1108,7 +1140,7 @@ def cmd_run(args) -> None:
     run_state = state.setdefault("runs", {}).setdefault(key, {})
     run_state.update({"start": start.isoformat(), "end": end.isoformat(), "folder": str(folder),
                       "project": str(project), "tokens": tokens, "test": tested, "quality": q, "ui": ui,
-                      "step_minutes": step_times(project)})
+                      "step_minutes": step_times(project), "auth_method": auth.get("authMethod")})
     if run_state["step_minutes"]:
         say("Time per step (from taskgit's timing log):")
         say(times_table(run_state["step_minutes"]))
@@ -1184,20 +1216,26 @@ def write_report(state: dict) -> str:
             continue
         L += [f"## {app.capitalize()} app", "",
               "| Run | Cost | All tokens | Output | Subagent tokens | Time | Sessions | Your interventions "
-              "| Cost per passed check | Main session's share of cost |",
-              "|---|---|---|---|---|---|---|---|---|---|"]
+              "| Cost per passed check | Main session's share of cost | Model | Price-weighted usage |",
+              "|---|---|---|---|---|---|---|---|---|---|---|---|"]
         for k in keys:
             t = runs[k].get("tokens", {})
-            L.append(f"| {k}{' (stopped)' if runs[k].get('stopped') else ''} | ${t.get('cost_usd', 0):.2f} | "
+            cost = f"${t.get('cost_usd', 0):.2f}" if t.get("cost_usd") else "no cost logged"
+            L.append(f"| {k}{' (stopped)' if runs[k].get('stopped') else ''} | {cost} | "
                      f"{fmt(t.get('all_tokens', 0))} | {fmt(t.get('tokens', {}).get('output_tokens', 0))} | "
                      f"{fmt(t.get('subagent_tokens', 0))} | {t.get('minutes', 0):.0f} min | {len(t.get('sessions', []))} | "
                      f"{t.get('interventions', '')} | {per_check(runs[k])} | "
-                     f"{pct((t.get('shares') or {}).get('main session', {}).get('cost_share', 0)) if t.get('shares') else ''} |")
+                     f"{pct((t.get('shares') or {}).get('main session', {}).get('cost_share', 0)) if t.get('shares') else ''} | "
+                     f"{', '.join(t.get('models') or [])} | "
+                     f"{fmt(t.get('weighted_units') or round(weighted(t.get('tokens') or {})))} |")
         if len(keys) == 2:
             a, b = (runs[k].get("tokens", {}) for k in keys)
-            if a.get("cost_usd") and a.get("all_tokens"):
-                L.append(f"| **plugin ÷ normal** | **{b.get('cost_usd', 0) / a['cost_usd']:.1f}×** | "
-                         f"{b.get('all_tokens', 0) / a['all_tokens']:.1f}× | | | | | | | |")
+            wa, wb = (weighted(t.get("tokens") or {}) for t in (a, b))
+            if a.get("all_tokens") and wa:
+                cost_ratio = (f"**{b.get('cost_usd', 0) / a['cost_usd']:.1f}×**"
+                              if a.get("cost_usd") and b.get("cost_usd") else "")
+                L.append(f"| **plugin ÷ normal** | {cost_ratio} | "
+                         f"{b.get('all_tokens', 0) / a['all_tokens']:.1f}× | | | | | | | | | **{wb / wa:.1f}×** |")
         L += ["", "| Run | Acceptance | Survives restart | Tests passed | Failed | Coverage | Ruff | Mypy | Lines |",
               "|---|---|---|---|---|---|---|---|---|"]
         for k in keys:
