@@ -195,6 +195,40 @@ class MeasureTest(unittest.TestCase):
                     with self.subTest(file=path.name, line=node.lineno):
                         self.assertIn("encoding", kw, f"{path.name}:{node.lineno} subprocess text=True without encoding=")
 
+    def test_budget_without_a_logged_cost(self):
+        # On a Pro plan no cost is logged: the plain run read $0, and 20 × $0 meant NO cap at all
+        plain = {"cost_usd": 0.0, "cost_complete": False, "tokens": usage(5789, 122819, 2392587, 29204)}
+        b = bench.make_budget(plain, 20)
+        self.assertIsNone(b["usd"])
+        self.assertAlmostEqual(b["units"], bench.weighted(plain["tokens"]) * 20)
+        under = {"cost_usd": 0.0, "tokens": usage(0, 0, 10_000_000, 0)}            # 1M weighted
+        over = {"cost_usd": 0.0, "tokens": usage(0, 2_000_000, 50_000_000, 900_000)}  # 14M weighted
+        self.assertFalse(bench.budget_status(under, b)[1])
+        text, is_over = bench.budget_status(over, b)
+        self.assertTrue(is_over)
+        self.assertIn("price-weighted tokens", text)
+        self.assertIn("tokens weighted by price", bench.budget_line(b))
+        # with a logged cost the cap stays in dollars
+        paid = bench.make_budget({"cost_usd": 0.76, "cost_complete": True, "tokens": plain["tokens"]}, 10)
+        self.assertAlmostEqual(paid["usd"], 7.6)
+        self.assertEqual(bench.budget_status({"cost_usd": 8.0, "tokens": {}}, paid), ("cost so far $8.00 of $7.60", True))
+        self.assertIsNone(bench.make_budget({}, 10))
+
+    def test_report_names_the_model_and_hides_a_fake_zero_cost(self):
+        state = {"runs": {"small-normal": {"tokens": {
+            "cost_usd": 0.0, "cost_complete": False, "all_tokens": 2550399, "tokens": usage(5789, 122819, 2392587, 29204),
+            "models": ["claude-sonnet-5"], "sessions": ["s"], "minutes": 7}, "test": {"acceptance": 8}}}}
+        old = bench.RESULTS, bench.BENCH          # keep the real ~/bench untouched
+        bench.RESULTS, bench.BENCH = self.d / "results.md", self.d
+        try:
+            text = bench.write_report(state)
+        finally:
+            bench.RESULTS, bench.BENCH = old
+        row = next(ln for ln in text.splitlines() if ln.startswith("| small-normal |"))
+        self.assertIn("| no cost logged |", row)
+        self.assertIn("claude-sonnet-5", row)
+        self.assertNotIn("$0.00", row)
+
     def test_step_times(self):
         # D10: started→done pairs per step, and the wait between the last event and the answer
         (self.d / ".git").mkdir()
