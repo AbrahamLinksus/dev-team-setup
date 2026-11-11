@@ -36,16 +36,17 @@ Per task `T-xx`:
 2. Owner agent (step protocol). `DECISION NEEDED` → record it in TASK_PROGRESS.md, checkpoint,
    ask the owner, resume with the answer.
 3. **tester and reviewer in parallel.** Write the owner agent's diff to a file without opening it
-   (`$TASKGIT diff <repo> T-xx > <wt>/.results/T-xx/changes.diff`), mark both steps ⏳, checkpoint
-   `"test+review started"`, then spawn the **tester** (`scripts/check.sh` must pass) and the
+   (`$TASKGIT diff <repo> T-xx > <wt>/.results/T-xx/changes.diff`), run
+   `$TASKGIT step <repo> T-xx test+review started` (both rows ⏳, `"test+review started"`), then spawn the **tester** (`scripts/check.sh` must pass) and the
    **reviewer** in **one message** (two Agent calls), so they run at the same time. This is the
    one exception to "only then spawn the next agent": the reviewer is read-only and the tester
    only adds tests, so they can't step on each other. When both return: run
-   `$TASKGIT scope <repo> T-xx tester` **once**. It checks every change since the checkpoint, and
+   `$TASKGIT step <repo> T-xx test+review done tester "<both one-line results>"`, which runs
+   `scope <repo> T-xx tester` **once**. It checks every change since the checkpoint, and
    the reviewer can't have made any (the guard blocks its writes live; its report goes to the
    git-ignored `.results/`). **Never run `scope` as reviewer after this step:** scope checks all
-   changes against one role, so it would revert the tester's new tests. Then mark both, checkpoint
-   `"test+review done"`, and put both REPORTs on the card.
+   changes against one role, so it would revert the tester's new tests. The same call marks both
+   rows and checkpoints `"test+review done"`; put both REPORTs on the card.
    Coverage below the threshold (everything else green) → back to the **tester** for more tests
    (no new review: tests alone don't change what the reviewer read).
    Other failing checks or Critical/Major findings → **debugger** (`Read:` the failing step's full

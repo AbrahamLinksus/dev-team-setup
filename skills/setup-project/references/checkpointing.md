@@ -42,14 +42,16 @@ exactly those questions. On `wip/CR-<n>` it records the CR text verbatim and the
 
 ## Protocol for each step
 
-1. Set the step to ⏳ and checkpoint: `$TASKGIT checkpoint <repo> <id> "<step> started"`.
-   Keep the messages exactly `<step> started` and `<step> done` (step in lower case, e.g.
-   `implement`, `test`, `review`, `debug`): taskgit logs each one with a timestamp in
-   `<repo>/.git/devteam-timing.log`, so time per step can be measured.
+1. `$TASKGIT step <repo> <id> <step> started` (step in lower case: `implement`, `test`, `review`,
+   `debug`; `test+review` marks both rows): sets the row ⏳ and checkpoints `<step> started`.
+   taskgit logs each checkpoint with a timestamp in `<repo>/.git/devteam-timing.log`, so time per
+   step can be measured.
 2. Spawn the agent.
-3. When it returns: `$TASKGIT scope <repo> <id> <agent>` (reverts out-of-scope files).
-4. Set ✅ (or ❌ with the reason), add the note, checkpoint `"<step> done"`.
-5. Only then spawn the next agent.
+3. When it returns, one call: `$TASKGIT step <repo> <id> <step> done <agent> "<note>"` (or
+   `failed`, with the reason as the note). It runs `scope` as `<agent>` (reverts out-of-scope
+   files), sets ✅/❌ with the note (a step with no row gets one), and checkpoints `<step> done`.
+   It never touches other worktrees, so several tasks can be in flight at once.
+4. Only then spawn the next agent.
 
 Shared files (`TASKS.md`, `STATE.md`, `DECISIONS.md`) are never changed on task branches
 (`checkpoint` reverts them). They're updated in the main checkout after `approve`, and

@@ -68,7 +68,7 @@ for them (git-pr stays available for a task whose commit message needs real summ
 
 ## Step protocol (every agent step on branch `<id>`)
 
-1. Mark the step ⏳ in the worktree's `TASK_PROGRESS.md`; `$TASKGIT checkpoint <repo> <id> "<step> started"`.
+1. `$TASKGIT step <repo> <id> <step> started`: marks the step ⏳ in TASK_PROGRESS.md and checkpoints.
 2. Spawn the agent **fresh** (with `model:` per **Modes** below) with `description: "<id> · <step>"` (e.g. `T-04 · implement`: the agent
    panel shows it on the agent's status row) and always `subagent_type: "dev-team-setup:<agent>"` (the scope guard
    only recognises the prefixed name, so a bare name would run unguarded) with a brief from `brief-template.md`: `Read:` built from
@@ -79,12 +79,12 @@ for them (git-pr stays available for a task whose commit message needs real summ
    (`Agents: backend-coder=<id>, debugger=<id>`).
    The first time a role works on this project, send its line from `agent-cards.md` with the step's
    progress note (what it may change, what it can't, its shell): the guardrails, made visible.
-3. `$TASKGIT scope <repo> <id> <agent>`: reverts files outside the agent's scope. If anything
-   was reverted, tell the agent what and why in its next brief.
-4. Mark ✅ / ❌ and copy the one-line result of the short REPORT into the step's note
-   (e.g. `5/5 goals ✅ · checks pass · 2 decisions`). A `Context gap:` in the REPORT → add a row
-   to STATE.md "Context additions". Checkpoint `"<step> done"`. Only then spawn the next agent
-   (the one exception: tester and reviewer run together, see `stage-7-build.md` step 3).
+3. **One call** when it returns: `$TASKGIT step <repo> <id> <step> done|failed <agent> "<note>"`,
+   the note being the REPORT's one-line result (`5/5 goals ✅ · checks pass · 2 decisions`). It
+   reverts files outside the agent's scope (and prints them: tell the agent in its next brief),
+   marks ✅/❌ with the note, and checkpoints. A `Context gap:` in the REPORT → a row in STATE.md
+   "Context additions". Only then spawn the next agent (the one exception: tester and reviewer
+   run together, see `stage-7-build.md` step 3).
 
 ## Modes (apply on every spawn and card)
 

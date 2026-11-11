@@ -636,6 +636,20 @@ class StructureTest(unittest.TestCase):
         self.assertIn("don't repeat a case another test already covers", tester)
         self.assertIn("scripts/check.sh", tester)
 
+    def test_each_agent_step_costs_two_orchestrator_calls(self):
+        # O9: mark + checkpoint + scope + mark + checkpoint took 3–4 Orchestrator turns per step,
+        # each re-reading ~76k tokens; `taskgit step` does each end in one call
+        core = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+        protocol = core[core.index("## Step protocol"):core.index("## Modes")]
+        self.assertIn("`$TASKGIT step <repo> <id> <step> started`", protocol)
+        self.assertIn('`$TASKGIT step <repo> <id> <step> done|failed <agent> "<note>"`', protocol)
+        self.assertNotIn("$TASKGIT checkpoint", protocol)
+        self.assertNotIn("$TASKGIT scope", protocol)
+        build = (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8")
+        self.assertIn("step <repo> T-xx test+review done tester", build)
+        self.assertIn("step <repo> <id> <step> started", (SKILL / "references" / "checkpointing.md").read_text(encoding="utf-8"))
+        self.assertIn("  step)", (SKILL / "scripts" / "taskgit.sh").read_text(encoding="utf-8"))
+
     def test_quick_track_for_small_ideas(self):
         # D30: small ideas skip the separate HLD, team-pick and LLD stops, never the Tier 1 ones
         planning = (SKILL / "references" / "stage-1-6-planning.md").read_text(encoding="utf-8")

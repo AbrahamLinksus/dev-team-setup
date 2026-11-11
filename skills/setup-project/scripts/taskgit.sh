@@ -20,6 +20,9 @@
 #                                                        (uv/npm/pnpm/yarn; TASKGIT_SKIP_DEPS=1 skips); prints its path
 #   taskgit.sh checkpoint <repo> <id> "<step msg>"       commit all on wip/<id>, push
 #   taskgit.sh scope      <repo> <id> <agent>            revert files <agent> may not change (prints them)
+#   taskgit.sh step       <repo> <id> <step> started|done|failed [<agent> "<note>"]
+#                                                        one call per agent step: (done/failed) scope as
+#                                                        <agent>, mark TASK_PROGRESS.md, checkpoint
 #   taskgit.sh sync       <repo> <id>                    merge origin/main into wip/<id>, run check.sh, push
 #   taskgit.sh diff       <repo> <id>                    full diff vs main (for the reviewer)
 #   taskgit.sh diffstat   <repo> <id>                    diff --stat vs main (for the result card)
@@ -314,6 +317,9 @@ case "$cmd" in
     changed=(); rename_src=0
     while IFS= read -r -d '' entry; do
       if (( rename_src )); then changed+=("$entry"); rename_src=0; continue; fi
+      # TASK_PROGRESS.md is the Orchestrator's own bookkeeping (agent IDs, notes), written while
+      # the agent runs; no agent's scope covers it, so checking it reverted those notes
+      [[ "${entry:3}" == "$PROGRESS" ]] && continue
       changed+=("${entry:3}")
       [[ "${entry:0:1}" == [RC] ]] && rename_src=1
     done < <(gw -c core.quotepath=off status --porcelain -z --untracked-files=all)
@@ -325,6 +331,55 @@ case "$cmd" in
     done
     echo "scope: REVERTED ${#bad[@]} file(s) outside $agent's scope: ${bad[*]}"
     exit 0
+    ;;
+
+  step)
+    # One call per agent step instead of three or four Orchestrator turns (each re-reads its whole
+    # context): `done`/`failed` first runs `scope` as <agent>, then the step's TASK_PROGRESS.md row(s)
+    # are marked and the step is checkpointed (which also logs its time). Per worktree, so several
+    # tasks can be in flight at once. "test+review" marks both rows.
+    id=${3:?id}; stp=${4:?step}; what=${5:-}; agent=${6:-}; note=${7:-}; ensure_wt
+    case "$what" in
+      started) mark="⏳"; msg="$stp started" ;;
+      done)    mark="✅"; msg="$stp done" ;;
+      failed)  mark="❌"; msg="$stp done" ;;
+      *) die 1 "step: say started, done or failed (taskgit.sh step <repo> <id> <step> started|done|failed [<agent> \"<note>\"])" ;;
+    esac
+    if [[ "$what" != started && -n "$agent" ]]; then
+      bash "${BASH_SOURCE[0]}" scope "$repo" "$id" "$agent" || exit $?
+    fi
+    if [[ -f "$wt/$PROGRESS" ]]; then
+      note=${note//|//}
+      IFS='+' read -r -a words <<< "$stp"
+      for w in "${words[@]}"; do
+        w=$(printf '%s' "$w" | tr '[:upper:]' '[:lower:]' | tr -d ' ')
+        [[ -n "$w" ]] || continue
+        awk -v w="$w" -v s="$mark" -v n="$note" -v a="$agent" '
+          { L[NR] = $0 }
+          END {
+            done = 0; last = 0
+            for (i = 1; i <= NR; i++) {
+              line = L[i]
+              if (substr(line, 1, 1) != "|") continue
+              last = i
+              nf = split(line, F, "|")
+              if (done || nf < 6) continue
+              st = F[4]; gsub(/^ +| +$/, "", st)
+              if (st == "Status" || F[2] ~ /^ *-+ *$/ || index(tolower(F[2]), w) == 0) continue
+              F[4] = " " s " "; if (n != "") F[5] = " " n " "
+              line = F[1]; for (k = 2; k <= nf; k++) line = line "|" F[k]
+              L[i] = line; done = 1
+            }
+            for (i = 1; i <= NR; i++) {
+              print L[i]
+              if (i == last && !done) print "| " w " | " a " | " s " | " n " |"
+            }
+          }' "$wt/$PROGRESS" > "$wt/$PROGRESS.tmp" && mv "$wt/$PROGRESS.tmp" "$wt/$PROGRESS"
+      done
+    else
+      echo "warning: no $PROGRESS in $wt; checkpointing without marking the step" >&2
+    fi
+    exec bash "${BASH_SOURCE[0]}" checkpoint "$repo" "$id" "$msg"
     ;;
 
   sync)
