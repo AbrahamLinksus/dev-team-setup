@@ -677,6 +677,16 @@ class StructureTest(unittest.TestCase):
         for keep in ("planner", "architect", "reviewer", "debugger", "backend-coder", "frontend-coder"):
             self.assertNotIn("effort", frontmatter(ROOT / "agents" / f"{keep}.md"))
 
+    def test_build_model_tip_only_when_the_owner_chose_cheaper(self):
+        # O17: the Orchestrator is ~40% of a run and is the owner's session; Sonnet is half Opus's
+        # price. Suggest it once for the build in balanced/fast, never switch it, never in quality.
+        modes = (SKILL / "references" / "approval-modes.md").read_text(encoding="utf-8")
+        tip = modes[modes.index("## Build model tip"):modes.index("## Things that never")]
+        self.assertIn("(`/model sonnet`)", tip)
+        self.assertIn("never switch it yourself, and never in `quality`", tip)
+        planning = (SKILL / "references" / "stage-1-6-planning.md").read_text(encoding="utf-8")
+        self.assertIn("In `balanced` or `fast` cost mode, add the build-model tip", planning)
+
     def test_quick_track_for_small_ideas(self):
         # D30: small ideas skip the separate HLD, team-pick and LLD stops, never the Tier 1 ones
         planning = (SKILL / "references" / "stage-1-6-planning.md").read_text(encoding="utf-8")

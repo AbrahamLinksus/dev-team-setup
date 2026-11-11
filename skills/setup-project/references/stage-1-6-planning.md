@@ -75,5 +75,6 @@ check with terminal images.
 
 **planner** → `TASKS.md`. Planning card (spec, HLD, team, LLD, env, task count per milestone, project size).
 When the real task count puts the project in another size, update STATE.md "Size" and say so on the card.
+In `balanced` or `fast` cost mode, add the build-model tip (`approval-modes.md`).
 On approval run `$TASKGIT approve <repo> plan "chore: spec, design, environment and tasks"` yourself.
 Mirror the current milestone in the task widget.
