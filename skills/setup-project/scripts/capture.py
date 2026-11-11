@@ -35,7 +35,7 @@ CACHE = Path(os.environ.get("DEVTEAM_CACHE", Path.home() / ".cache" / "dev-team-
 DATA = Path(os.environ.get("CLAUDE_PLUGIN_DATA") or CACHE)
 VENV = DATA / "venv"
 PY_DEPS = {"playwright": "playwright==1.49.1", "PIL": "pillow==11.0.0", "markdown": "markdown==3.7"}
-MERMAID = "mermaid@11.4.1"   # pinned (C3); installed by `doctor --install`, never mid-task
+MERMAID = "mermaid@11.4.1"   # pinned; installed by `doctor --install`, never mid-task
 MERMAID_JS = CACHE / "node_modules" / "mermaid" / "dist" / "mermaid.min.js"
 
 
@@ -114,14 +114,14 @@ def in_container() -> bool:
 
 
 def chromium_args() -> list[str]:
-    """C8: keep Chromium's sandbox on. It only fails as root or inside most containers, which is
+    """Keep Chromium's sandbox on. It only fails as root or inside most containers, which is
     the only time --no-sandbox is passed (DEVTEAM_NO_SANDBOX=1 forces it)."""
     root = hasattr(os, "geteuid") and os.geteuid() == 0
     return ["--no-sandbox"] if root or in_container() or os.environ.get("DEVTEAM_NO_SANDBOX") == "1" else []
 
 
 def _browser():
-    """Launch Chromium. Never installs it mid-task (C3): that's `doctor --install`'s job."""
+    """Launch Chromium. Never installs it mid-task: that's `doctor --install`'s job."""
     from playwright.sync_api import sync_playwright
     pw = sync_playwright().start()
     try:
@@ -160,7 +160,7 @@ def cmd_web(a):
             ctx = browser.new_context(viewport=vp, device_scale_factor=scale,
                                       is_mobile=(name == "mobile"), has_touch=(name == "mobile"))
             page = ctx.new_page()
-            # C5: dev servers with hot-reload or long-polling never go network-idle; wait for the
+            # dev servers with hot-reload or long-polling never go network-idle; wait for the
             # load event, then for --wait-for if the caller named what "ready" looks like
             page.goto(a.url, wait_until="load", timeout=30000)
             if a.wait_for:
@@ -184,7 +184,7 @@ WARN = re.compile(r"\bwarn(ings?)?\b")
 
 
 def strip_ansi(text: str) -> str:
-    """C6: colour codes from pytest, npm, ruff … rendered as garbage like `[32m`."""
+    """Colour codes from pytest, npm, ruff … rendered as garbage like `[32m`."""
     return ANSI.sub("", text)
 
 
@@ -204,7 +204,7 @@ def line_color(line: str) -> str:
     return "#e6edf3"
 
 
-# C7: the font used to be a Linux-only path; elsewhere the fallback was a tiny bitmap font
+# the font used to be a Linux-only path; elsewhere the fallback was a tiny bitmap font
 MONO_FONTS = [
     "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",            # Debian / Ubuntu
     "/usr/share/fonts/dejavu-sans-mono-fonts/DejaVuSansMono.ttf",     # Fedora
@@ -234,7 +234,7 @@ def load_mono_font(image_font, size: int):
 
 
 def truncate_lines(lines: list[str], max_lines: int) -> list[str]:
-    """Keep the first and last lines, max_lines in all (C9: an odd count used to lose one)."""
+    """Keep the first and last lines, max_lines in all (an odd count used to lose one)."""
     if max_lines <= 0 or len(lines) <= max_lines:
         return lines
     head = (max_lines + 1) // 2
@@ -243,7 +243,7 @@ def truncate_lines(lines: list[str], max_lines: int) -> list[str]:
 
 
 def run_cmd(cmd: str, cwd: str | None, timeout: float) -> str:
-    """Run `cmd` through the shell and return the transcript to render. C4: a command that never
+    """Run `cmd` through the shell and return the transcript to render. A command that never
     ends (e.g. one that starts a server) is stopped after `timeout` seconds, with its whole
     process group, instead of hanging the capture forever."""
     import signal

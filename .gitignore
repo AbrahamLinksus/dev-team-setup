@@ -4,3 +4,4 @@ __pycache__/
 *.plugin
 .venv/
 evals/results/
+.ruff_cache/

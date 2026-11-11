@@ -1,5 +1,5 @@
 #!/bin/sh
-# subagentStatusLine entry point (D22): find Python 3.9+ and run subagent_status.py.
+# subagentStatusLine entry point: find Python 3.9+ and run subagent_status.py.
 # Without Python it prints nothing, so every row keeps Claude Code's default rendering.
 for cand in "${DEVTEAM_PYTHON:-}" python3 python; do
   [ -n "$cand" ] || continue
