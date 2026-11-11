@@ -602,6 +602,17 @@ class StructureTest(unittest.TestCase):
         self.assertIn('update STATE.md "Size"', planning)
         self.assertIn("| Size |", (SKILL / "templates" / "STATE.md").read_text(encoding="utf-8"))
 
+    def test_milestones_follow_the_size_and_the_last_one_is_the_handover(self):
+        # O4: run B had 4 milestones for 5 tasks; each cost a docs task and a session restart
+        planner = (ROOT / "agents" / "planner.md").read_text(encoding="utf-8")
+        self.assertIn("small 1; medium about 1 per 4 tasks; large 3–6", planner)
+        self.assertNotIn("milestones (3–6", planner)
+        build = (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8")
+        self.assertIn("(every milestone but the last)", build)
+        self.assertIn("**The last milestone** has no docs task and no milestone card", build)
+        handover = (SKILL / "references" / "stage-8-handover.md").read_text(encoding="utf-8")
+        self.assertIn("as-built sync of `docs/LLD.md`", handover)
+
     def test_quick_track_for_small_ideas(self):
         # D30: small ideas skip the separate HLD, team-pick and LLD stops, never the Tier 1 ones
         planning = (SKILL / "references" / "stage-1-6-planning.md").read_text(encoding="utf-8")
