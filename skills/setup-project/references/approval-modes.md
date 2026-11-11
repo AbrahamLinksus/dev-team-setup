@@ -59,6 +59,18 @@ keep moving while a card waits (`stage-7-build.md`, "Don't let the team idle").
 - Debugger max 2 rounds before a decision card.
 - Researcher is skipped when the LLD already pins every needed package.
 
+**fast** (quickest wall-clock time; Sonnet writes faster than Opus):
+- Spawn with `model: "sonnet"` every agent whose definition says Opus, **except planner and
+  architect**: the design everything else follows stays on the strongest model. That covers
+  reviewer, debugger, evaluator, explainer and statistician. Haiku and Sonnet agents keep theirs.
+- **High-risk tasks still get an Opus reviewer.** Classify before the review when the planned scope
+  already makes it high-risk; if the final classification turns a task high-risk after a Sonnet
+  review, re-review with Opus before its card.
+- Debugger: round 1 on Sonnet; a second round goes to Opus (the cheap model already missed it).
+  Max 2 rounds, then a decision card.
+- Researcher is skipped when the LLD already pins every needed package.
+- Pairs well with `approval_mode: autopilot`, which removes most waits for the owner.
+
 ## Things that never batch or downgrade
 Tier 1 decision cards, the HLD/LLD/install checkpoints, milestone cards, any reject, and
 anything the owner asked to see individually.

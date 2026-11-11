@@ -92,7 +92,7 @@ When you enable the plugin, it asks for:
 | `owner_name` | How the Orchestrator addresses you |
 | `github_owner` | GitHub user/org for new project repos (visibility is asked every time) |
 | `approval_mode` | `every-task` (default), `batch-low-risk` (low-risk tasks approved together) or `autopilot` (low-risk tasks with every goal met approved automatically; card afterwards with Undo) |
-| `cost_mode` | `quality` (default) or `balanced` (Sonnet reviewer/debugger on low-risk tasks, 2 debug rounds) |
+| `cost_mode` | `quality` (default), `balanced` (Sonnet reviewer/debugger on low-risk tasks, 2 debug rounds) or `fast` (Sonnet for every role except planner and architect; Opus reviews high-risk tasks) |
 
 Other notes:
 - Visual capture uses Playwright + Chromium (`skills/setup-project/scripts/capture.py`).

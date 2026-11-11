@@ -47,11 +47,12 @@
     "cost_mode": {
       "type": "string",
       "title": "Cost mode",
-      "description": "quality = models as defined per agent. balanced = Sonnet for reviewer/debugger on low-risk tasks and max 2 debugger rounds.",
+      "description": "quality = models as defined per agent. balanced = Sonnet for reviewer/debugger on low-risk tasks and max 2 debugger rounds. fast = quickest runs: Sonnet for every role except planner and architect (and a first debugger round), Opus again for high-risk reviews.",
       "default": "quality",
       "options": [
         "quality",
-        "balanced"
+        "balanced",
+        "fast"
       ]
     },
     "budget_usd": {
