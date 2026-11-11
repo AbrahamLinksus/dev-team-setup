@@ -7,6 +7,16 @@ Part of the /setup-project Orchestrator (SKILL.md). Read this file when the stag
 Take every `Backlog` task whose dependencies are `Done`; run independent tasks in parallel
 (own worktrees; shared files are only edited on main).
 
+**Start independent tasks together, really at the same time.** Agents run in parallel only when
+they're spawned in the **same message**; one Agent call per message runs them one after another.
+So pick up to **3** ready tasks that don't depend on each other and don't plan to touch the same
+files (check their `Context:` and the LLD modules in TASKS.md; when unsure, they're not
+independent). `$TASKGIT start` each one, mark each step ⏳ and checkpoint, then send **one message
+with one Agent call per task** (each with its own brief, worktree path and port). Handle each
+task's REPORT as it comes back and carry on with that task alone; when one finishes or waits on a
+card, start the next ready task the same way. More than 3 at once makes the checks compete for the
+machine and the owner's cards pile up.
+
 **Don't let the team idle while a card waits.** Waiting for the owner is most of a build's
 wall-clock time, and a question blocks your turn until it's answered. So before you ask a
 task's approval question (any approval mode), when another task is independent of it (no

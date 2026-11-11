@@ -656,6 +656,15 @@ class StructureTest(unittest.TestCase):
         self.assertIn("taskgit.sh undo", (SKILL / "scripts" / "taskgit.sh").read_text(encoding="utf-8"))
         self.assertIn("autopilot", (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8"))
 
+    def test_independent_tasks_start_in_one_message(self):
+        # P2: agents only run concurrently when spawned in the same message
+        build = (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8")
+        block = build[build.index("**Start independent tasks together"):build.index("**Don't let the team idle")]
+        self.assertIn("same message", block)
+        self.assertIn("up to **3**", block)
+        self.assertIn("one Agent call per task", block)
+        self.assertIn("when unsure, they're not\nindependent", block)
+
     def test_every_known_hole_keeps_its_regression_test(self):
         # M1: each problem fixed in code got a test that names it (S = scope guard, T = taskgit,
         # C = capture.py, G = gen_agents.py). Removing one of those tests should be a conscious act.
