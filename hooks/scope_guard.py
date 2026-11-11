@@ -65,7 +65,7 @@ def in_scratch(path: Path, scratch: list[str]) -> bool:
     globs = [v for g in scratch for v in _resolved_variants(g)]
     p = path.as_posix()
     if os.name == "nt":
-        # D34: Git Bash's /tmp gets whichever drive letter it is resolved against (the project's,
+        # Git Bash's /tmp gets whichever drive letter it is resolved against (the project's,
         # the session's, the temp folder's), so compare scratch paths without the drive
         nodrive = lambda s: re.sub(r"^[A-Za-z]:", "", s)  # noqa: E731
         globs += [nodrive(g) for g in globs]
@@ -81,7 +81,7 @@ def load_scopes(project_root: Path | None) -> dict:
     """Defaults plus the project's .devteam/scopes.json. Per agent, an override may:
     - "write": replace the write globs (the project's folders differ from the defaults);
     - "write_add" / "deny_add": append globs;
-    - "deny": ADD to the defaults (S19: it used to replace them, which silently dropped
+    - "deny": ADD to the defaults (it used to replace them, which silently dropped
       @main_owned and @design; protections can only grow);
     - "bash": change the shell mode."""
     data = json.loads(DEFAULTS.read_text(encoding="utf-8"))
@@ -129,7 +129,7 @@ def expand(globs: list[str], scopes: dict) -> list[str]:
     return out
 
 
-# S13: .env, .env.local, .env.production, .envrc … hold secrets; only .env.example is documentation
+# .env, .env.local, .env.production, .envrc … hold secrets; only .env.example is documentation
 SECRET_FILE = re.compile(r"(^|/)\.env(\.[^/]+)?$|(^|/)\.envrc$")
 
 
@@ -175,7 +175,7 @@ def is_task_worktree(root: Path) -> bool:
     return (root / ".git").is_file() and root.parent.name.endswith("-wt")
 
 
-# S8: each agent is pinned to ONE task worktree: the first one it touches. Agents start by reading
+# each agent is pinned to ONE task worktree: the first one it touches. Agents start by reading
 # the files their brief lists, which all live in their own worktree, so that is where they get
 # pinned; from then on a write, or a shell command run in another task's worktree, is refused.
 # Pins are keyed by Claude Code's per-subagent `agent_id` and kept in the repo's shared git dir
@@ -254,7 +254,7 @@ INSTALL = re.compile(r"\b(pip3?|uv\s+pip|python3?\s+-m\s+pip)\s+(install|uninsta
                      r"\b(npm|pnpm|yarn|bun)\s+(install|i|add|remove|uninstall|ci|update|up)\b|\bnpx\s+-y\b|"
                      r"\b(apt|apt-get|brew|conda|mamba)\s+install\b|\bcurl\b[^|]*\|\s*(ba)?sh\b|"
                      r"\bcapture\.py\s+doctor\b[^|;&\n]*--install\b|"  # the plugin's own deps: Orchestrator only
-                     # S9: other package managers and one-shot runners that download packages
+                     # other package managers and one-shot runners that download packages
                      r"\bpoetry\s+(add|remove|install|update|lock)\b|\bpipx\s+(install|run|inject|upgrade)\b|"
                      r"\bpip3?\s+download\b|\bcargo\s+(add|install|remove)\b|\bgo\s+(get|install)\b|"
                      r"\b(pnpm|yarn)\s+dlx\b|\bbunx\b|\bnpm\s+(exec|x)\b|\buvx\b|\buv\s+tool\s+(install|run)\b|"
@@ -563,7 +563,7 @@ GH_API_WRITE = {"-f", "-F", "--field", "--raw-field", "--input"}
 
 
 def gh_write(command: str) -> str | None:
-    """Any gh command that isn't on the read-only allowlist (S11): repo edit/delete, pr merge,
+    """Any gh command that isn't on the read-only allowlist: repo edit/delete, pr merge,
     secret set, api -X POST … Returns the offending command, else None."""
     segs = segments(command)
     if segs is None:
@@ -642,7 +642,7 @@ def bash_violation(name: str, command: str, scopes: dict, depth: int = 0, cwd: s
     if mode == "none":
         return f"{name} has no shell access in this team. Use Read/Grep/Glob."
     if mode != "git" and depth < 4:
-        # S17: check the command around $(...)/`...` and each substitution on its own, instead of a
+        # check the command around $(...)/`...` and each substitution on its own, instead of a
         # text scan of the whole string (which denied `grep -r "git commit" $(ls docs)`)
         split = split_substitutions(command)
         if split:
@@ -721,7 +721,7 @@ def git_common_dir(start: Path) -> Path | None:
 
 
 def log_block(event: dict, name: str, reason: str) -> None:
-    """D24: one line per block in <repo>/.git/devteam-guard.log, so the result card can say the
+    """One line per block in <repo>/.git/devteam-guard.log, so the result card can say the
     guard stopped something (a block is otherwise seen only by the agent that hit it). Never
     raises: logging must not turn a deny into a crash."""
     try:
@@ -772,7 +772,7 @@ def evaluate(name: str, event: dict, scopes: dict) -> str | None:
         if isinstance(fp, str) and is_secret_file(fp):
             return f"{name} may not read {fp}: it holds secrets. Key names are documented in .env.example."
         if isinstance(fp, str) and fp:
-            pinned_elsewhere(agent_id, abs_path(fp))   # reads only pin (S8); reading elsewhere is allowed
+            pinned_elsewhere(agent_id, abs_path(fp))   # reads only pin; reading elsewhere is allowed
         return None
     if tool in ("Write", "Edit", "MultiEdit", "NotebookEdit"):
         fp = inp.get("file_path") or inp.get("notebook_path")
@@ -799,7 +799,7 @@ def evaluate(name: str, event: dict, scopes: dict) -> str | None:
         cmd = inp.get("command", "")
         if not isinstance(cmd, str):
             raise ValueError("non-string command")
-        # S16: a subagent's cwd is the session's folder; it reaches the worktree with a leading
+        # a subagent's cwd is the session's folder; it reaches the worktree with a leading
         # `cd <worktree> &&` (team rules), so that worktree's .devteam/scopes.json is the one to use
         # (only for picking the scopes: bash_violation replays those `cd`s itself, from the real cwd)
         scopes = load_scopes(find_root(Path(command_cwd(cmd, cwd)).resolve()))
@@ -879,7 +879,7 @@ def starts_with_timeout(command: str) -> bool:
 
 
 def unbounded_background(command: str) -> bool:
-    """S12: `uvicorn app:app &` keeps running after the agent finishes. A backgrounded command must
+    """`uvicorn app:app &` keeps running after the agent finishes. A backgrounded command must
     start with `timeout N`; detaching tools (nohup, setsid, disown) are never allowed."""
     lex = shlex.shlex(command.replace("2>&1", " "), posix=True, punctuation_chars="();<>|&\n")
     lex.whitespace, lex.whitespace_split = " \t\r", True

@@ -63,7 +63,7 @@ push_branch() {  # push_branch <dir> <branch>; quiet on success
 
 blocked_files() {
   local bad
-  # secrets by file name (T7: also cloud/SSH/registry credentials); check.sh scans contents (gitleaks)
+  # secrets by file name (also cloud/SSH/registry credentials); check.sh scans contents (gitleaks)
   bad=$(git -C "$1" diff --cached --name-only | grep -E '(^|/)\.env(\..+)?$|(^|/)\.envrc$|\.pem$|\.key$|\.p12$|\.pfx$|(^|/)credentials\.json$|(^|/)service[-_]?account[^/]*\.json$|(^|/)id_(rsa|dsa|ecdsa|ed25519)$|(^|/)\.(npmrc|pypirc|netrc)$|(^|/)kaggle\.json$|^\.results/' \
         | grep -Ev '(^|/)\.env\.example$' || true)
   [[ -n "$bad" ]] && { git -C "$1" reset -q; die 2 "refusing to commit secrets/results: $bad"; }
@@ -82,7 +82,7 @@ is_owned() { local s; for s in $(owned_shared); do [[ "$s" == "$1" ]] && return 
 is_shared() { local s; for s in "${SHARED[@]}"; do [[ "$s" == "$1" ]] && return 0; done; return 1; }
 open_crs() {  # open change-request branches (local or on origin); fails if origin can't be asked
   local remote
-  # T10: a failed ls-remote (offline, auth) used to look like "no CRs" and let approvals through
+  # a failed ls-remote (offline, auth) used to look like "no CRs" and let approvals through
   remote=$(g ls-remote --heads origin 'wip/CR-*' 2>&1) || { printf '%s\n' "$remote" >&2; return 1; }
   { g for-each-ref --format='%(refname:short)' 'refs/heads/wip/CR-*'
     printf '%s\n' "$remote" | sed -n 's#.*refs/heads/##p'; } | sort -u
@@ -107,7 +107,7 @@ pull_rebase_main() {  # origin moved under us: replay local main on it; on a con
   return 1
 }
 
-unpin_agents() {  # forget the agent pins (S8, scope guard) of the worktree being removed; uses $id
+unpin_agents() {  # forget the agent pins (scope guard) of the worktree being removed; uses $id
   local d f line
   d="$(g rev-parse --absolute-git-dir)/devteam-agents"
   [[ -d "$d" ]] || return 0
@@ -158,7 +158,7 @@ install_deps() {  # install locked dependencies into a new worktree; uses $id $w
   while IFS= read -r lock; do
     dir=$(dirname "$lock")
     case "$(basename "$lock")" in
-      # D21: every worktree installs the same lockfile, so the package managers' shared caches
+      # every worktree installs the same lockfile, so the package managers' shared caches
       # (uv's and pnpm's global cache/store, npm's and yarn's download cache) already hold
       # everything after the first worktree; --prefer-offline uses them without asking the
       # registry again. uv links from its cache by default and needs no flag.
@@ -183,7 +183,7 @@ do_sync() {  # merge origin/main into wip/<id>, run check.sh; uses $id $wt
     echo "sync: wip/$id already contains main@$(g rev-parse --short "origin/$main")"
   else
     if ! gw merge -q --no-edit --no-verify "origin/$main" >/dev/null 2>&1; then
-      # T9: NUL-separated names in an array (names may contain spaces), and exact string
+      # NUL-separated names in an array (names may contain spaces), and exact string
       # comparisons instead of the shared-file names used as a regex (TASKS.md matched TASKSxmd)
       local conflicts=() other=() f
       while IFS= read -r -d '' f; do conflicts+=("$f"); done < <(gw diff -z --name-only --diff-filter=U)
@@ -211,7 +211,7 @@ do_sync() {  # merge origin/main into wip/<id>, run check.sh; uses $id $wt
     echo "sync: merged main@$(g rev-parse --short "origin/$main") into wip/$id"
   fi
   mark_step_base
-  # D18: check.sh already passed on this exact tree (same commit tree, nothing uncommitted)?
+  # check.sh already passed on this exact tree (same commit tree, nothing uncommitted)?
   # Then skip it: sync before the card and sync inside approve otherwise run it twice on
   # identical code. Kept in the worktree's private git dir, which agents can't write.
   local pass_file tree="" clean=0
@@ -251,7 +251,7 @@ case "$cmd" in
       if g show-ref --verify -q "refs/heads/$br"; then
         g worktree add -q "$wt" "$br" || die 1 "worktree add failed"
         if ! gw merge -q --ff-only "origin/$br" 2>/dev/null; then
-          # T11: say so instead of silently keeping one copy. Local wins: it may hold checkpoints that
+          # say so instead of silently keeping one copy. Local wins: it may hold checkpoints that
           # never reached origin, while origin's commits stay safe on origin.
           ahead=$(gw rev-list --count "origin/$br..HEAD"); behind=$(gw rev-list --count "HEAD..origin/$br")
           if (( behind > 0 )); then
@@ -283,7 +283,7 @@ case "$cmd" in
     blocked_files "$wt"
     # --no-verify: work in progress may not pass the project's pre-commit hooks yet (lint, auto-fixers
     # that rewrite files mid-commit); approve runs scripts/check.sh before anything reaches main.
-    # T12: no empty commits; a step that changed nothing needs no commit (the push below still
+    # no empty commits; a step that changed nothing needs no commit (the push below still
     # retries anything an earlier checkpoint couldn't push)
     if gw diff --cached --quiet; then
       mark_step_base
@@ -358,7 +358,7 @@ case "$cmd" in
       echo "note: pushed previously approved local commits" >&2
     fi
     # 2. task branch must contain current main and pass check.sh. Nothing may be left uncommitted:
-    #    `worktree remove --force` below would delete it, untracked files included (T6).
+    #    `worktree remove --force` below would delete it, untracked files included.
     left=$(gw status --porcelain --untracked-files=normal)
     [[ -n "$left" ]] && die 3 "wip/$id has changes that aren't checkpointed (approve would delete them):\n$left\nCheckpoint first (after the scope check), or remove them."
     do_sync
@@ -379,13 +379,13 @@ case "$cmd" in
     done
     g rm -q --cached --ignore-unmatch "$PROGRESS" >/dev/null; rm -f "$repo/$PROGRESS"
     blocked_files "$repo"
-    if g diff --cached --quiet; then   # T12: never an empty commit on main
+    if g diff --cached --quiet; then   # never an empty commit on main
       g reset -q --hard HEAD
       die 6 "the squash of $br into $main is empty (the task only changed files main owns, or nothing at all); main restored. Reject the task, or record the shared-file changes on main with 'record'."
     fi
-    # the Task: trailer lets `undo` find exactly this commit later (P1, autopilot approvals)
+    # the Task: trailer lets `undo` find exactly this commit later (autopilot approvals)
     g commit -q -m "$msg" -m "Task: $id" || { g reset -q --hard HEAD; die 6 "commit on $main failed; main restored"; }
-    # 4. push. If origin moved in the meantime, a rebased commit would reach main untested (T5):
+    # 4. push. If origin moved in the meantime, a rebased commit would reach main untested:
     #    drop our squash commit and run the whole approve once more, so the task is synced with the
     #    new main and scripts/check.sh runs again before anything is pushed.
     if ! push_branch "$repo" "$main"; then
@@ -430,7 +430,7 @@ case "$cmd" in
     ;;
 
   undo)
-    # P1: an auto-approved task the owner doesn't want after all. Reverts its squash commit (found by
+    # an auto-approved task the owner doesn't want after all. Reverts its squash commit (found by
     # the "Task: <id>" trailer approve writes) with a new commit on main; history is never rewritten.
     id=${3:?id}
     [[ "$(g rev-parse --abbrev-ref HEAD)" == "$main" ]] || die 3 "the main checkout isn't on $main; nothing was undone"

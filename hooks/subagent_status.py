@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Subagent status line for the dev team (D22).
+"""Subagent status line for the dev team.
 
 Claude Code runs this on every refresh tick with every visible subagent row as JSON on stdin
 (see `subagentStatusLine` in the Claude Code status line docs). For this plugin's agents only,
