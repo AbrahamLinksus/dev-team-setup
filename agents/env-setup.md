@@ -2,6 +2,7 @@
 name: env-setup
 description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; not for ordinary work. Creates the project environment."
 model: sonnet
+effort: medium
 color: green
 tools: ["Bash", "Read", "Write", "Edit", "Glob"]
 ---

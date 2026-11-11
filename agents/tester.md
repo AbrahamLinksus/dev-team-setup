@@ -2,6 +2,7 @@
 name: tester
 description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; not for ordinary work. Tests a task against its criteria."
 model: sonnet
+effort: medium
 color: yellow
 tools: ["Read", "Write", "Edit", "Bash", "Glob", "Grep"]
 ---
