@@ -54,6 +54,12 @@ Per task `T-xx`:
    (in parallel, with a fresh `changes.diff`);
    rounds exhausted → decision card.
    ML/DS tasks: also **evaluator** where metrics apply.
+   **Batched review (small and medium projects, STATE.md "Size").** A task that is low-risk by its
+   planned scope (none of the high-risk file kinds in `approval-modes.md`) runs the **tester
+   alone** in this step: mark its review step `⏭ batched` in TASK_PROGRESS.md and TASKS.md, and put
+   "Review: batched at milestone end" on its card. Its review comes once per milestone (below), one
+   reviewer for all such tasks instead of one each. Large projects, and every task whose scope is
+   high-risk, keep the per-task reviewer.
 4. `$TASKGIT sync <repo> T-xx`. Exit 4 (conflict) / 5 (checks fail; output path in the error)
    → debugger, back to step 3.
 5. Classify risk (`approval-modes.md`); produce visuals (`visual-capture.md`, screenshots first).
@@ -71,6 +77,14 @@ Per task `T-xx`:
    - **Reject** → run `$TASKGIT reject <repo> T-xx` yourself; Backlog + reason; `record`.
    - approve exits non-zero: 4/5 → debugger, then a new card; 7 → report the push problem;
      8 → a change request is open: keep the card queued until it merges.
+
+**Batched review** (first, whenever any task in the milestone had its review batched): in the
+milestone's last worktree (`M<n>-docs`, or `handover` for the last milestone), write those tasks'
+approved diffs to one file without opening it:
+`for id in T-03 T-05; do git -C <repo> show "$(git -C <repo> log -n 1 --format=%H --grep="^Task: $id\$" main)"; done > <wt>/.results/<task>/changes.diff`
+and spawn one **reviewer** on it (brief: the task IDs and their acceptance criteria). Critical or
+Major findings → a fix task per affected task (`T-03r`, its owner agent, high-risk, normal flow)
+before the milestone card; Minor findings go on the milestone card.
 
 **Milestone end ⏸** (every milestone but the last): task `M<n>-docs` with two steps: **architect** as-built sync of
 `docs/LLD.md` (changes since last milestone, section numbers kept stable), then **docs**

@@ -613,6 +613,20 @@ class StructureTest(unittest.TestCase):
         handover = (SKILL / "references" / "stage-8-handover.md").read_text(encoding="utf-8")
         self.assertIn("as-built sync of `docs/LLD.md`", handover)
 
+    def test_low_risk_reviews_are_batched_on_small_and_medium_projects(self):
+        # O6: one reviewer per milestone for low-risk tasks instead of one per task; every change
+        # still gets a review, and high-risk tasks and large projects keep the per-task reviewer
+        build = (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8")
+        step3 = build[build.index("3. **tester and reviewer in parallel.**"):build.index("\n4. ")]
+        self.assertIn("**Batched review (small and medium projects", step3)
+        self.assertIn("runs the **tester\n   alone**", step3)
+        self.assertIn("keep the per-task reviewer", step3)
+        batch = build[build.index("**Batched review** (first"):build.index("**Milestone end ⏸**")]
+        self.assertIn('--grep="^Task: $id\\$"', batch)   # the trailer approve writes
+        self.assertIn("without opening it", batch)
+        self.assertIn("a fix task per affected task", batch)
+        self.assertIn("**batched\nreview**", (SKILL / "references" / "stage-8-handover.md").read_text(encoding="utf-8"))
+
     def test_quick_track_for_small_ideas(self):
         # D30: small ideas skip the separate HLD, team-pick and LLD stops, never the Tier 1 ones
         planning = (SKILL / "references" / "stage-1-6-planning.md").read_text(encoding="utf-8")
