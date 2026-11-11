@@ -589,6 +589,19 @@ class StructureTest(unittest.TestCase):
         self.assertFalse(manifest["userConfig"]["github_owner"].get("required", False))
         self.assertIn("Try locally", (ROOT / "README.md").read_text(encoding="utf-8"))
 
+    def test_project_size_is_set_at_the_spec_and_recorded(self):
+        # O3: run B gave a 5-task app the process of a large one; the size decides how much it gets
+        size = "Size: <small|medium|large> · ≈<n> tasks · <one-line reason>"
+        for f in ("spec-interview.md", "team-rules.md"):
+            self.assertIn(size, (SKILL / "references" / f).read_text(encoding="utf-8"))
+        planner = (ROOT / "agents" / "planner.md").read_text(encoding="utf-8")
+        self.assertIn("**small** ≤6 tasks, **medium** 7–20, **large** more than 20", planner)
+        planning = (SKILL / "references" / "stage-1-6-planning.md").read_text(encoding="utf-8")
+        self.assertIn("**Project size.**", planning)
+        self.assertIn("High-risk tasks always get the full team", planning)
+        self.assertIn('update STATE.md "Size"', planning)
+        self.assertIn("| Size |", (SKILL / "templates" / "STATE.md").read_text(encoding="utf-8"))
+
     def test_quick_track_for_small_ideas(self):
         # D30: small ideas skip the separate HLD, team-pick and LLD stops, never the Tier 1 ones
         planning = (SKILL / "references" / "stage-1-6-planning.md").read_text(encoding="utf-8")
