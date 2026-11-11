@@ -245,6 +245,23 @@ class MeasureTest(unittest.TestCase):
                         "https://github.com/someone/bench-link-shortener.git"], check=True)
         self.assertTrue(bench.code_location(repo)["hosted"])
 
+    def test_remove_tree_deletes_a_git_repo(self):
+        # Re-running the plugin benchmark crashed on Windows: rmtree can't delete git's read-only
+        # object files ("Access is denied"), so the second plugin run never started
+        repo = self.d / "run" / "proj"
+        repo.mkdir(parents=True)
+        git = ["git", "-c", "user.name=t", "-c", "user.email=t@t", "-C", str(repo)]
+        subprocess.run(["git", "init", "-q", str(repo)], check=True)
+        (repo / "a.txt").write_text("a", encoding="utf-8")
+        subprocess.run(git + ["add", "a.txt"], check=True)
+        subprocess.run(git + ["commit", "-qm", "a"], check=True)
+        extra = repo / "readonly.txt"
+        extra.write_text("x", encoding="utf-8")
+        os.chmod(extra, 0o444)
+        bench.remove_tree(self.d / "run")
+        self.assertFalse((self.d / "run").exists())
+        bench.remove_tree(self.d / "run")          # a missing folder is fine
+
     def test_step_times(self):
         # D10: started→done pairs per step, and the wait between the last event and the answer
         (self.d / ".git").mkdir()

@@ -26,6 +26,7 @@ import secrets
 import shutil
 import signal
 import socket
+import stat
 import statistics
 import subprocess
 import sys
@@ -204,6 +205,17 @@ def run(cmd: list[str], cwd: Path | None = None, timeout: int | None = None, env
         return 127, f"{cmd[0]}: not found"
     except subprocess.TimeoutExpired:
         return 124, "timed out"
+
+
+def remove_tree(path: Path) -> None:
+    """shutil.rmtree that also deletes read-only files. Git stores its objects read-only, and on
+    Windows rmtree can't delete those, so re-running a plugin benchmark crashed (Access is denied)."""
+    def make_writable_and_retry(func, target, _exc):
+        os.chmod(target, stat.S_IWRITE | stat.S_IREAD)
+        func(target)
+
+    if path.exists():
+        shutil.rmtree(path, onerror=make_writable_and_retry)  # onerror: works on Python 3.9 and later
 
 
 def now_iso() -> str:
@@ -956,7 +968,7 @@ def cmd_clean(args) -> None:
         return
     for t in targets + log_targets:
         if t.is_dir() and not t.is_symlink():
-            shutil.rmtree(t, ignore_errors=True)
+            remove_tree(t)
         else:
             t.unlink(missing_ok=True)
     for r in repos:
@@ -1058,7 +1070,7 @@ def cmd_run(args) -> None:
     if folder.exists() and any(folder.iterdir()):
         if not yes(f"{folder} exists from an earlier run. Delete it and run {key} again?", default=False):
             return
-        shutil.rmtree(folder)
+        remove_tree(folder)
     folder.mkdir(parents=True)
     (folder / "spec.md").write_text(APPS[app]["spec"], encoding="utf-8")
     say(f"\n=== {key} ===")
@@ -1078,8 +1090,8 @@ def cmd_run(args) -> None:
         if (PROJECTS / repo).exists():
             if not yes(f"{PROJECTS / repo} exists from an earlier run. Delete it (and its worktrees)?", default=False):
                 return
-            shutil.rmtree(PROJECTS / repo, ignore_errors=True)
-            shutil.rmtree(PROJECTS / f"{repo}-wt", ignore_errors=True)
+            remove_tree(PROJECTS / repo)
+            remove_tree(PROJECTS / f"{repo}-wt")
         answers = ANSWERS.format(app=app, repo=repo)
         (folder / "ANSWERS.md").write_text(answers, encoding="utf-8")
         budget = make_budget(state.get("runs", {}).get(f"{app}-normal", {}).get("tokens") or {}, s["budget_factor"])
