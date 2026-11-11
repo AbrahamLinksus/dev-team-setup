@@ -54,7 +54,7 @@ class StructureTest(unittest.TestCase):
         # K15: approval_mode and cost_mode accepted any text, so a typo went unnoticed
         uc = json.loads((ROOT / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))["userConfig"]
         self.assertEqual(uc["approval_mode"]["options"], ["every-task", "batch-low-risk", "autopilot"])
-        self.assertEqual(uc["cost_mode"]["options"], ["quality", "balanced"])
+        self.assertEqual(uc["cost_mode"]["options"], ["quality", "balanced", "fast"])
         for key in ("approval_mode", "cost_mode"):
             self.assertIn(uc[key]["default"], uc[key]["options"])
 
@@ -664,6 +664,17 @@ class StructureTest(unittest.TestCase):
         self.assertIn("up to **3**", block)
         self.assertIn("one Agent call per task", block)
         self.assertIn("when unsure, they're not\nindependent", block)
+
+    def test_fast_mode_keeps_design_and_risky_reviews_strong(self):
+        # P3: faster models for mechanical roles, never for the design or high-risk reviews
+        modes = (SKILL / "references" / "approval-modes.md").read_text(encoding="utf-8")
+        fast = modes[modes.index("**fast**"):modes.index("## Things that never")]
+        self.assertIn("**except planner and\n  architect**", fast)
+        self.assertIn("**High-risk tasks still get an Opus reviewer.**", fast)
+        # every Opus agent other than planner/architect is one that fast mode may downgrade
+        opus = {frontmatter(p)["name"] for p in AGENTS if frontmatter(p).get("model") == "opus"}
+        for name in opus - {"planner", "architect"}:
+            self.assertIn(name, fast, f"fast mode doesn't say what happens to {name}")
 
     def test_every_known_hole_keeps_its_regression_test(self):
         # M1: each problem fixed in code got a test that names it (S = scope guard, T = taskgit,
