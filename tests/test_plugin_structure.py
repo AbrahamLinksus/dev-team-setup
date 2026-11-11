@@ -663,6 +663,20 @@ class StructureTest(unittest.TestCase):
         self.assertIn("(`run_in_background`), start it that way and go straight on to step 3", intake)
         self.assertIn("Check that it finished before the first render", intake)
 
+    def test_routine_roles_run_at_lower_effort(self):
+        # O18: without `effort`, an agent runs at the session's effort (often high/xhigh); the
+        # routine roles don't need it, while design, review, debugging and code keep the session's
+        want = {"git-pr": "low", "docs": "medium", "env-setup": "medium", "researcher": "medium", "tester": "medium"}
+        levels = {"low", "medium", "high", "xhigh", "max"}
+        for p in AGENTS:
+            fm = frontmatter(p)
+            with self.subTest(agent=fm["name"]):
+                self.assertEqual(fm.get("effort"), want.get(fm["name"]))
+                if "effort" in fm:
+                    self.assertIn(fm["effort"], levels)
+        for keep in ("planner", "architect", "reviewer", "debugger", "backend-coder", "frontend-coder"):
+            self.assertNotIn("effort", frontmatter(ROOT / "agents" / f"{keep}.md"))
+
     def test_quick_track_for_small_ideas(self):
         # D30: small ideas skip the separate HLD, team-pick and LLD stops, never the Tier 1 ones
         planning = (SKILL / "references" / "stage-1-6-planning.md").read_text(encoding="utf-8")

@@ -354,6 +354,16 @@ SHORT = {
 }
 
 
+# O18: effort for the routine roles (Claude Code's `effort` frontmatter field). Without it an agent
+# runs at the session's effort, often high or xhigh. Design, review, debugging and code keep
+# the session's: those are where depth pays.
+EFFORT = {"git-pr": "low", "docs": "medium", "env-setup": "medium", "researcher": "medium", "tester": "medium"}
+
+
+def effort_line(a) -> str:
+    return f"effort: {EFFORT[a['name']]}\n" if a["name"] in EFFORT else ""
+
+
 def build(a, drive_server: str = DRIVE_SERVER):
     tools = ", ".join(f'"{t}"' for t in a["tools"] + (gdrive(drive_server) if a.get("drive") else []))
     ctx, action = a["ex"]
@@ -362,7 +372,7 @@ def build(a, drive_server: str = DRIVE_SERVER):
 name: {a['name']}
 description: {json.dumps(f"{ONLY_ORCHESTRATOR} {SHORT[a['name']]}", ensure_ascii=False)}
 model: {a['model']}
-color: {a['color']}
+{effort_line(a)}color: {a['color']}
 tools: [{tools}]
 ---
 

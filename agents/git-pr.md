@@ -2,6 +2,7 @@
 name: git-pr
 description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; not for ordinary work. Drafts squash commit messages."
 model: haiku
+effort: low
 color: yellow
 tools: ["Bash", "Read", "Write"]
 ---

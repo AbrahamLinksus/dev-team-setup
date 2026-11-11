@@ -2,6 +2,7 @@
 name: docs
 description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; not for ordinary work. README and docs."
 model: haiku
+effort: medium
 color: green
 tools: ["Read", "Write", "Edit", "Glob"]
 ---
