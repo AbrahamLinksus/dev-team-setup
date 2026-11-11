@@ -173,6 +173,28 @@ class MeasureTest(unittest.TestCase):
         self.assertFalse(box["r"]["is_error"])
         self.assertEqual(len(box["r"]["result"]), 300000)
 
+    def test_text_io_names_its_encoding(self):
+        # A friend's Windows run crashed writing spec.md: without encoding=, Python uses the locale
+        # (cp1252), which can't encode the spec's "→". Linux CI never sees it, so check the code.
+        import ast
+        for path in (ROOT / "bench.py", ROOT / "skills" / "setup-project" / "scripts" / "cost.py"):
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.Call):
+                    continue
+                f = node.func
+                name = f.attr if isinstance(f, ast.Attribute) else getattr(f, "id", "")
+                kw = {k.arg for k in node.keywords}
+                binary = any(isinstance(a, ast.Constant) and "b" in str(a.value) for a in node.args)
+                if name == "open" and isinstance(f, ast.Attribute) and ast.unparse(f.value).endswith("opener"):
+                    continue   # urllib's opener.open(request), not a file
+                if name in ("read_text", "write_text") or (name == "open" and isinstance(f, ast.Attribute) and not binary):
+                    with self.subTest(file=path.name, line=node.lineno):
+                        self.assertIn("encoding", kw, f"{path.name}:{node.lineno} {name}() without encoding=")
+                if name == "run" and isinstance(f, ast.Attribute) and "text" in kw:
+                    with self.subTest(file=path.name, line=node.lineno):
+                        self.assertIn("encoding", kw, f"{path.name}:{node.lineno} subprocess text=True without encoding=")
+
     def test_step_times(self):
         # D10: started→done pairs per step, and the wait between the last event and the answer
         (self.d / ".git").mkdir()

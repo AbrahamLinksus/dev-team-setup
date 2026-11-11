@@ -192,7 +192,7 @@ def yes(question: str, default: bool = True) -> bool:
 
 def run(cmd: list[str], cwd: Path | None = None, timeout: int | None = None, env: dict | None = None) -> tuple[int, str]:
     try:
-        p = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout,
+        p = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout,
                            env={**os.environ, **(env or {})})
         return p.returncode, (p.stdout or "") + (p.stderr or "")
     except FileNotFoundError:
@@ -207,14 +207,14 @@ def now_iso() -> str:
 
 def load_state() -> dict:
     try:
-        return json.loads(STATE.read_text())
+        return json.loads(STATE.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return {}
 
 
 def save_state(state: dict) -> None:
     BENCH.mkdir(parents=True, exist_ok=True)
-    STATE.write_text(json.dumps(state, indent=2))
+    STATE.write_text(json.dumps(state, indent=2), encoding="utf-8")
 
 
 def port_open(port: int) -> bool:
@@ -291,7 +291,7 @@ def agent_label(path: Path) -> str:
     meta = path.with_suffix(".meta.json")
     if meta.exists():
         try:
-            m = json.loads(meta.read_text())
+            m = json.loads(meta.read_text(encoding="utf-8"))
             for k in ("agentType", "subagent_type", "agent_type"):
                 if m.get(k):
                     return str(m[k]).split(":")[-1]
@@ -659,7 +659,7 @@ class App:
         if port_open(PORT):
             return f"port {PORT} is already in use; stop whatever is running there and re-run"
         self.log.parent.mkdir(parents=True, exist_ok=True)
-        self.out = out = self.log.open("a")
+        self.out = out = self.log.open("a", encoding="utf-8")
         self.proc = subprocess.Popen([bash_exe(), str(self.start_sh)], cwd=self.start_sh.parent, stdout=out,
                                      stderr=subprocess.STDOUT, start_new_session=True,
                                      env={**os.environ, "PORT": str(PORT)})
@@ -745,18 +745,18 @@ def quality(project: Path) -> dict:
         loc = 0
         for p in (d / src).rglob("*.py"):
             if not any(x in p.parts for x in (".venv", "tests", "migrations", "alembic")):
-                loc += sum(1 for ln in p.read_text(errors="replace").splitlines() if ln.strip() and not ln.strip().startswith("#"))
+                loc += sum(1 for ln in p.read_text(encoding="utf-8", errors="replace").splitlines() if ln.strip() and not ln.strip().startswith("#"))
         q.update(tests_passed=int(m.group(1)) if m else 0, tests_failed=int(f.group(1)) if f else 0,
                  coverage=f"{cov.group(1)}%" if cov else "n/a", ruff_errors=num(r), mypy_errors=num(y), lines=loc)
     pkg = find_file(project, "package.json")
     if pkg and shutil.which("npm"):
         d = pkg.parent
         run(["npm", "ci" if (d / "package-lock.json").exists() else "install", "--silent"], cwd=d, timeout=1200)
-        scripts = json.loads(pkg.read_text()).get("scripts", {})
+        scripts = json.loads(pkg.read_text(encoding="utf-8")).get("scripts", {})
         status = lambda c: "✅" if c == 0 else "❌"
         q["web_build"] = status(run(["npm", "run", "-s", "build"], cwd=d, timeout=900)[0]) if "build" in scripts else "n/a"
         q["web_lint"] = status(run(["npm", "run", "-s", "lint"], cwd=d, timeout=600)[0]) if "lint" in scripts else "n/a"
-        if "vitest" in pkg.read_text():
+        if "vitest" in pkg.read_text(encoding="utf-8"):
             q["web_tests"] = status(run(["npx", "vitest", "run"], cwd=d, timeout=900)[0])
         else:
             q["web_tests"] = status(run(["npm", "test", "--silent"], cwd=d, timeout=900)[0]) if "test" in scripts else "n/a"
@@ -994,7 +994,7 @@ def cmd_run(args) -> None:
             return
         shutil.rmtree(folder)
     folder.mkdir(parents=True)
-    (folder / "spec.md").write_text(APPS[app]["spec"])
+    (folder / "spec.md").write_text(APPS[app]["spec"], encoding="utf-8")
     say(f"\n=== {key} ===")
     start = datetime.now(timezone.utc)
 
@@ -1015,7 +1015,7 @@ def cmd_run(args) -> None:
             shutil.rmtree(PROJECTS / repo, ignore_errors=True)
             shutil.rmtree(PROJECTS / f"{repo}-wt", ignore_errors=True)
         answers = ANSWERS.format(app=app, repo=repo)
-        (folder / "ANSWERS.md").write_text(answers)
+        (folder / "ANSWERS.md").write_text(answers, encoding="utf-8")
         normal_cost = (state.get("runs", {}).get(f"{app}-normal", {}).get("tokens") or {}).get("cost_usd") or 0
         budget = normal_cost * s["budget_factor"] if normal_cost else None
         say(answers)
@@ -1197,7 +1197,7 @@ def write_report(state: dict) -> str:
         L.append("")
     text = "\n".join(L)
     BENCH.mkdir(parents=True, exist_ok=True)
-    RESULTS.write_text(text)
+    RESULTS.write_text(text, encoding="utf-8")
     return text
 
 
