@@ -485,9 +485,6 @@ class StructureTest(unittest.TestCase):
         self.assertIn("**Long session check (between tasks).**", build)
         self.assertIn("6 or more tasks", build)
         self.assertIn("SESSION DONE", (SKILL / "references" / "unattended.md").read_text(encoding="utf-8"))
-        sys.path.insert(0, str(ROOT))
-        import bench
-        self.assertIn("SESSION DONE", bench.MARKERS)
 
     def test_tester_and_reviewer_run_in_parallel(self):
         # D19: both read the same diff; running them together removes a sequential step per task

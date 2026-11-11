@@ -72,7 +72,7 @@ jobs:
           out=$(printf '%s' '{"agent_type":"dev-team-setup:tester","tool_name":"Write","tool_input":{"file_path":"src/app.py"},"cwd":"."}' | sh hooks/scope_guard.sh)
           echo "$out"
           echo "$out" | grep -q '"permissionDecision": *"deny"'
-      - name: Plugin structure, agents, capture, scope guard and bench
+      - name: Plugin structure, agents, capture, scope guard and cost
         run: python -m unittest discover -s tests -v
       - name: taskgit scenarios
         run: bash tests/test_taskgit.sh
@@ -105,4 +105,4 @@ jobs:
       - name: ruff
         run: |
           python -m pip install ruff
-          ruff check --select E9,F,B,UP --target-version py39 hooks tools skills tests bench.py
+          ruff check --select E9,F,B,UP --target-version py39 hooks tools skills tests

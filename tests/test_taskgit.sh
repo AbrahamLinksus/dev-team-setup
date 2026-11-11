@@ -425,7 +425,7 @@ HOOK
 fi
 
 if scenario timing_log; then
-  # D10: every start, checkpoint, approve and reject leaves a line for bench.py's time per step
+  # every start, checkpoint, approve and reject leaves a line for measuring time per step
   new_repo timing
   T=$(tg start "$R" T-01); echo "a = 1" > "$T/a.py"
   tgq checkpoint "$R" T-01 "implement started"; tgq checkpoint "$R" T-01 "implement done"

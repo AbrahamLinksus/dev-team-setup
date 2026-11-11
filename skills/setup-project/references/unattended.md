@@ -1,6 +1,6 @@
 # Unattended mode (answers file)
 
-Used by `bench.py` so a plugin run can be repeated without a person answering cards. It is on
+Used to repeat a run without a person answering cards (for benchmarking). It is on
 only when the launch or resume prompt contains `Answers file: <absolute path>` (at its end). Record
 that path in STATE.md "Config" so a resumed session keeps the mode.
 
@@ -11,7 +11,7 @@ that path in STATE.md "Config" so a resumed session keeps the mode.
   choices), pick the answer from the answers file's table. When the file doesn't cover a
   case, pick the option marked (Recommended), or else the first option.
 - **Log every answer** by appending one line to `answers.log` in the answers file's folder:
-  `<ISO time> · <card header> · <question, ≤80 chars> → <answer>`. The benchmark counts these
+  `<ISO time> · <card header> · <question, ≤80 chars> → <answer>`. A benchmark counts these
   lines as the owner's interventions.
 - Still produce every card and visual exactly as in an attended run (write it to
   `.results/<id>/card.md` as the CLI fallback says), so cost and time are comparable.
