@@ -504,7 +504,7 @@ if scenario step_command; then
   tgq step "$R" T-01 test+review started
   check "test+review marks both rows" bash -c "grep -q '^| 2 Tests + checks | tester | ⏳ |' '$T/TASK_PROGRESS.md' && grep -q '^| 3 Review | reviewer | ⏳ |' '$T/TASK_PROGRESS.md'"
   echo "def test_b(): pass" > "$T/tests/test_b.py"; echo "b = 1" > "$T/b.py"
-  out=$(tg step "$R" T-01 test+review done tester "checks pass · 2 tests" 2>&1)
+  out=$(tg step "$R" T-01 test+review "done" tester "checks pass · 2 tests" 2>&1)
   check "done scopes as the agent first" contains "$out" "REVERTED 1 file"
   check "the out-of-scope file is gone" test ! -e "$T/b.py"
   check "the in-scope test stays" test -f "$T/tests/test_b.py"
