@@ -26,6 +26,7 @@ import secrets
 import shutil
 import signal
 import socket
+import stat
 import statistics
 import subprocess
 import sys
@@ -53,6 +54,10 @@ RUN_SECTION = """
 ## How it's started
 `./start.sh` in the project root installs what it needs (e.g. `uv sync`) and starts the API on
 port 8000 (or `$PORT` if set). Data is kept in a local database file, so it survives a restart.
+
+## Where the code lives
+Everything stays on this computer. A local git repository is fine, but create no GitHub (or other
+hosted) repository and push to no remote service.
 """
 
 SMALL_SPEC = """# Small benchmark: link shortener API
@@ -147,7 +152,8 @@ Answer the same way every run, so runs are comparable. bench.py counts your answ
 
 | When the plugin asks… | Answer |
 |---|---|
-| Repo name / visibility | `{repo}` · Private |
+| Your name / GitHub user (if asked) | `Bench owner` · none |
+| Repo name / where it lives | `{repo}` · where it lives: answer from spec.md |
 | Spec questions | Answer from spec.md. If it doesn't say, pick the (Recommended) option |
 | "Decide for me" offered and spec.md is silent | Decide for me |
 | Spec, HLD, team, LLD, install, task-list cards | Approve (add no optional agents) |
@@ -199,6 +205,17 @@ def run(cmd: list[str], cwd: Path | None = None, timeout: int | None = None, env
         return 127, f"{cmd[0]}: not found"
     except subprocess.TimeoutExpired:
         return 124, "timed out"
+
+
+def remove_tree(path: Path) -> None:
+    """shutil.rmtree that also deletes read-only files. Git stores its objects read-only, and on
+    Windows rmtree can't delete those, so re-running a plugin benchmark crashed (Access is denied)."""
+    def make_writable_and_retry(func, target, _exc):
+        os.chmod(target, stat.S_IWRITE | stat.S_IREAD)
+        func(target)
+
+    if path.exists():
+        shutil.rmtree(path, onerror=make_writable_and_retry)  # onerror: works on Python 3.9 and later
 
 
 def now_iso() -> str:
@@ -951,7 +968,7 @@ def cmd_clean(args) -> None:
         return
     for t in targets + log_targets:
         if t.is_dir() and not t.is_symlink():
-            shutil.rmtree(t, ignore_errors=True)
+            remove_tree(t)
         else:
             t.unlink(missing_ok=True)
     for r in repos:
@@ -1053,7 +1070,7 @@ def cmd_run(args) -> None:
     if folder.exists() and any(folder.iterdir()):
         if not yes(f"{folder} exists from an earlier run. Delete it and run {key} again?", default=False):
             return
-        shutil.rmtree(folder)
+        remove_tree(folder)
     folder.mkdir(parents=True)
     (folder / "spec.md").write_text(APPS[app]["spec"], encoding="utf-8")
     say(f"\n=== {key} ===")
@@ -1073,8 +1090,8 @@ def cmd_run(args) -> None:
         if (PROJECTS / repo).exists():
             if not yes(f"{PROJECTS / repo} exists from an earlier run. Delete it (and its worktrees)?", default=False):
                 return
-            shutil.rmtree(PROJECTS / repo, ignore_errors=True)
-            shutil.rmtree(PROJECTS / f"{repo}-wt", ignore_errors=True)
+            remove_tree(PROJECTS / repo)
+            remove_tree(PROJECTS / f"{repo}-wt")
         answers = ANSWERS.format(app=app, repo=repo)
         (folder / "ANSWERS.md").write_text(answers, encoding="utf-8")
         budget = make_budget(state.get("runs", {}).get(f"{app}-normal", {}).get("tokens") or {}, s["budget_factor"])
@@ -1140,7 +1157,11 @@ def cmd_run(args) -> None:
     run_state = state.setdefault("runs", {}).setdefault(key, {})
     run_state.update({"start": start.isoformat(), "end": end.isoformat(), "folder": str(folder),
                       "project": str(project), "tokens": tokens, "test": tested, "quality": q, "ui": ui,
-                      "step_minutes": step_times(project), "auth_method": auth.get("authMethod")})
+                      "step_minutes": step_times(project), "auth_method": auth.get("authMethod"),
+                      "code_location": code_location(project)})
+    loc = run_state["code_location"]
+    say(f"Code location: {'local only' if not loc['hosted'] else 'pushed to ' + loc['remote']}"
+        f" {'(as the spec asks)' if not loc['hosted'] else '(the spec said local only)'}")
     if run_state["step_minutes"]:
         say("Time per step (from taskgit's timing log):")
         say(times_table(run_state["step_minutes"]))
@@ -1149,6 +1170,15 @@ def cmd_run(args) -> None:
     save_state(state)
     write_report(state)
     say(f"\nSaved. Results so far: {RESULTS}")
+
+
+def code_location(project: Path) -> dict:
+    """Where the build's git remote points. The spec says local only, so a hosted remote means the
+    run ignored it (and created a repo somewhere)."""
+    code, out = run(["git", "-C", str(project), "remote", "get-url", "origin"], timeout=30)
+    remote = out.strip() if code == 0 else ""
+    hosted = bool(re.match(r"(https?://|git@|ssh://)", remote)) and not remote.startswith("file://")
+    return {"remote": remote or None, "hosted": hosted}
 
 
 def step_times(project: Path) -> dict:

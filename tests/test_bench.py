@@ -229,6 +229,39 @@ class MeasureTest(unittest.TestCase):
         self.assertIn("claude-sonnet-5", row)
         self.assertNotIn("$0.00", row)
 
+    def test_specs_ask_for_local_only_and_the_run_checks_it(self):
+        # Both runs read the same spec, so the plain and plugin runs stay comparable; whether the
+        # plugin honours "no GitHub repo" is part of what the run measures
+        for app in bench.APPS.values():
+            self.assertIn("create no GitHub", app["spec"])
+        self.assertNotIn("Private", bench.ANSWERS)
+        self.assertIn("answer from spec.md", bench.ANSWERS)
+        repo = self.d / "r"
+        subprocess.run(["git", "init", "-q", str(repo)], check=True)
+        self.assertEqual(bench.code_location(repo), {"remote": None, "hosted": False})
+        subprocess.run(["git", "-C", str(repo), "remote", "add", "origin", str(self.d / "r.git")], check=True)
+        self.assertFalse(bench.code_location(repo)["hosted"])          # a local bare repo is fine
+        subprocess.run(["git", "-C", str(repo), "remote", "set-url", "origin",
+                        "https://github.com/someone/bench-link-shortener.git"], check=True)
+        self.assertTrue(bench.code_location(repo)["hosted"])
+
+    def test_remove_tree_deletes_a_git_repo(self):
+        # Re-running the plugin benchmark crashed on Windows: rmtree can't delete git's read-only
+        # object files ("Access is denied"), so the second plugin run never started
+        repo = self.d / "run" / "proj"
+        repo.mkdir(parents=True)
+        git = ["git", "-c", "user.name=t", "-c", "user.email=t@t", "-C", str(repo)]
+        subprocess.run(["git", "init", "-q", str(repo)], check=True)
+        (repo / "a.txt").write_text("a", encoding="utf-8")
+        subprocess.run(git + ["add", "a.txt"], check=True)
+        subprocess.run(git + ["commit", "-qm", "a"], check=True)
+        extra = repo / "readonly.txt"
+        extra.write_text("x", encoding="utf-8")
+        os.chmod(extra, 0o444)
+        bench.remove_tree(self.d / "run")
+        self.assertFalse((self.d / "run").exists())
+        bench.remove_tree(self.d / "run")          # a missing folder is fine
+
     def test_step_times(self):
         # D10: started→done pairs per step, and the wait between the last event and the answer
         (self.d / ".git").mkdir()
