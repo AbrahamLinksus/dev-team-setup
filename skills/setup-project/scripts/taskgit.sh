@@ -119,7 +119,7 @@ unpin_agents() {  # forget the agent pins (S8, scope guard) of the worktree bein
   return 0
 }
 
-log_time() {  # D10: one line per event, read by bench.py for time per step; never fails the command
+log_time() {  # one line per event, to measure time per step; never fails the command
   printf '%s\t%s\t%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$id" "$1" \
     >> "$(g rev-parse --absolute-git-dir 2>/dev/null)/devteam-timing.log" 2>/dev/null || true
 }

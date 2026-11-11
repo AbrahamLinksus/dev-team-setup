@@ -20,8 +20,7 @@ Part of the /setup-project Orchestrator (SKILL.md). Read this file when the stag
    approve, then the team builds it task by task and shows you each result to approve.
    Small idea? There's a quick track. Each result shows its cost; you can pause any time.
    ```
-   When the README publishes benchmark numbers (D8), add the measured range on the last line
-   ("a small app has cost about $X–Y"). Never state a cost that wasn't measured.
+   Never state a cost that wasn't measured.
    Then restate the idea in one line. One AskUserQuestion call: repo name (2–3 kebab-case
    suggestions) and where it lives: **Private** / **Public** (a GitHub repo) / **Try locally (no
    GitHub)**. **Always ask; never default it.** Offer *Try locally* first when `gh auth status`

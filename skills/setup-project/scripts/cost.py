@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Spend so far, for result cards and the budget cap (D23).
+"""Spend so far, for result cards and the budget cap.
 
     python3 cost.py <base> [--since <ISO time>] [--task T-04] [--budget 25] [--json]
 
 <base> is the folder the sessions run in (STATE.md records it). The total comes from Claude
-Code's own accounting in its session logs (the same reader bench.py uses), summed over every
+Code's own accounting in its session logs (read by usage.py), summed over every
 session in <base> since --since (the project's start). A task's share is estimated: the
 task's own agents' price-weighted tokens (agents whose BRIEF names the task) as a fraction of
 the run's, times the total. Prints one card line, e.g.
@@ -23,9 +23,8 @@ from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[3]          # plugin root, which holds bench.py
-sys.path.insert(0, str(ROOT))
-import bench  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import usage  # noqa: E402
 
 
 def task_weights(log_dir: Path, sessions: list[str]) -> dict[str, float]:
@@ -34,25 +33,25 @@ def task_weights(log_dir: Path, sessions: list[str]) -> dict[str, float]:
     for sid in sessions:
         for path in sorted((log_dir / sid).rglob("*.jsonl")) if (log_dir / sid).is_dir() else []:
             task, replies = None, {}
-            for i, d in enumerate(bench.read_lines(path)):
+            for i, d in enumerate(usage.read_lines(path)):
                 msg = d.get("message") if isinstance(d.get("message"), dict) else None
                 if task is None and d.get("type") == "user" and msg:
-                    m = bench.BRIEF_RE.search(bench.text_of(msg))
+                    m = usage.BRIEF_RE.search(usage.text_of(msg))
                     task = m.group(1) if m else ""
                 if d.get("type") == "assistant" and msg and msg.get("usage"):
                     replies[msg.get("id") or f"{i}"] = msg["usage"]
             if task:
-                out[task] += sum(bench.weighted({f: int(u.get(f) or 0) for f in bench.FIELDS})
+                out[task] += sum(usage.weighted({f: int(u.get(f) or 0) for f in usage.FIELDS})
                                  for u in replies.values())
     return out
 
 
 def report(base: Path, since: datetime | None, task: str | None, budget: float | None) -> dict:
-    log_dir = bench.log_dir_for(base)
-    sessions = bench.sessions_in(log_dir, since) if log_dir.is_dir() else []
-    m = bench.measure(log_dir, sessions) if sessions else {"cost_usd": 0.0, "by_agent": {}}
+    log_dir = usage.log_dir_for(base)
+    sessions = usage.sessions_in(log_dir, since) if log_dir.is_dir() else []
+    m = usage.measure(log_dir, sessions) if sessions else {"cost_usd": 0.0, "by_agent": {}}
     total = float(m["cost_usd"])
-    all_weight = sum(bench.weighted(u) for u in m["by_agent"].values()) or 0.0
+    all_weight = sum(usage.weighted(u) for u in m["by_agent"].values()) or 0.0
     task_cost = None
     if task:
         w = task_weights(log_dir, sessions).get(task, 0.0)
@@ -78,7 +77,7 @@ def main() -> None:
     ap.add_argument("--json", action="store_true")
     a = ap.parse_args()
     # STATE.md writes "2026-11-09 14:20 +05:30"; Python 3.9 needs the offset attached
-    since = bench.parse_ts(re.sub(r"\s+([+-]\d\d:?\d\d)$", r"\1", a.since.strip())) if a.since else None
+    since = usage.parse_ts(re.sub(r"\s+([+-]\d\d:?\d\d)$", r"\1", a.since.strip())) if a.since else None
     if a.since and since is None:
         ap.error(f"--since: can't read {a.since!r} as a date and time")
     r = report(a.base, since, a.task, a.budget)
