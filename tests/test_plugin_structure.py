@@ -627,6 +627,15 @@ class StructureTest(unittest.TestCase):
         self.assertIn("a fix task per affected task", batch)
         self.assertIn("**batched\nreview**", (SKILL / "references" / "stage-8-handover.md").read_text(encoding="utf-8"))
 
+    def test_tester_tests_what_the_task_promises(self):
+        # O8: run B wrote 119 tests where a plain session wrote 26 for the same 8/8; output is the
+        # priciest token, and coverage is still enforced by check.sh
+        tester = (ROOT / "agents" / "tester.md").read_text(encoding="utf-8")
+        self.assertIn("one per error path the task adds", tester)
+        self.assertIn("Don't test the framework, libraries or language", tester)
+        self.assertIn("don't repeat a case another test already covers", tester)
+        self.assertIn("scripts/check.sh", tester)
+
     def test_quick_track_for_small_ideas(self):
         # D30: small ideas skip the separate HLD, team-pick and LLD stops, never the Tier 1 ones
         planning = (SKILL / "references" / "stage-1-6-planning.md").read_text(encoding="utf-8")
