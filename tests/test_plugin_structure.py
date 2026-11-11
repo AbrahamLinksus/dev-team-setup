@@ -657,6 +657,12 @@ class StructureTest(unittest.TestCase):
         self.assertIn("Read with `offset` and `limit`", rules)
         self.assertIn("Every agent start pays for what it reads", rules)
 
+    def test_visual_tools_install_while_the_owner_answers(self):
+        # O15 (P7): the Chromium install takes minutes; nothing needs it until the first render
+        intake = (SKILL / "references" / "stage-0-intake.md").read_text(encoding="utf-8")
+        self.assertIn("(`run_in_background`), start it that way and go straight on to step 3", intake)
+        self.assertIn("Check that it finished before the first render", intake)
+
     def test_quick_track_for_small_ideas(self):
         # D30: small ideas skip the separate HLD, team-pick and LLD stops, never the Tier 1 ones
         planning = (SKILL / "references" / "stage-1-6-planning.md").read_text(encoding="utf-8")

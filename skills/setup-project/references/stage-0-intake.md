@@ -13,6 +13,10 @@ Part of the /setup-project Orchestrator (SKILL.md). Read this file when the stag
    Pillow, markdown, npm for Mermaid). If it reports anything missing, ask once (AskUserQuestion:
    **Install the visual tools** into the plugin's private venv / **Skip visuals** = text cards),
    then run `python3 $CAPTURE doctor --install`. It never touches the project's environment.
+   It takes minutes (Chromium is large), so when your Bash tool can run a command in the
+   background (`run_in_background`), start it that way and go straight on to step 3: the install
+   runs while the owner answers. Check that it finished before the first render (the wireframes
+   on the spec card); if it failed, say so on that card and send text instead.
    Record the answer in STATE.md.
 3. Before the first question, a three-line opener so the owner knows what they're starting:
    ```
