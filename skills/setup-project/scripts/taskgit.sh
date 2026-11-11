@@ -438,15 +438,19 @@ case "$cmd" in
     [[ -z "$dirty" ]] || die 3 "main checkout has uncommitted changes; nothing was undone:\n$dirty"
     g fetch -q origin "$main" || die 3 "fetch failed; nothing was undone"
     g merge -q --ff-only "origin/$main" 2>/dev/null || die 3 "local $main has diverged from origin/$main; nothing was undone"
-    sha=$(g log --format=%H --grep="^Task: $id\$" "$main" | head -1)
+    # git's own --grep, no `| grep -q` / `| head`: under pipefail a reader that exits early can
+    # SIGPIPE git and turn a match into a failure (flaky on macOS CI)
+    sha=$(g log -n 1 --format=%H --grep="^Task: $id\$" "$main")
     [[ -n "$sha" ]] || die 1 "no approved commit for $id on $main (looked for a 'Task: $id' trailer)"
-    if g log --format=%B "$sha..$main" | grep -qF "This reverts commit $sha."; then
+    if [[ -n "$(g log -n 1 --format=%H --grep="^Undone: $id\$" "$sha..$main")" ]]; then
       die 1 "$id was already undone on $main"
     fi
-    if ! g revert --no-edit "$sha" >/dev/null 2>&1; then
-      g revert --abort 2>/dev/null
+    if ! g revert --no-commit "$sha" >/dev/null 2>&1; then
+      g revert --abort 2>/dev/null; g reset -q --hard HEAD 2>/dev/null
       die 4 "can't undo $id cleanly: later approved work changed the same lines. Nothing changed. Undo the later task first, or make the change as a new task."
     fi
+    g commit -q -m "Revert \"$(g log -n 1 --format=%s "$sha")\"" -m "This reverts commit $sha." -m "Undone: $id" \
+      || { g reset -q --hard HEAD; die 6 "the revert commit for $id failed; main restored"; }
     log_time "undone"
     push_branch "$repo" "$main" || { g reset -q --hard HEAD~1; die 7 "the revert of $id couldn't be pushed; it was dropped again, so main is unchanged"; }
     echo "undone: $(g log --oneline -1)"
