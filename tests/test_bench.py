@@ -229,6 +229,22 @@ class MeasureTest(unittest.TestCase):
         self.assertIn("claude-sonnet-5", row)
         self.assertNotIn("$0.00", row)
 
+    def test_specs_ask_for_local_only_and_the_run_checks_it(self):
+        # Both runs read the same spec, so the plain and plugin runs stay comparable; whether the
+        # plugin honours "no GitHub repo" is part of what the run measures
+        for app in bench.APPS.values():
+            self.assertIn("create no GitHub", app["spec"])
+        self.assertNotIn("Private", bench.ANSWERS)
+        self.assertIn("answer from spec.md", bench.ANSWERS)
+        repo = self.d / "r"
+        subprocess.run(["git", "init", "-q", str(repo)], check=True)
+        self.assertEqual(bench.code_location(repo), {"remote": None, "hosted": False})
+        subprocess.run(["git", "-C", str(repo), "remote", "add", "origin", str(self.d / "r.git")], check=True)
+        self.assertFalse(bench.code_location(repo)["hosted"])          # a local bare repo is fine
+        subprocess.run(["git", "-C", str(repo), "remote", "set-url", "origin",
+                        "https://github.com/someone/bench-link-shortener.git"], check=True)
+        self.assertTrue(bench.code_location(repo)["hosted"])
+
     def test_step_times(self):
         # D10: started→done pairs per step, and the wait between the last event and the answer
         (self.d / ".git").mkdir()

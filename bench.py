@@ -53,6 +53,10 @@ RUN_SECTION = """
 ## How it's started
 `./start.sh` in the project root installs what it needs (e.g. `uv sync`) and starts the API on
 port 8000 (or `$PORT` if set). Data is kept in a local database file, so it survives a restart.
+
+## Where the code lives
+Everything stays on this computer. A local git repository is fine, but create no GitHub (or other
+hosted) repository and push to no remote service.
 """
 
 SMALL_SPEC = """# Small benchmark: link shortener API
@@ -147,7 +151,8 @@ Answer the same way every run, so runs are comparable. bench.py counts your answ
 
 | When the plugin asks… | Answer |
 |---|---|
-| Repo name / visibility | `{repo}` · Private |
+| Your name / GitHub user (if asked) | `Bench owner` · none |
+| Repo name / where it lives | `{repo}` · where it lives: answer from spec.md |
 | Spec questions | Answer from spec.md. If it doesn't say, pick the (Recommended) option |
 | "Decide for me" offered and spec.md is silent | Decide for me |
 | Spec, HLD, team, LLD, install, task-list cards | Approve (add no optional agents) |
@@ -1140,7 +1145,11 @@ def cmd_run(args) -> None:
     run_state = state.setdefault("runs", {}).setdefault(key, {})
     run_state.update({"start": start.isoformat(), "end": end.isoformat(), "folder": str(folder),
                       "project": str(project), "tokens": tokens, "test": tested, "quality": q, "ui": ui,
-                      "step_minutes": step_times(project), "auth_method": auth.get("authMethod")})
+                      "step_minutes": step_times(project), "auth_method": auth.get("authMethod"),
+                      "code_location": code_location(project)})
+    loc = run_state["code_location"]
+    say(f"Code location: {'local only' if not loc['hosted'] else 'pushed to ' + loc['remote']}"
+        f" {'(as the spec asks)' if not loc['hosted'] else '(the spec said local only)'}")
     if run_state["step_minutes"]:
         say("Time per step (from taskgit's timing log):")
         say(times_table(run_state["step_minutes"]))
@@ -1149,6 +1158,15 @@ def cmd_run(args) -> None:
     save_state(state)
     write_report(state)
     say(f"\nSaved. Results so far: {RESULTS}")
+
+
+def code_location(project: Path) -> dict:
+    """Where the build's git remote points. The spec says local only, so a hosted remote means the
+    run ignored it (and created a repo somewhere)."""
+    code, out = run(["git", "-C", str(project), "remote", "get-url", "origin"], timeout=30)
+    remote = out.strip() if code == 0 else ""
+    hosted = bool(re.match(r"(https?://|git@|ssh://)", remote)) and not remote.startswith("file://")
+    return {"remote": remote or None, "hosted": hosted}
 
 
 def step_times(project: Path) -> dict:
