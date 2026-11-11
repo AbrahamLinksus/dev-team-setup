@@ -4,7 +4,8 @@ Part of the /setup-project Orchestrator (SKILL.md). Read this file when the stag
 
 ## 8 · Handover ⏸
 
-Task `handover` (normal task flow, after the last milestone):
+Task `handover` (normal task flow, after the last milestone). It starts with the **batched
+review** of the last milestone's tasks when any had theirs batched (`stage-7-build.md`).
 0. **Screenshots for the docs.** `.results/` is git-ignored and each task's copy is deleted when it
    is approved, so a README can never link into it. The **tester** starts the app in the handover
    worktree and captures it fresh (`$CAPTURE web <url> <wt>/.results/handover/app --mobile`, plus
