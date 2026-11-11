@@ -517,6 +517,25 @@ if scenario step_command; then
   check "an unknown state is refused" expect_exit 1 tg step "$R" T-01 test finished
 fi
 
+if scenario coder_tests; then
+  # O5: the marker opens the tests to this task's coder only, and leaves with the worktree
+  new_repo codertests
+  T=$(tg start "$R" T-01); mkdir -p "$T/tests" "$T/src"
+  echo "def test_a(): pass" > "$T/tests/test_a.py"; echo "a = 1" > "$T/src/a.py"
+  out=$(tg scope "$R" T-01 backend-coder)
+  check "without the marker the coder's test is reverted" test ! -e "$T/tests/test_a.py"
+  tgq coder-tests "$R" T-01
+  check "the marker is in the worktree's private git dir" test -f "$(git -C "$T" rev-parse --absolute-git-dir)/devteam-coder-tests"
+  check "and not in the worktree" test -z "$(git -C "$T" status --porcelain --untracked-files=all | grep coder-tests)"
+  echo "def test_a(): pass" > "$T/tests/test_a.py"; echo "x" > "$T/scripts/check.sh"
+  out=$(tg scope "$R" T-01 backend-coder)
+  check "with it the test stays" test -f "$T/tests/test_a.py"
+  check "the gate is still reverted" contains "$out" "scripts/check.sh"
+  T2=$(tg start "$R" T-02); mkdir -p "$T2/tests"; echo "def test_b(): pass" > "$T2/tests/test_b.py"
+  tgq scope "$R" T-02 backend-coder
+  check "another task's coder is unaffected" test ! -e "$T2/tests/test_b.py"
+fi
+
 # ---- summary ---------------------------------------------------------------------------
 echo
 echo "taskgit scenarios: $PASS passed, $FAIL failed"

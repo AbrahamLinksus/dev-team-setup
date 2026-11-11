@@ -16,7 +16,8 @@ Agent IDs from earlier sessions are not continued; every step after a resume spa
    `Status: Paused` → set it back to Active and continue. `Status: Abandoned` or `Complete` → say so
    and ask whether to reopen it before doing anything.
 3. Per open wip branch (`plan`, `CR-n`, `T-xx`): `$TASKGIT start` (installs dependencies into a
-   restored worktree), read TASK_PROGRESS.md, run `check.sh` once if code steps are ✅, re-ask any open decision
+   restored worktree; a task whose TASK_PROGRESS.md says `Tests: coder` also gets
+   `$TASKGIT coder-tests` again, since a restored worktree starts without it), read TASK_PROGRESS.md, run `check.sh` once if code steps are ✅, re-ask any open decision
    or open spec round, restart the first step that isn't ✅.
 4. Send a one-screen **Where we are** (the owner may be back after days, on a phone), then
    continue without waiting unless a decision is open:

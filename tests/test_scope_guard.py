@@ -95,6 +95,29 @@ class GuardTest(unittest.TestCase):
             with self.subTest(agent=agent, path=rel, expect="allow"):
                 self.assertIsNone(self.write(agent, rel))
 
+    def test_coder_tests_open_the_tests_for_one_task_only(self):
+        # O5: `taskgit.sh coder-tests` lets ONE task's coder write its tests; the gates stay closed,
+        # other roles and other tasks are unchanged, and no agent can write the marker
+        git = ["git", "-c", "user.name=t", "-c", "user.email=t@t", "-C", str(self.main)]
+        wt = Path(self.tmp.name) / "proj-wt" / "T-5"
+        subprocess.run(git + ["worktree", "add", "-q", "-b", "wip/T-5", str(wt)], check=True)
+        gitdir = subprocess.run(["git", "-C", str(wt), "rev-parse", "--absolute-git-dir"],
+                                capture_output=True, text=True, check=True).stdout.strip()
+        (Path(gitdir) / "devteam-coder-tests").write_text("")
+        w = lambda agent, rel: hook(f"dev-team-setup:{agent}", "Write", {"file_path": str(wt / rel)}, str(wt))
+        for agent in ("backend-coder", "frontend-coder", "rag-engineer", "agent-engineer"):
+            with self.subTest(agent=agent, expect="allow"):
+                self.assertIsNone(w(agent, "tests/test_a.py" if agent != "frontend-coder" else "frontend/src/App.test.tsx"))
+        for agent, rel in [("backend-coder", "scripts/check.sh"), ("backend-coder", "pyproject.toml"),
+                           ("backend-coder", ".coveragerc"), ("frontend-coder", "frontend/.eslintrc.json"),
+                           ("debugger", "tests/test_a.py"), ("mlops", "tests/test_a.py")]:
+            with self.subTest(agent=agent, path=rel, expect="deny"):
+                self.assertIsNotNone(w(agent, rel))
+        self.assertIsNotNone(self.write("backend-coder", "tests/test_a.py"))   # T-1 has no marker
+        out = subprocess.run([sys.executable, str(GUARD), "--check", "backend-coder", str(wt),
+                              "tests/test_a.py", "scripts/check.sh"], capture_output=True, text=True, check=True).stdout
+        self.assertEqual(out.split(), ["scripts/check.sh"])   # taskgit's scope check agrees
+
     def test_writes_only_in_task_worktree(self):
         # S8: a write anywhere in a git repo used to pass; the main checkout is off limits
         self.assertIsNotNone(hook("dev-team-setup:backend-coder", "Write",

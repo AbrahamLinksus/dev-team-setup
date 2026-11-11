@@ -55,12 +55,17 @@ Per task `T-xx`:
    (in parallel, with a fresh `changes.diff`);
    rounds exhausted → decision card.
    ML/DS tasks: also **evaluator** where metrics apply.
-   **Batched review (small and medium projects, STATE.md "Size").** A task that is low-risk by its
-   planned scope (none of the high-risk file kinds in `approval-modes.md`) runs the **tester
-   alone** in this step: mark its review step `⏭ batched` in TASK_PROGRESS.md and TASKS.md, and put
-   "Review: batched at milestone end" on its card. Its review comes once per milestone (below), one
-   reviewer for all such tasks instead of one each. Large projects, and every task whose scope is
-   high-risk, keep the per-task reviewer.
+   **Small and medium projects (STATE.md "Size"): one agent per low-risk task.** A task that is
+   low-risk by its planned scope (none of the high-risk file kinds in `approval-modes.md`) gets
+   `$TASKGIT coder-tests <repo> T-xx` right after `start`, `Tests: coder` in TASK_PROGRESS.md and
+   `Tests: yours` in the owner agent's brief: the coder writes the tests to the tester's standard
+   and runs plain `scripts/check.sh` (coverage included) until it passes. Its REPORT carries the
+   check result, so this step is skipped: mark the test and review steps `⏭ coder` and
+   `⏭ batched`, and put "Tests by the coder · review batched at milestone end" on its card. Its
+   review comes once per milestone (below), one reviewer for all such tasks instead of one each.
+   The gates (`check.sh`, coverage and lint configs) stay closed to the coder. Large projects,
+   and every task whose scope is high-risk, keep the separate tester and per-task reviewer; a
+   debugger round or a Major finding turns the task high-risk, and its next round has both.
 4. `$TASKGIT sync <repo> T-xx`. Exit 4 (conflict) / 5 (checks fail; output path in the error)
    → debugger, back to step 3.
 5. Classify risk (`approval-modes.md`); produce visuals (`visual-capture.md`, screenshots first).
@@ -83,7 +88,8 @@ Per task `T-xx`:
 milestone's last worktree (`M<n>-docs`, or `handover` for the last milestone), write those tasks'
 approved diffs to one file without opening it:
 `for id in T-03 T-05; do git -C <repo> show "$(git -C <repo> log -n 1 --format=%H --grep="^Task: $id\$" main)"; done > <wt>/.results/<task>/changes.diff`
-and spawn one **reviewer** on it (brief: the task IDs and their acceptance criteria). Critical or
+and spawn one **reviewer** on it (brief: the task IDs and their acceptance criteria; for tasks
+with `Tests: coder`, also check that the tests really exercise each criterion). Critical or
 Major findings → a fix task per affected task (`T-03r`, its owner agent, high-risk, normal flow)
 before the milestone card; Minor findings go on the milestone card.
 
