@@ -11,7 +11,8 @@ Task `handover` (normal task flow, after the last milestone):
    a `$CAPTURE term` of the test run), then stops it. You copy the 2–4 best PNGs to
    `<wt>/docs/images/` (tracked) and list those paths in the docs agent's `Read:`.
 1. **devops**: CI running `scripts/check.sh` on push/PR (deploy only if the owner asks).
-2. **architect**: `docs/ARCHITECTURE.md` (as built) and `docs/WALKTHROUGH.md` (templates).
+2. **architect**: as-built sync of `docs/LLD.md` (changes since the last milestone), then
+   `docs/ARCHITECTURE.md` (as built) and `docs/WALKTHROUGH.md` (templates).
 3. **docs**: README "How to run / How to test / How to extend" with the screenshots in `docs/images/`.
 4. **reviewer** (read-only): checks that every path and function named in the three docs exists.
    **tester** (it has Bash): runs every command in the README's "How to run" and "How to test"

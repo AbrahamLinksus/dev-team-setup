@@ -72,12 +72,15 @@ Per task `T-xx`:
    - approve exits non-zero: 4/5 → debugger, then a new card; 7 → report the push problem;
      8 → a change request is open: keep the card queued until it merges.
 
-**Milestone end ⏸**: task `M<n>-docs` with two steps: **architect** as-built sync of
+**Milestone end ⏸** (every milestone but the last): task `M<n>-docs` with two steps: **architect** as-built sync of
 `docs/LLD.md` (changes since last milestone, section numbers kept stable), then **docs**
 README pass. Milestone card (includes the LLD changes): **Approve + continue in a fresh
 session (Recommended)** / Approve and continue here / Request changes.
 Fresh session → update STATE.md "Next step", `$TASKGIT record <repo> "chore: milestone M<n>"`,
 then tell the owner: "Start a new chat and run `/setup-project resume <repo>`", and stop.
+**The last milestone** has no docs task and no milestone card: its last approved task leads
+straight into the handover (stage 8), whose architect and docs steps cover the same ground.
+Each milestone costs a docs task and a session restart, so the planner sizes them to the project.
 
 **Long session check (between tasks).** Your own context grows with every task, and every call
 re-reads all of it, so a long session costs more per task the longer it runs. After you
