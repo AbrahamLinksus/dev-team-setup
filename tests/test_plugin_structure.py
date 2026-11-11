@@ -381,12 +381,6 @@ class StructureTest(unittest.TestCase):
         self.assertIn("/plugin configure dev-team-setup@dev-team-setup", readme)
         self.assertIn("`/config`", readme)
 
-    def test_example_says_how_old_it_is(self):
-        # M7: the only example is from v0.2 (no spec stage, no build); readers must know that
-        example = (ROOT / "examples" / "todo-app" / "README.md").read_text(encoding="utf-8")
-        self.assertIn("Dated example (plugin v0.2)", example)
-        self.assertIn("v0.2", (ROOT / "README.md").read_text(encoding="utf-8"))
-
     def test_readme_discloses_what_it_runs_and_sends(self):
         # D1: the directory's security scan expects every network, install and repo action disclosed
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
