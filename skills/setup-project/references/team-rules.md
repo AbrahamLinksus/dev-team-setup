@@ -7,6 +7,7 @@ The single source of these rules. Every agent reads this file before starting.
 - Work only inside the worktree path in your brief (the task's own `wip/<id>` branch). Never touch the main checkout.
 - Your shell and tools do **not** start in the worktree. Use the absolute paths from your brief with Read, Write and Edit, and start every Bash command with `cd <worktree> &&` (e.g. `cd /home/me/projects/todo-wt/T-03 && uv run pytest -q`). Relative paths would read or change the main checkout.
 - Read only what your brief's `Read:` field lists. If you need something that isn't listed, read just that section and add `Context gap: <what and why>` under Issues.
+- When `Read:` names document sections (`docs/LLD.md §2.1, §4`), read only those sections, not the whole file: Grep the file for the section headings (`^#+ §2\.1`, `^#+ §4`) to get their line numbers, then Read with `offset` and `limit` up to the next heading at the same level. Every agent start pays for what it reads.
 - `TASKS.md`, `STATE.md`, `DECISIONS.md` and `TASK_PROGRESS.md` belong to the Orchestrator: never edit them (only the planner writes `TASKS.md`, during planning and change requests). Read them only when your `Read:` field lists them.
 
 ## Scope is enforced
