@@ -628,6 +628,14 @@ class StructureTest(unittest.TestCase):
         self.assertIn("aim for a parallel factor of 2 or more", planner)
         self.assertIn("Name the **shared modules** in the LLD", (ROOT / "agents" / "architect.md").read_text(encoding="utf-8"))
 
+    def test_stages_overlap_and_milestone_cards_leave_no_gap(self):
+        # B-44: B's implement starts while A is tested; B-45: next-milestone work while the card waits
+        build = (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8")
+        self.assertIn("**as soon as a task's implement step\nends**", build)
+        self.assertIn("**No idle gap while the milestone card waits:**", build)
+        self.assertIn("--ready --avoid M<n>", build)
+        self.assertIn("let each finish its current step (checkpointed), then restart", build)
+
     def test_plan_vs_actual_files(self):
         # B-43: a task that edits files it didn't declare would let --ready start a colliding task
         build = (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8")

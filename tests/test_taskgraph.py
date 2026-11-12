@@ -156,6 +156,18 @@ class TaskGraphTest(unittest.TestCase):
         out = json.loads(self.run_tg(text, "--ready", "--json").stdout)
         self.assertEqual([t["id"] for t in out], ["T-04", "T-02", "T-03"])
 
+    def test_ready_stays_in_the_current_milestone_and_can_avoid_one_under_review(self):
+        def ms(n: int, body: str) -> str:
+            return f"## M{n} · part {n}\n\n{body}"
+        text = (ms(1, task("T-01", status="Done") + task("T-02", "T-01", "src/list.py")) +
+                ms(2, task("T-03", "T-01", "src/list.py") + task("T-04", "T-01", "src/search.py")))
+        # M1 still has T-02 open: M2 waits
+        self.assertEqual(self.run_tg(text, "--ready").stdout.split(), ["T-02"])
+        # M1 done, its card waiting: M2 tasks may start, except one touching M1's files
+        text = text.replace("- Files: src/list.py\n- Status: Backlog", "- Files: src/list.py\n- Status: Done", 1)
+        self.assertEqual(sorted(self.run_tg(text, "--ready").stdout.split()), ["T-03", "T-04"])
+        self.assertEqual(self.run_tg(text, "--ready", "--avoid", "M1").stdout.split(), ["T-04"])
+
     def test_undeclared_files_are_reported(self):
         r = self.run_tg(RECIPE_BOX, "--undeclared", "T-03",
                         stdin="src/search/index.py\nweb/search.js\nweb/favourite-toggle.js\n")

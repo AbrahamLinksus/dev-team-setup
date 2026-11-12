@@ -5,8 +5,10 @@
     taskgraph.py TASKS.md --json              the same as JSON (the build loop schedules from it)
     taskgraph.py TASKS.md --summary           plain words for the planning card
     taskgraph.py TASKS.md --mermaid           a flowchart (critical path highlighted) for capture.py
-    taskgraph.py TASKS.md --ready [--json]    tasks to start now: dependencies Done, no shared files
-                                              with running tasks, up to --max running at once
+    taskgraph.py TASKS.md --ready [--json]    tasks to start now, from the earliest unfinished milestone:
+                                              dependencies Done, no shared files with running tasks,
+                                              up to --max running at once; --avoid M2 also skips tasks
+                                              sharing files with milestone M2 (its card is waiting)
     taskgraph.py TASKS.md --undeclared T-04   changed paths on stdin → the ones T-04's Files don't cover
 
 A wave is one dependency level, split so that no two tasks in it share a file and no wave holds
@@ -152,17 +154,28 @@ def build(tasks: dict[str, dict], cap: int) -> dict:
             "critical_path": path, "parallel_factor": factor, "warnings": warnings}
 
 
-def ready(tasks: dict[str, dict], cap: int) -> list[str]:
+def ready(tasks: dict[str, dict], cap: int, avoid: str = "") -> list[str]:
+    """Tasks to start now, from the earliest milestone that isn't finished. `avoid` names a
+    milestone under review: skip tasks sharing a file with any of its tasks (its card may still
+    ask for changes there)."""
     done = {t for t, d in tasks.items() if d["status"].lower() == "done"}
     running = [t for t, d in tasks.items() if d["status"].lower() in RUNNING]
+    order = []
+    for d in tasks.values():
+        if d["milestone"] not in order:
+            order.append(d["milestone"])
+    open_ms = [m for m in order if any(d["milestone"] == m and d["id"] not in done for d in tasks.values())]
+    current = open_ms[0] if open_ms else None
+    held = [d for d in tasks.values() if avoid and d["milestone"] == avoid]
     picked: list[str] = []
     slots = max(0, cap - len(running))
     candidates = sorted((t for t, d in tasks.items() if d["status"].lower() == "backlog"
-                         and set(d["depends"]) <= done), key=lambda t: (-tasks[t]["chain"], t))
+                         and d["milestone"] == current and set(d["depends"]) <= done),
+                        key=lambda t: (-tasks[t]["chain"], t))
     for t in candidates:
         if len(picked) >= slots:
             break
-        if any(share_files(tasks[t], tasks[o]) for o in running + picked):
+        if any(share_files(tasks[t], tasks[o]) for o in running + picked) or any(share_files(tasks[t], h) for h in held):
             continue
         picked.append(t)
     return picked
@@ -218,6 +231,7 @@ def main(argv: list[str] | None = None) -> int:
     mode.add_argument("--ready", action="store_true")
     mode.add_argument("--undeclared", metavar="ID")
     ap.add_argument("--json", action="store_true")
+    ap.add_argument("--avoid", metavar="M<n>", help="with --ready: skip tasks sharing files with this milestone")
     a = ap.parse_args(argv)
     if a.max < 1:
         ap.error("--max must be at least 1")
@@ -238,7 +252,7 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(extra) if a.json else "\n".join(extra))
         return 0
     if a.ready:
-        picked = ready(tasks, a.max)
+        picked = ready(tasks, a.max, a.avoid or "")
         print(json.dumps([tasks[t] for t in picked], ensure_ascii=False) if a.json else "\n".join(picked))
         return 0
     if a.json:

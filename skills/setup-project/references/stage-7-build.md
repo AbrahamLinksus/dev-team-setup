@@ -6,8 +6,11 @@ Part of the /setup-project Orchestrator (SKILL.md). Read this file when the stag
 
 **Schedule from the graph, never by eye.** `python3 $TASKGRAPH <repo>/TASKS.md --ready` prints the
 tasks to start now: dependencies `Done`, no file in their `Files:` shared with a running task, up to
-3 running in total, longest remaining chain first. Run it whenever a task finishes, is approved or
-waits on a card; tasks run in their own worktrees, and shared files are only edited on main.
+3 running in total, longest remaining chain first, from the earliest unfinished milestone. Run it
+whenever a task finishes, is approved or waits on a card, and **as soon as a task's implement step
+ends**: while task A is in test + review, the next ready task's implement step already runs (its
+files don't overlap A's, so neither waits for the other). Tasks run in their own worktrees, and
+shared files are only edited on main.
 
 **Start the ready tasks together, really at the same time.** Agents run in parallel only when
 they're spawned in the **same message**; one Agent call per message runs them one after another.
@@ -122,6 +125,10 @@ the architect's `Read:`: the sync edits only the LLD sections for those paths. *
 (mark it `⏭ no design changes`) when no changed path outside `docs/`, tests and the shared files
 appears in `docs/LLD.md` (`grep -c -F -f` on the list's top folders finds nothing). Milestone card (includes the LLD changes): **Approve + continue in a fresh
 session (Recommended)** / Approve and continue here / Request changes.
+**No idle gap while the milestone card waits:** before asking, run
+`python3 $TASKGRAPH <repo>/TASKS.md --ready --avoid M<n>` and start what it prints: next-milestone
+tasks that share no file with milestone M<n>, so "Request changes" there never redoes their work.
+Fresh session with such tasks running → let each finish its current step (checkpointed), then restart.
 Fresh session → update STATE.md "Next step", `$TASKGIT record <repo> "chore: milestone M<n>"`,
 then tell the owner: "Start a new chat and run `/setup-project resume <repo>`", and stop.
 **The last milestone** has no docs task and no milestone card: its last approved task leads
