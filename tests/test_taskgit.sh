@@ -489,6 +489,40 @@ if scenario undo_an_approved_task; then
   check "not mid-revert" test ! -f "$R/.git/REVERT_HEAD"
 fi
 
+if scenario approve_folds_the_record; then
+  # TASKS/STATE/DECISIONS updates made in the main checkout before approve land in the task's own
+  # commit: one commit per approved task, and worktrees never touch the shared files.
+  new_repo fold
+  T=$(tg start "$R" T-01); echo "a = 1" > "$T/a.py"; tgq checkpoint "$R" T-01 "implement done"
+  sedi 's/T-01: In progress/T-01: Done/' "$R/TASKS.md"; echo "- D-01 from T-01" >> "$R/DECISIONS.md"
+  before=$(git -C "$R" rev-list --count origin/main)
+  check "approve with shared-file updates pending" expect_exit 0 tg approve "$R" T-01 "feat: a [T-01]"
+  check "one commit on main for the task" test "$(git -C "$R" rev-list --count origin/main)" = $((before + 1))
+  check "the commit holds the code" contains "$(on_main a.py)" "a = 1"
+  check "and the TASKS.md update" contains "$(on_main TASKS.md)" "T-01: Done"
+  check "and the DECISIONS.md update" contains "$(on_main DECISIONS.md)" "D-01 from T-01"
+  check "main checkout clean afterwards" clean_main
+  # any other dirty file still stops approve, and the shared-file edits survive the refusal
+  T=$(tg start "$R" T-02); echo "b = 2" > "$T/b.py"; tgq checkpoint "$R" T-02 "implement done"
+  sedi 's/T-02: Backlog/T-02: Done/' "$R/TASKS.md"; echo "y = 2" >> "$R/shared_code.py"
+  check "a dirty non-shared file stops approve (exit 3)" expect_exit 3 tg approve "$R" T-02 "feat: b"
+  check "the TASKS.md edit is still there" grep -q "T-02: Done" "$R/TASKS.md"
+  git -C "$R" checkout -q -- shared_code.py
+  # a failing check after sync: nothing approved, edits kept
+  echo "BROKEN = 1" > "$T/b.py"; tgq checkpoint "$R" T-02 "broken"
+  check "failing checks stop approve (exit 5)" expect_exit 5 tg approve "$R" T-02 "feat: b"
+  check "the TASKS.md edit survived the failed approve" grep -q "T-02: Done" "$R/TASKS.md"
+  check "main not advanced" test -z "$(on_main b.py)"
+  rm -rf "$T/.results"; echo "b = 2" > "$T/b.py"; tgq checkpoint "$R" T-02 "fixed"
+  check "approve after the fix" expect_exit 0 tg approve "$R" T-02 "feat: b [T-02]"
+  check "T-02 Done is on main" contains "$(on_main TASKS.md)" "T-02: Done"
+  # undo reverts the code but leaves the shared files to the Orchestrator
+  check "undo of a folded commit" expect_exit 0 tg undo "$R" T-02
+  check "the code is reverted" test -z "$(on_main b.py)"
+  check "TASKS.md is left as it was" contains "$(on_main TASKS.md)" "T-02: Done"
+  check "main checkout clean after undo" clean_main
+fi
+
 if scenario step_command; then
   # O9: one call per agent step (scope + mark TASK_PROGRESS.md + checkpoint) instead of 3–4 turns
   new_repo step

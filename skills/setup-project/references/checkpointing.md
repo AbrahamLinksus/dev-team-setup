@@ -54,8 +54,9 @@ exactly those questions. On `wip/CR-<n>` it records the CR text verbatim and the
 4. Only then spawn the next agent.
 
 Shared files (`TASKS.md`, `STATE.md`, `DECISIONS.md`) are never changed on task branches
-(`checkpoint` reverts them). They're updated in the main checkout after `approve`, and
-committed with `$TASKGIT record`. That's what keeps parallel tasks from conflicting.
+(`checkpoint` reverts them). They're updated in the main checkout just before `approve`, which
+commits them in the task's own squash commit (`$TASKGIT record` commits updates that have no task
+to approve: rejects, pauses, milestone notes). That's what keeps parallel tasks from conflicting.
 
 A step marked ⏳ on resume was interrupted: restart it from the beginning (its partial
 files are on the branch; the agent reads them and continues).

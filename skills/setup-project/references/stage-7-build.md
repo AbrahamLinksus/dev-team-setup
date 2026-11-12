@@ -74,9 +74,11 @@ Per task `T-xx`:
    in STATE.md and use it from now on) / **Pause** (`anytime.md`). Never continue over budget unasked.
 6. Result card now, queued for a batch, or (autopilot, low-risk with every goal ✅) approved first
    and sent afterwards with Undo, per approval mode (`approval-modes.md`). Then:
-   - **Approve** → run `$TASKGIT approve <repo> T-xx "<msg>"` yourself, with a conventional-commit
-     message built from the card (`feat(auth): add login endpoint [T-07]`); then update `TASKS.md`,
-     `DECISIONS.md`, `STATE.md` in the main checkout and `$TASKGIT record <repo> "chore: record T-xx"`.
+   - **Approve** → first update `TASKS.md` (status `Done`, Result line), `DECISIONS.md` and
+     `STATE.md` in the main checkout, then run `$TASKGIT approve <repo> T-xx "<msg>"` yourself, with
+     a conventional-commit message built from the card (`feat(auth): add login endpoint [T-07]`).
+     approve commits those updates in the task's own commit: one commit per task, no `record`.
+     If approve fails, the updates stay in the main checkout; fix the cause and approve again.
    - **Request changes** that stays within the task's acceptance criteria → back to step 2,
      continuing the owner agent (see **Rework continuation** in SKILL.md). Anything wider is a
      **change request** (`references/anytime.md`).
@@ -105,7 +107,7 @@ Each milestone costs a docs task and a session restart, so the planner sizes the
 
 **Long session check (between tasks).** Your own context grows with every task, and every call
 re-reads all of it, so a long session costs more per task the longer it runs. After you
-`record` an approved task, if **6 or more tasks** have been approved in this session, no task
+approve a task, if **6 or more tasks** have been approved in this session, no task
 is mid-step (every open `TASK_PROGRESS.md` has no ⏳) and the milestone isn't about to end
 (its last task isn't next), ask once: **Continue in a fresh session (Recommended)** / Continue
 here. Fresh session: the same steps as at milestone end (STATE.md "Next step", `record`, tell

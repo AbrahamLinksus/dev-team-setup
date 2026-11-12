@@ -6,8 +6,9 @@
 #   - each task / planning stage lives on branch wip/<id> in worktree <repo>-wt/<id>;
 #     every step is committed + pushed there (`checkpoint`), so work survives the session ending.
 #   - Shared files (TASKS.md, STATE.md, DECISIONS.md) belong to main: branches never change
-#     them (checkpoint reverts any change); the Orchestrator updates them on main with
-#     `record` after `approve`. Exceptions: `plan` owns all three (nothing runs in parallel
+#     them (checkpoint reverts any change); the Orchestrator edits them in the main checkout
+#     before `approve`, which commits them in the task's own squash commit (`record` is for
+#     updates with no task to approve). Exceptions: `plan` owns all three (nothing runs in parallel
 #     with planning); `CR-<n>` owns only TASKS.md (its re-plan). If TASKS.md changed on main
 #     since the CR branched, sync/approve abort (exit 4) so the planner re-plans on current main.
 #   - While a CR branch is open, task approvals are held (exit 8) so nothing is recorded
@@ -27,7 +28,8 @@
 #   taskgit.sh sync       <repo> <id>                    merge origin/main into wip/<id>, run check.sh, push
 #   taskgit.sh diff       <repo> <id>                    full diff vs main (for the reviewer)
 #   taskgit.sh diffstat   <repo> <id>                    diff --stat vs main (for the result card)
-#   taskgit.sh approve    <repo> <id> "<msg>"            sync, squash into main, push, clean up
+#   taskgit.sh approve    <repo> <id> "<msg>"            sync, squash into main (with any TASKS/STATE/
+#                                                        DECISIONS updates in the main checkout), push, clean up
 #   taskgit.sh record     <repo> "<msg>"                 commit + push shared-file updates on main
 #   taskgit.sh reject     <repo> <id>                    drop wip/<id> (local + remote) and its worktree
 #   taskgit.sh undo       <repo> <id>                    revert an approved task's commit on main and push
@@ -126,6 +128,13 @@ unpin_agents() {  # forget the agent pins (scope guard) of the worktree being re
 log_time() {  # one line per event, to measure time per step; never fails the command
   printf '%s\t%s\t%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$id" "$1" \
     >> "$(g rev-parse --absolute-git-dir 2>/dev/null)/devteam-timing.log" 2>/dev/null || true
+}
+
+pending=(); pending_dir=""
+restore_pending() {  # approve: put the parked shared-file updates back into the main checkout
+  [[ -n "$pending_dir" && -d "$pending_dir" ]] || return 0
+  local f; for f in ${pending[@]+"${pending[@]}"}; do cp "$pending_dir/$f" "$repo/$f"; done
+  rm -rf "$pending_dir"; pending_dir=""
 }
 
 ensure_wt() {  # sets wt; fails if the worktree doesn't exist
@@ -411,12 +420,30 @@ case "$cmd" in
       crs=$(printf '%s' "$crs" | tr '\n' ' ')
       [[ -n "${crs// }" ]] && die 8 "approvals are held while a change request is open ($crs). Merge or cancel it first; $id stays queued."
     fi
-    # 1. main checkout must be clean and on main
+    # 1. main checkout must be clean and on main, except for the shared files the Orchestrator
+    #    updated for this approval (TASKS.md, STATE.md, DECISIONS.md): they go into the task's own
+    #    commit, so an approved task is one commit on main, with no separate record commit.
     clear_leftovers
-    dirty=$(g status --porcelain --untracked-files=no)
-    [[ -n "$dirty" ]] && die 3 "main checkout has uncommitted changes, approve stopped:\n$dirty\n(commit them with 'record' or discard them first)"
+    pending=(); others=""
+    while IFS= read -r f; do
+      [[ -z "$f" ]] && continue
+      if is_shared "$f" && ! is_owned "$f"; then pending+=("$f"); else others+="$f"$'\n'; fi
+    done < <(g -c core.quotepath=off status --porcelain --untracked-files=no | sed -E 's/^.. //')
+    [[ -n "$others" ]] && die 3 "main checkout has uncommitted changes, approve stopped:\n$others(only ${SHARED[*]} may be updated before approve; commit others with 'record' or discard them first)"
+    if (( ${#pending[@]} )); then
+      # Park the updates outside the checkout while main moves; put them back on any exit, so a
+      # failed approve never loses them (the commit below holds the same content on success).
+      pending_dir=$(mktemp -d)
+      for f in "${pending[@]}"; do cp "$repo/$f" "$pending_dir/$f"; done
+      trap restore_pending EXIT
+      g checkout -q HEAD -- "${pending[@]}"
+    fi
     g checkout -q "$main" || die 3 "cannot check out $main"
     g fetch -q origin "$main" || die 3 "fetch failed"
+    for f in ${pending[@]+"${pending[@]}"}; do
+      g diff --quiet HEAD "origin/$main" -- "$f" \
+        || die 4 "$f changed on origin/$main since you edited it; nothing was approved. Your edits are kept in the main checkout: redo them on top of origin/$main (git -C $repo merge --ff-only origin/$main after stashing), then approve again."
+    done
     g merge -q --ff-only "origin/$main" 2>/dev/null || die 3 "local $main has diverged from origin/$main; nothing was approved. Resolve: git -C $repo log --oneline origin/$main..$main"
     if [[ -n "$(g rev-list "origin/$main..$main")" ]]; then   # approved earlier but the push failed
       push_branch "$repo" "$main" || die 7 "local $main still has unpushed approved commits; fix the push first"
@@ -431,6 +458,7 @@ case "$cmd" in
     if g diff --quiet "$main" "$br" -- . "${excl[@]}"; then   # nothing left to merge: already on main
       unpin_agents; g worktree remove --force "$wt" 2>/dev/null || true; g branch -q -D "$br" 2>/dev/null || true
       g push -q origin --delete "$br" 2>/dev/null || true; g worktree prune
+      (( ${#pending[@]} )) && echo "note: ${pending[*]} left uncommitted in the main checkout; commit them with 'record'" >&2
       echo "approved: $id was already on $main ($(g log --oneline -1)); cleaned up"; exit 0
     fi
     # 3. squash into main
@@ -448,6 +476,7 @@ case "$cmd" in
       g reset -q --hard HEAD
       die 6 "the squash of $br into $main is empty (the task only changed files main owns, or nothing at all); main restored. Reject the task, or record the shared-file changes on main with 'record'."
     fi
+    for f in ${pending[@]+"${pending[@]}"}; do cp "$pending_dir/$f" "$repo/$f"; g add -- "$f"; done
     # the Task: trailer lets `undo` find exactly this commit later (autopilot approvals)
     g commit -q -m "$msg" -m "Task: $id" || { g reset -q --hard HEAD; die 6 "commit on $main failed; main restored"; }
     # 4. push. If origin moved in the meantime, a rebased commit would reach main untested:
@@ -456,7 +485,7 @@ case "$cmd" in
     if ! push_branch "$repo" "$main"; then
       g fetch -q origin "$main" 2>/dev/null
       if [[ -n "$(g rev-list "$main..origin/$main" 2>/dev/null)" && "${TASKGIT_APPROVE_RETRY:-0}" != 1 ]]; then
-        g reset -q --hard HEAD~1
+        g reset -q --hard HEAD~1; restore_pending
         echo "note: origin/$main moved during approve; re-syncing $id with it and re-running the checks" >&2
         TASKGIT_APPROVE_RETRY=1 exec bash "$0" approve "$repo" "$id" "$msg"
       fi
@@ -511,9 +540,18 @@ case "$cmd" in
       die 1 "$id was already undone on $main"
     fi
     if ! g revert --no-commit "$sha" >/dev/null 2>&1; then
-      g revert --abort 2>/dev/null; g reset -q --hard HEAD 2>/dev/null
-      die 4 "can't undo $id cleanly: later approved work changed the same lines. Nothing changed. Undo the later task first, or make the change as a new task."
+      # a conflict only in the shared files is no conflict: they stay as they are (below)
+      conflicted=$(g -c core.quotepath=off diff --name-only --diff-filter=U)
+      only_shared=1
+      while IFS= read -r f; do [[ -z "$f" ]] || is_shared "$f" || only_shared=0; done <<<"$conflicted"
+      if [[ -z "$conflicted" || $only_shared == 0 ]]; then
+        g revert --abort 2>/dev/null; g reset -q --hard HEAD 2>/dev/null
+        die 4 "can't undo $id cleanly: later approved work changed the same lines. Nothing changed. Undo the later task first, or make the change as a new task."
+      fi
     fi
+    # The squash commit also holds that approval's TASKS/STATE/DECISIONS updates; those stay as
+    # they are (the Orchestrator records the undo there itself), so later records don't conflict.
+    for f in "${SHARED[@]}"; do g cat-file -e "HEAD:$f" 2>/dev/null && g checkout -q HEAD -- "$f"; done
     g commit -q -m "Revert \"$(g log -n 1 --format=%s "$sha")\"" -m "This reverts commit $sha." -m "Undone: $id" \
       || { g reset -q --hard HEAD; die 6 "the revert commit for $id failed; main restored"; }
     log_time "undone"

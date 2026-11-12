@@ -123,7 +123,8 @@ wording. These always apply:
 - Never continue an agent across tasks or worktrees.
 
 Pushing `wip/*` branches is pre-approved. **main changes only through `$TASKGIT approve`
-(after an approved card) and `$TASKGIT record` (shared files).**
+(after an approved card; it also commits that task's shared-file updates) and `$TASKGIT record`
+(shared-file updates with no task to approve).**
 
 ## Start here
 

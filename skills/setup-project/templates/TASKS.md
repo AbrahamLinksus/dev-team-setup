@@ -15,4 +15,4 @@ Status: Backlog → In progress → Review → Needs you → Done
 - Acceptance criteria:
   - [ ] {{checkable outcome}}
   - [ ] {{checkable outcome}}
-- Result: {{filled after approval: ✅/⚠️ summary + commit sha}}
+- Result: {{filled at approval: ✅/⚠️ summary (the commit carries a `Task: T-01` trailer)}}
