@@ -82,7 +82,12 @@ Per task `T-xx`:
    debugger round or a Major finding turns the task high-risk, and its next round has both.
 4. `$TASKGIT sync <repo> T-xx`. Exit 4 (conflict) / 5 (checks fail; output path in the error)
    → debugger, back to step 3.
-5. Classify risk (`approval-modes.md`); produce visuals (`visual-capture.md`, screenshots first).
+5. **Plan vs actual:** `$TASKGIT changed <repo> T-xx | python3 $TASKGRAPH <repo>/TASKS.md --undeclared T-xx`
+   lists the files the task changed outside its `Files:`. Any → add them to its `Files:` in TASKS.md
+   in the main checkout straight away (so `--ready` keeps tasks that touch them waiting), put a
+   `Plan vs actual:` line on the card, and run `--ready` again: the schedule for the remaining
+   tasks now reflects them.
+   Classify risk (`approval-modes.md`); produce visuals (`visual-capture.md`, screenshots first).
    Run `python3 $COST …` for the card's Cost line. **Exit 3 (over budget)** → before the card, a
    decision card ⏸: "Spent $X of your $B budget" → **Raise the budget to …** (suggest 1.5×; record it
    in STATE.md and use it from now on) / **Pause** (`anytime.md`). Never continue over budget unasked.

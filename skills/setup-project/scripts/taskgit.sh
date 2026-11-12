@@ -30,6 +30,7 @@
 #   taskgit.sh sync       <repo> <id>                    merge origin/main into wip/<id>, run check.sh, push
 #   taskgit.sh diff       <repo> <id>                    full diff vs main (for the reviewer)
 #   taskgit.sh diffstat   <repo> <id>                    diff --stat vs main (for the result card)
+#   taskgit.sh changed    <repo> <id>                    changed paths vs main, one per line
 #   taskgit.sh approve    <repo> <id> "<msg>"            sync, squash into main (with any TASKS/STATE/
 #                                                        DECISIONS updates in the main checkout), push, clean up
 #   taskgit.sh record     <repo> "<msg>"                 commit + push shared-file updates on main
@@ -470,6 +471,11 @@ PY
   diff)
     id=${3:?id}; g fetch -q origin "$main" 2>/dev/null || true
     g diff "origin/$main...wip/$id" -- . ":(exclude)$PROGRESS" ;;
+
+  changed)
+    # the task's changed paths, one per line (plan vs actual: taskgraph.py --undeclared reads them)
+    id=${3:?id}; g fetch -q origin "$main" 2>/dev/null || true
+    g -c core.quotepath=off diff --name-only "origin/$main...wip/$id" -- . ":(exclude)$PROGRESS" ;;
 
   diffstat)
     id=${3:?id}; g fetch -q origin "$main" 2>/dev/null || true

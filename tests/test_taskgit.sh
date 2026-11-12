@@ -547,6 +547,15 @@ if scenario watch_flags_a_stalled_step; then
   check "no history: stalls at the cap" expect_exit 9 env TASKGIT_STALL_SECONDS=1 TASKGIT_WATCH_POLL=1 bash "$TG" watch "$R" T-01 docs
 fi
 
+if scenario changed_lists_the_task_paths; then
+  # plan vs actual: the task's changed paths, without the Orchestrator's progress file
+  new_repo changed
+  T=$(tg start "$R" T-01); mkdir -p "$T/src"; echo "a = 1" > "$T/src/a.py"; echo "# p" > "$T/TASK_PROGRESS.md"
+  tgq checkpoint "$R" T-01 "implement done"
+  out=$(tg changed "$R" T-01)
+  check "lists the changed path" test "$out" = "src/a.py"
+fi
+
 if scenario step_command; then
   # O9: one call per agent step (scope + mark TASK_PROGRESS.md + checkpoint) instead of 3–4 turns
   new_repo step

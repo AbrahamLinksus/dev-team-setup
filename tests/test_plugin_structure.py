@@ -628,6 +628,14 @@ class StructureTest(unittest.TestCase):
         self.assertIn("aim for a parallel factor of 2 or more", planner)
         self.assertIn("Name the **shared modules** in the LLD", (ROOT / "agents" / "architect.md").read_text(encoding="utf-8"))
 
+    def test_plan_vs_actual_files(self):
+        # B-43: a task that edits files it didn't declare would let --ready start a colliding task
+        build = (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8")
+        self.assertIn("`$TASKGIT changed <repo> T-xx | python3 $TASKGRAPH <repo>/TASKS.md --undeclared T-xx`", build)
+        self.assertIn("add them to its `Files:` in TASKS.md", build)
+        self.assertIn("Plan vs actual:", (SKILL / "references" / "result-card.md").read_text(encoding="utf-8"))
+        self.assertIn("  changed)", (SKILL / "scripts" / "taskgit.sh").read_text(encoding="utf-8"))
+
     def test_lld_has_a_size_cap_and_a_narrow_sync(self):
         # B-20: the LLD grew past what any brief reads, and every milestone re-synced all of it
         architect = (ROOT / "agents" / "architect.md").read_text(encoding="utf-8")
