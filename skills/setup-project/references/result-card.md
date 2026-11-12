@@ -130,6 +130,9 @@ Ask (AskUserQuestion, header `M<n>`):
 Send the LLD "Changes since last milestone" section rendered as an image when there are
 changes. Offer the same fresh-session choice after a change request merges.
 
+Milestone cards also carry the **rework flag** from `cost.py --rework` (tasks over 2× the
+milestone's median cost and their debugger rounds), so the owner sees where money went to fixes.
+
 ## Handover card (project end)
 
 Images: running app (or main output) screenshot, the as-built system diagram, README

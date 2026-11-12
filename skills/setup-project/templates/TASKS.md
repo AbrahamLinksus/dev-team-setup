@@ -25,4 +25,4 @@ the same time.
 - Acceptance criteria:
   - [ ] {{checkable outcome}}
   - [ ] {{checkable outcome from a usage scenario}} (S-01)
-- Result: {{filled at approval: ✅/⚠️ summary (the commit carries a `Task: T-01` trailer)}}
+- Result: {{filled at approval: ✅/⚠️ summary · ≈$cost · role shares (`cost.py --result`); the commit carries a `Task: T-01` trailer}}
