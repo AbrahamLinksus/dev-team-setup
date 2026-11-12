@@ -614,6 +614,42 @@ class StructureTest(unittest.TestCase):
         self.assertNotIn("update it from the real task count", planning)
         self.assertIn("| Size |", (SKILL / "templates" / "STATE.md").read_text(encoding="utf-8"))
 
+    def test_task_graph_on_the_planning_card(self):
+        # B-41: the owner sees what runs together before the build; B-42: foundation first, then slices
+        planning = (SKILL / "references" / "stage-1-6-planning.md").read_text(encoding="utf-8")
+        self.assertIn("**The task graph goes on the planning card:**", planning)
+        self.assertIn("--mermaid", planning)
+        self.assertIn("`--summary` lines", planning)
+        self.assertIn("exit 2 (a cycle, an unknown ID, a task missing", planning)
+        self.assertIn("## Planning card (stage 6)", (SKILL / "references" / "result-card.md").read_text(encoding="utf-8"))
+        planner = (ROOT / "agents" / "planner.md").read_text(encoding="utf-8")
+        self.assertIn("first and alone in the plan", planner)
+        self.assertIn("touches only its own screen or module", planner)
+        self.assertIn("aim for a parallel factor of 2 or more", planner)
+        self.assertIn("Name the **shared modules** in the LLD", (ROOT / "agents" / "architect.md").read_text(encoding="utf-8"))
+
+    def test_stages_overlap_and_milestone_cards_leave_no_gap(self):
+        # B-44: B's implement starts while A is tested; B-45: next-milestone work while the card waits
+        build = (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8")
+        self.assertIn("**as soon as a task's implement step\nends**", build)
+        self.assertIn("**No idle gap while the milestone card waits:**", build)
+        self.assertIn("--ready --avoid M<n>", build)
+        self.assertIn("let each finish its current step (checkpointed), then restart", build)
+
+    def test_open_tasks_catch_up_after_each_approve(self):
+        # B-46: conflicts surfaced only at the final sync, after the whole task was done
+        build = (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8")
+        self.assertIn("**Early sync:** right after it, `$TASKGIT catchup <repo>", build)
+        self.assertIn("  catchup)", (SKILL / "scripts" / "taskgit.sh").read_text(encoding="utf-8"))
+
+    def test_plan_vs_actual_files(self):
+        # B-43: a task that edits files it didn't declare would let --ready start a colliding task
+        build = (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8")
+        self.assertIn("`$TASKGIT changed <repo> T-xx | python3 $TASKGRAPH <repo>/TASKS.md --undeclared T-xx`", build)
+        self.assertIn("add them to its `Files:` in TASKS.md", build)
+        self.assertIn("Plan vs actual:", (SKILL / "references" / "result-card.md").read_text(encoding="utf-8"))
+        self.assertIn("  changed)", (SKILL / "scripts" / "taskgit.sh").read_text(encoding="utf-8"))
+
     def test_lld_has_a_size_cap_and_a_narrow_sync(self):
         # B-20: the LLD grew past what any brief reads, and every milestone re-synced all of it
         architect = (ROOT / "agents" / "architect.md").read_text(encoding="utf-8")
@@ -629,7 +665,7 @@ class StructureTest(unittest.TestCase):
         planner = (ROOT / "agents" / "planner.md").read_text(encoding="utf-8")
         self.assertIn("**a task is one user-visible feature slice end to end**", planner)
         self.assertIn("never split a feature by layer", planner)
-        self.assertIn("a single **foundation task**, which must still be user-visible", planner)
+        self.assertIn("which must still be user-visible (the app starts and shows its first screen)", planner)
         self.assertIn('**Task caps by STATE.md "Size": small 8, medium 15, large 30**', planner)
         self.assertIn("`Why separate:`", planner)
         planning = (SKILL / "references" / "stage-1-6-planning.md").read_text(encoding="utf-8")
@@ -815,11 +851,15 @@ class StructureTest(unittest.TestCase):
     def test_independent_tasks_start_in_one_message(self):
         # P2: agents only run concurrently when spawned in the same message
         build = (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8")
-        block = build[build.index("**Start independent tasks together"):build.index("**Don't let the team idle")]
+        block = build[build.index("**Schedule from the graph"):build.index("**Don't let the team idle")]
         self.assertIn("same message", block)
-        self.assertIn("up to **3**", block)
         self.assertIn("one Agent call per task", block)
-        self.assertIn("when unsure, they're not\nindependent", block)
+        # B-36: the graph decides what is independent (T-17/T-18 shared a file nobody noticed)
+        self.assertIn("`python3 $TASKGRAPH <repo>/TASKS.md --ready`", block)
+        self.assertIn("up to\n3 running in total, longest remaining chain first", block)
+        self.assertIn("run `--ready` again", block)
+        self.assertIn("`Status: In progress` in TASKS.md", build)
+        self.assertIn("TASKGRAPH=<root>/skills/setup-project/scripts/taskgraph.py", (SKILL / "SKILL.md").read_text(encoding="utf-8"))
 
     def test_fast_mode_keeps_design_and_risky_reviews_strong(self):
         # P3: faster models for mechanical roles, never for the design or high-risk reviews

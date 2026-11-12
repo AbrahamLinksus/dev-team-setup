@@ -28,8 +28,11 @@
 #                                                        runs over 3x its usual time or 20 min: stalled
 #   taskgit.sh coder-tests <repo> <id>                   let this task's coder write its own tests
 #   taskgit.sh sync       <repo> <id>                    merge origin/main into wip/<id>, run check.sh, push
+#   taskgit.sh catchup    <repo> [<id>...]               after an approve: merge the new main into the other
+#                                                        open task branches (no checks; exit 4 lists conflicts)
 #   taskgit.sh diff       <repo> <id>                    full diff vs main (for the reviewer)
 #   taskgit.sh diffstat   <repo> <id>                    diff --stat vs main (for the result card)
+#   taskgit.sh changed    <repo> <id>                    changed paths vs main, one per line
 #   taskgit.sh approve    <repo> <id> "<msg>"            sync, squash into main (with any TASKS/STATE/
 #                                                        DECISIONS updates in the main checkout), push, clean up
 #   taskgit.sh record     <repo> "<msg>"                 commit + push shared-file updates on main
@@ -467,9 +470,40 @@ PY
   sync)
     id=${3:?id}; ensure_wt; do_sync ;;
 
+  catchup)
+    # Early sync: right after a task is approved, merge the new main into the other open task
+    # branches (between their steps), so a conflict shows while the task is still being worked
+    # on, not at its card. No checks here (sync runs them before the card). A worktree with
+    # uncommitted changes has an agent mid-step: it is skipped and caught up next time.
+    shift 2; ids=("$@")
+    if (( ${#ids[@]} == 0 )) && [[ -d "$wtroot" ]]; then
+      for d in "$wtroot"/*/; do [[ -d "$d" ]] && ids+=("$(basename "$d")"); done
+    fi
+    clashing=()
+    for id in ${ids[@]+"${ids[@]}"}; do
+      [[ "$id" == plan || "$id" == CR-* ]] && continue
+      wt="$wtroot/$id"; [[ -d "$wt" ]] || { echo "catchup: $id has no worktree; skipped"; continue; }
+      if [[ -n "$(gw status --porcelain --untracked-files=normal)" ]]; then
+        echo "catchup: $id has uncommitted work (a step is running); skipped"; continue
+      fi
+      if out=$(TASKGIT_SKIP_CHECK=1 bash "${BASH_SOURCE[0]}" sync "$repo" "$id" 2>&1); then
+        printf '%s\n' "$out" | grep -m1 '^sync: ' | sed 's/^sync: /catchup: /'
+      else
+        clashing+=("$id"); printf 'catchup: %s\n' "$(printf '%s\n' "$out" | sed -n 's/^TASKGIT ERROR: //p' | head -n 1)"
+      fi
+    done
+    (( ${#clashing[@]} )) && die 4 "these branches conflict with the new main (merge aborted, branches unchanged): ${clashing[*]}. Give each to its owner agent before its next step."
+    exit 0
+    ;;
+
   diff)
     id=${3:?id}; g fetch -q origin "$main" 2>/dev/null || true
     g diff "origin/$main...wip/$id" -- . ":(exclude)$PROGRESS" ;;
+
+  changed)
+    # the task's changed paths, one per line (plan vs actual: taskgraph.py --undeclared reads them)
+    id=${3:?id}; g fetch -q origin "$main" 2>/dev/null || true
+    g -c core.quotepath=off diff --name-only "origin/$main...wip/$id" -- . ":(exclude)$PROGRESS" ;;
 
   diffstat)
     id=${3:?id}; g fetch -q origin "$main" 2>/dev/null || true

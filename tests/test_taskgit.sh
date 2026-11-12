@@ -547,6 +547,35 @@ if scenario watch_flags_a_stalled_step; then
   check "no history: stalls at the cap" expect_exit 9 env TASKGIT_STALL_SECONDS=1 TASKGIT_WATCH_POLL=1 bash "$TG" watch "$R" T-01 docs
 fi
 
+if scenario changed_lists_the_task_paths; then
+  # plan vs actual: the task's changed paths, without the Orchestrator's progress file
+  new_repo changed
+  T=$(tg start "$R" T-01); mkdir -p "$T/src"; echo "a = 1" > "$T/src/a.py"; echo "# p" > "$T/TASK_PROGRESS.md"
+  tgq checkpoint "$R" T-01 "implement done"
+  out=$(tg changed "$R" T-01)
+  check "lists the changed path" test "$out" = "src/a.py"
+fi
+
+if scenario catchup_after_approve; then
+  # early sync: once a parallel task merges, the others take the new main straight away
+  new_repo catchup
+  A=$(tg start "$R" T-01); echo "x = 2" > "$A/shared_code.py"; tgq checkpoint "$R" T-01 "implement done"
+  B=$(tg start "$R" T-02); echo "b = 1" > "$B/b.py"; tgq checkpoint "$R" T-02 "implement done"
+  C=$(tg start "$R" T-03); echo "x = 3" > "$C/shared_code.py"; tgq checkpoint "$R" T-03 "implement done"
+  D=$(tg start "$R" T-04); echo "d = 1" > "$D/d.py"   # a step is running here: not checkpointed
+  tgq approve "$R" T-01 "feat: x2 [T-01]"
+  out=$(tg catchup "$R" T-02 T-03 T-04 2>&1); code=$?
+  check "a conflict anywhere exits 4" test "$code" = 4
+  check "T-02 took the new main" git -C "$B" merge-base --is-ancestor origin/main HEAD
+  check "and it is pushed" git -C "$R" merge-base --is-ancestor origin/main origin/wip/T-02
+  check "T-03's conflict is named" contains "$out" "T-03"
+  check "T-03 is not left mid-merge" test ! -f "$R/.git/worktrees/T-03/MERGE_HEAD"
+  check "T-03 keeps its own change" grep -q "x = 3" "$C/shared_code.py"
+  check "a running step is skipped" contains "$out" "catchup: T-04 has uncommitted work"
+  check "and its files are untouched" test -f "$D/d.py"
+  check "no ids: every open worktree" expect_exit 4 tg catchup "$R"
+fi
+
 if scenario step_command; then
   # O9: one call per agent step (scope + mark TASK_PROGRESS.md + checkpoint) instead of 3–4 turns
   new_repo step

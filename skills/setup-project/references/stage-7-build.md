@@ -4,18 +4,21 @@ Part of the /setup-project Orchestrator (SKILL.md). Read this file when the stag
 
 ## 7 · Build loop
 
-Take every `Backlog` task whose dependencies are `Done`; run independent tasks in parallel
-(own worktrees; shared files are only edited on main).
+**Schedule from the graph, never by eye.** `python3 $TASKGRAPH <repo>/TASKS.md --ready` prints the
+tasks to start now: dependencies `Done`, no file in their `Files:` shared with a running task, up to
+3 running in total, longest remaining chain first, from the earliest unfinished milestone. Run it
+whenever a task finishes, is approved or waits on a card, and **as soon as a task's implement step
+ends**: while task A is in test + review, the next ready task's implement step already runs (its
+files don't overlap A's, so neither waits for the other). Tasks run in their own worktrees, and
+shared files are only edited on main.
 
-**Start independent tasks together, really at the same time.** Agents run in parallel only when
+**Start the ready tasks together, really at the same time.** Agents run in parallel only when
 they're spawned in the **same message**; one Agent call per message runs them one after another.
-So pick up to **3** ready tasks that don't depend on each other and don't plan to touch the same
-files (check their `Context:` and the LLD modules in TASKS.md; when unsure, they're not
-independent). `$TASKGIT start` each one, mark each step ⏳ and checkpoint, then send **one message
+`$TASKGIT start` each task `--ready` printed, mark each step ⏳ and checkpoint, then send **one message
 with one Agent call per task** (each with its own brief, worktree path and port). Handle each
 task's REPORT as it comes back and carry on with that task alone; when one finishes or waits on a
-card, start the next ready task the same way. More than 3 at once makes the checks compete for the
-machine and the owner's cards pile up.
+card, run `--ready` again and start what it prints the same way. More than 3 at once makes the
+checks compete for the machine and the owner's cards pile up.
 
 **Don't let the team idle while a card waits.** Waiting for the owner is most of a build's
 wall-clock time, and a question blocks your turn until it's answered. So before you ask a
@@ -41,7 +44,8 @@ Per task `T-xx`:
 
 1. `$TASKGIT start <repo> T-xx` (a new worktree gets the locked dependencies installed: `uv sync`,
    `npm ci`, …; a warning names the log if that fails, then give it to env-setup before any code step);
-   write `TASK_PROGRESS.md`; widget → in progress.
+   write `TASK_PROGRESS.md`; widget → in progress; set its `Status: In progress` in TASKS.md in the
+   main checkout (`--ready` reads it there; the next approve or record commits it).
 2. Owner agent (step protocol). A task with two owners (`Owner: backend-coder, frontend-coder`)
    gets one implement step per owner, in the listed order, in the same worktree. `DECISION NEEDED` → record it in TASK_PROGRESS.md, checkpoint,
    ask the owner, resume with the answer.
@@ -81,7 +85,12 @@ Per task `T-xx`:
    debugger round or a Major finding turns the task high-risk, and its next round has both.
 4. `$TASKGIT sync <repo> T-xx`. Exit 4 (conflict) / 5 (checks fail; output path in the error)
    → debugger, back to step 3.
-5. Classify risk (`approval-modes.md`); produce visuals (`visual-capture.md`, screenshots first).
+5. **Plan vs actual:** `$TASKGIT changed <repo> T-xx | python3 $TASKGRAPH <repo>/TASKS.md --undeclared T-xx`
+   lists the files the task changed outside its `Files:`. Any → add them to its `Files:` in TASKS.md
+   in the main checkout straight away (so `--ready` keeps tasks that touch them waiting), put a
+   `Plan vs actual:` line on the card, and run `--ready` again: the schedule for the remaining
+   tasks now reflects them.
+   Classify risk (`approval-modes.md`); produce visuals (`visual-capture.md`, screenshots first).
    Run `python3 $COST …` for the card's Cost line. **Exit 3 (over budget)** → before the card, a
    decision card ⏸: "Spent $X of your $B budget" → **Raise the budget to …** (suggest 1.5×; record it
    in STATE.md and use it from now on) / **Pause** (`anytime.md`). Never continue over budget unasked.
@@ -92,6 +101,10 @@ Per task `T-xx`:
      a conventional-commit message built from the card (`feat(auth): add login endpoint [T-07]`).
      approve commits those updates in the task's own commit: one commit per task, no `record`.
      If approve fails, the updates stay in the main checkout; fix the cause and approve again.
+     **Early sync:** right after it, `$TASKGIT catchup <repo> <ids of the other open tasks between
+     steps>` merges the new main into them (no checks). Exit 4 names the branches that conflict:
+     give each to its owner agent before its next step, so the conflict is fixed during the task,
+     not found at its card.
    - **Request changes** that stays within the task's acceptance criteria → back to step 2,
      continuing the owner agent (see **Rework continuation** in SKILL.md). Anything wider is a
      **change request** (`references/anytime.md`).
@@ -116,6 +129,10 @@ the architect's `Read:`: the sync edits only the LLD sections for those paths. *
 (mark it `⏭ no design changes`) when no changed path outside `docs/`, tests and the shared files
 appears in `docs/LLD.md` (`grep -c -F -f` on the list's top folders finds nothing). Milestone card (includes the LLD changes): **Approve + continue in a fresh
 session (Recommended)** / Approve and continue here / Request changes.
+**No idle gap while the milestone card waits:** before asking, run
+`python3 $TASKGRAPH <repo>/TASKS.md --ready --avoid M<n>` and start what it prints: next-milestone
+tasks that share no file with milestone M<n>, so "Request changes" there never redoes their work.
+Fresh session with such tasks running → let each finish its current step (checkpointed), then restart.
 Fresh session → update STATE.md "Next step", `$TASKGIT record <repo> "chore: milestone M<n>"`,
 then tell the owner: "Start a new chat and run `/setup-project resume <repo>`", and stop.
 **The last milestone** has no docs task and no milestone card: its last approved task leads

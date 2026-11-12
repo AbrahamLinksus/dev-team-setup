@@ -19,6 +19,12 @@
   | check.sh | the project's automatic quality checks (tests, lint, types) |
   | Tier 1 | a decision only you make |
 
+## Planning card (stage 6)
+
+Images: the task graph (`tasks.png`: rounds left to right, critical path highlighted), then the
+`taskgraph.py --summary` lines as text: one line per round, the longest chain, the parallel
+factor and any warning. The owner sees what runs together before anything is built.
+
 ## Per-task card
 
 Order: the image(s) first, then the card, then the approval question (AskUserQuestion).
@@ -52,6 +58,7 @@ Reviewer: 1 minor — hardcoded token expiry (auth.py:41)
 Agent decisions: bcrypt for hashing (D-12)
 Cost: ≈$0.42 this task · $3.10 so far · budget $25 (12%)
 Guard: stopped tester once (tried to edit app code) · reverted 0 files
+Plan vs actual: 1 file outside the plan (src/shared/tokens.py), added to T-07's Files
 ```
 
 Rules:
@@ -68,6 +75,8 @@ Rules:
   (tab-separated: time, task id, agent, tool, target, reason; `grep -c $'	T-07	'`) plus the files
   `$TASKGIT scope` reverted, and say in plain words what was stopped ("tried to edit app code",
   "tried to read .env"). Nothing blocked or reverted → `Guard: nothing blocked`.
+- The Plan vs actual line appears only when `taskgraph.py --undeclared` found files; a file in
+  another task's `Files:` is worth a word ("T-09 also plans to change it; it waits for this one").
 - The Cost line is `python3 $COST` output, verbatim (task share is an estimate, hence ≈). If it
   can't read the logs, leave the line out rather than guess.
 
