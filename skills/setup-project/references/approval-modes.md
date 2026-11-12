@@ -36,11 +36,13 @@ keep moving while a card waits (`stage-7-build.md`, "Don't let the team idle").
 
 **autopilot** (fastest: the owner stops the build only for what needs them):
 - **Auto-approved:** a task that is low-risk (above) **and** has every goal ✅ **and** passed `sync`.
-  Run `$TASKGIT approve` yourself straight away, record it, and start the next task. Then send its
+  Update TASKS.md, STATE.md and DECISIONS.md in the main checkout, run `$TASKGIT approve` yourself
+  straight away (it commits those updates with the task), and start the next task. Then send its
   card as usual, headed `✅ Auto-approved T-07 · Undo?`, with AskUserQuestion: **Keep** (default) /
   **Undo**. Don't wait for the answer: carry on, and handle it whenever it comes.
 - **Undo** → `$TASKGIT undo <repo> T-07` (a new commit on main that reverts the task's commit),
-  then TASKS.md: the task back to `Backlog` with "undone by the owner", `record`. Exit 4 = a later
+  then TASKS.md: the task back to `Backlog` with "undone by the owner", `record` (undo
+  leaves the shared files to you). Exit 4 = a later
   task changed the same lines: tell the owner, and offer to undo the later task first or to make
   the change as a new task.
 - **Still stops, exactly as in every-task:** any ⚠️/❌ goal, every high-risk task, every Tier 1

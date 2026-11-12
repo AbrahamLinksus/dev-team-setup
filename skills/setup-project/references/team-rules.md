@@ -82,7 +82,7 @@ or, when every checklist row is answered:
 SPEC COMPLETE
 Assumptions: <list of (assumed) lines>
 Screens: <list> (or "no UI")
-Size: <small|medium|large> · ≈<n> tasks · <one-line reason>
+Size: <small|medium|large> · signals: <the risk signals present, or none> · <n> stories
 ```
 Every other step, the planner returns a REPORT or DECISION NEEDED like everyone else. These
 three are the only formats the Orchestrator accepts.
