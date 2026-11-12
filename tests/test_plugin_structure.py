@@ -561,6 +561,16 @@ class StructureTest(unittest.TestCase):
             self.assertIn(term, card)
         self.assertIn("**Why we're asking:**", (SKILL / "references" / "decision-policy.md").read_text(encoding="utf-8"))
 
+    def test_owner_mode_is_asked_once_and_sets_card_wording(self):
+        # B-01: cards were written for a developer whoever the owner was
+        intake = (SKILL / "references" / "stage-0-intake.md").read_text(encoding="utf-8")
+        self.assertIn('**"Do you write code?"**', intake)
+        self.assertIn("Record `Owner mode: builder|developer` in STATE.md", intake)
+        self.assertIn("Both get every\n   Tier 1 decision", intake)
+        self.assertIn("| Owner mode |", (SKILL / "templates" / "STATE.md").read_text(encoding="utf-8"))
+        self.assertIn('"Owner mode" for every card', (SKILL / "references" / "resume.md").read_text(encoding="utf-8"))
+        self.assertIn("`Technical detail: …`", (SKILL / "references" / "result-card.md").read_text(encoding="utf-8"))
+
     def test_resume_shows_where_we_are(self):
         # D27: a resumed project opens with a one-screen summary, not one line
         resume = (SKILL / "references" / "resume.md").read_text(encoding="utf-8")
