@@ -604,6 +604,14 @@ class StructureTest(unittest.TestCase):
         self.assertIn("it doesn't count toward the 6", interview)
         self.assertIn("planner, product-critic,", (SKILL / "SKILL.md").read_text(encoding="utf-8"))
 
+    def test_data_safety_is_always_asked(self):
+        # B-06: Recipe Box shipped with no backup and nobody had decided that
+        interview = (SKILL / "references" / "spec-interview.md").read_text(encoding="utf-8")
+        self.assertIn("| Data safety | Backup, second device, what a wipe loses, and undo each answered **by the owner**", interview)
+        self.assertIn("never offer \"Decide for me\"", interview)
+        self.assertIn("the card states its consequence in one line", interview)
+        self.assertIn("## 13. Data safety", (SKILL / "templates" / "SPEC.md").read_text(encoding="utf-8"))
+
     def test_resume_shows_where_we_are(self):
         # D27: a resumed project opens with a one-screen summary, not one line
         resume = (SKILL / "references" / "resume.md").read_text(encoding="utf-8")

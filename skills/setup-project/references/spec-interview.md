@@ -34,11 +34,11 @@ edge data to `docs/scenarios.md` and checks the spec handles each, returning
 - No gaps → one line: "Checked against <s> real-life scenarios: no gaps found."
 
 Between rounds, send the owner a one-line progress note:
-"Spec round 2 done: 7/12 sections complete; next: data + non-functional".
+"Spec round 2 done: 7/13 sections complete; next: data + non-functional".
 
 ## Completeness checklist (planner checks every round)
 
-One row per section of `templates/SPEC.md` (12), so progress is always "x/12 complete".
+One row per section of `templates/SPEC.md` (13), so progress is always "x/13 complete".
 
 | Section | Complete when |
 |---|---|
@@ -54,14 +54,19 @@ One row per section of `templates/SPEC.md` (12), so progress is always "x/12 com
 | Constraints | Stack preferences/bans, deadline, deployment target answered or "none" |
 | Non-goals | At least 3 explicit non-goals (the likeliest scope creep) |
 | Done | 3–6 observable outcomes the owner can check themselves |
+| Data safety | Backup, second device, what a wipe loses, and undo each answered **by the owner**, never *(assumed)* |
 
 "Decide for me" answers are filled in by the planner and marked *(assumed)*; they are
 listed together on the spec card so the owner sees every assumption once.
+**Data safety is the exception:** its questions never offer "Decide for me", and in the final
+round an open data-safety item becomes a question on the spec card instead of an assumption.
+Whatever the owner chose, the card states its consequence in one line ("No backup: if this phone
+is lost or reset, every recipe is gone").
 
 ## QUESTIONS block (planner output)
 
 ```
-QUESTIONS (round 2 · 7/12 complete)
+QUESTIONS (round 2 · 7/13 complete)
 1. [Data] Should todos sync across devices? | options: No, this device only; Yes, needs accounts; Decide for me | recommended: No, this device only | why: decides storage + auth
 2. ...
 ```
