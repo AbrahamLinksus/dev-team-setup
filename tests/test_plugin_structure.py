@@ -684,6 +684,16 @@ class StructureTest(unittest.TestCase):
         self.assertIn("--rework <the milestone's task IDs>", build)
         self.assertIn("cost.py --result", (SKILL / "templates" / "TASKS.md").read_text(encoding="utf-8"))
 
+    def test_handover_delivers_a_one_screen_owner_page(self):
+        # B-19: the README is for developers; the owner needs one page they can keep
+        owner = (SKILL / "templates" / "OWNER.md").read_text(encoding="utf-8")
+        self.assertLessEqual(len(owner.splitlines()), 25)
+        for part in ("What it does", "How to start it", "What it can't do", "What could lose your data",
+                     "If something goes wrong", "What it costs to run"):
+            self.assertIn(part, owner)
+        self.assertIn("**OWNER.md** (handover)", (ROOT / "agents" / "docs.md").read_text(encoding="utf-8"))
+        self.assertIn("`OWNER.md` (one screen for the owner", (SKILL / "references" / "stage-8-handover.md").read_text(encoding="utf-8"))
+
     def test_resume_shows_where_we_are(self):
         # D27: a resumed project opens with a one-screen summary, not one line
         resume = (SKILL / "references" / "resume.md").read_text(encoding="utf-8")

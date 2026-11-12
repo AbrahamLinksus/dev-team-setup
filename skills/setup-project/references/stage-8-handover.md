@@ -14,7 +14,9 @@ review** of the last milestone's tasks when any had theirs batched (`stage-7-bui
 1. **devops**: CI running `scripts/check.sh` on push/PR (deploy only if the owner asks).
 2. **architect**: as-built sync of `docs/LLD.md` (changes since the last milestone), then
    `docs/ARCHITECTURE.md` (as built) and `docs/WALKTHROUGH.md` (templates).
-3. **docs**: README "How to run / How to test / How to extend" with the screenshots in `docs/images/`.
+3. **docs**: README "How to run / How to test / How to extend" with the screenshots in `docs/images/`,
+   and `OWNER.md` (one screen for the owner, from `templates/OWNER.md`: what it does, how to start
+   it, what it can't do, what could lose data, what to do when something breaks, running costs).
 4. **reviewer** (read-only): checks that every path and function named in the three docs exists.
    **tester** (it has Bash): runs every command in the README's "How to run" and "How to test"
    in a fresh clone of the handover branch, each under `timeout`, captures the run with

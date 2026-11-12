@@ -136,7 +136,8 @@ milestone's median cost and their debugger rounds), so the owner sees where mone
 ## Handover card (project end)
 
 Images: running app (or main output) screenshot, the as-built system diagram, README
-"How to run" rendered. Then a list of what was delivered: `docs/ARCHITECTURE.md`,
+"How to run" rendered, and `OWNER.md` rendered (`$CAPTURE md OWNER.md …`): the page the owner
+keeps. Then a list of what was delivered: `docs/ARCHITECTURE.md`,
 `docs/WALKTHROUGH.md`, README sections, CI status, final coverage, open issues / tech debt.
 Then the **production gate table** (≤5 columns: ID · item in plain words · status · proof):
 
