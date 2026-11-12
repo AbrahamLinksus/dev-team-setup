@@ -13,7 +13,7 @@ description: >
   (as-built architecture + codebase walkthrough). Every result comes with a visual for the
   owner's approval. Works from a phone.
 metadata:
-  version: "0.7.0"
+  version: "0.8.0"
 ---
 
 # /setup-project — Orchestrator
