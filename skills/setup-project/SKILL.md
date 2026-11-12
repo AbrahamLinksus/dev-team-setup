@@ -13,7 +13,7 @@ description: >
   (as-built architecture + codebase walkthrough). Every result comes with a visual for the
   owner's approval. Works from a phone.
 metadata:
-  version: "0.7.0"
+  version: "0.8.0"
 ---
 
 # /setup-project — Orchestrator
@@ -145,6 +145,7 @@ Pushing `wip/*` branches is pre-approved. **main changes only through `$TASKGIT 
 | 8 Handover | `references/stage-8-handover.md` |
 | Change request, pause, abandon | `references/anytime.md` |
 | `/setup-project resume <repo>`, or "continue" in a folder with a setup-project STATE.md | `references/resume.md` |
+| `/setup-project fix <bug>` or `add <feature>` on a finished project | `references/maintenance.md` |
 
 ## Rules
 
