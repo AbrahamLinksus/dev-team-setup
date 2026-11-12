@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 """Visual capture helper for /setup-project result cards.
 
-Subcommands (all write PNGs; print the output paths):
+Subcommands (PNGs, flow a GIF; each prints the output paths):
   web     URL OUT_PREFIX [--mobile] [--full-page] [--wait-for SELECTOR] [--delay MS]
           Screenshot a running web page at desktop (1440x900) and optionally mobile (390x844).
+  flow    URL OUT.gif --step ACTION [--step ACTION ...] [--mobile] [--frame-ms MS] [--wait-for SELECTOR]
+          Record a short flow as an animated GIF, one frame per step, for what a screenshot can't
+          show (a dialog opening, servings scaling). ACTION: click:SELECTOR · fill:SELECTOR=TEXT ·
+          press:KEY · wait:MS · scroll:PX · goto:URL
   term    OUT.png (--cmd "pytest -q" | --file log.txt | stdin) [--title T] [--max-lines N] [--cwd DIR] [--timeout S]
           Render terminal output as a dark terminal image.
   mermaid IN.mmd OUT.png [--width PX]
@@ -174,6 +178,79 @@ def cmd_web(a):
         browser.close()
         pw.stop()
     print("\n".join(outs))
+
+
+STEP_KINDS = ("click", "fill", "press", "wait", "scroll", "goto")
+
+
+def parse_step(text: str) -> tuple[str, str, str]:
+    """`click:#add` → ("click", "#add", ""); `fill:#title=Soup` → ("fill", "#title", "Soup")."""
+    kind, sep, rest = text.partition(":")
+    if not sep or kind not in STEP_KINDS or not rest:
+        raise ValueError(f"bad --step {text!r}: use {' · '.join(k + ':…' for k in STEP_KINDS)}")
+    if kind == "fill":
+        target, eq, value = rest.partition("=")
+        if not eq or not target:
+            raise ValueError(f"bad --step {text!r}: fill needs SELECTOR=TEXT")
+        return kind, target, value
+    if kind in ("wait", "scroll") and not rest.lstrip("-").isdigit():
+        raise ValueError(f"bad --step {text!r}: {kind} needs a number")
+    return kind, rest, ""
+
+
+def make_gif(frames: list, out: str, frame_ms: int, width: int = 480) -> str:
+    """Frames (PIL images) → an animated GIF, scaled down to `width` so it stays small enough to
+    send to a phone. The last frame is held three times as long, so the result can be read."""
+    if not frames:
+        raise ValueError("no frames to write")
+    from PIL import Image
+    small = []
+    for f in frames:
+        f = f.convert("RGB")
+        if f.width > width:
+            f = f.resize((width, max(1, round(f.height * width / f.width))), Image.LANCZOS)
+        small.append(f.convert("P", palette=Image.ADAPTIVE, colors=128))
+    durations = [frame_ms] * (len(small) - 1) + [frame_ms * 3]
+    small[0].save(out, save_all=True, append_images=small[1:], duration=durations, loop=0, optimize=True)
+    return out
+
+
+def cmd_flow(a):
+    import io
+    from PIL import Image
+    steps = [parse_step(s) for s in a.step]
+    pw, browser = _browser()
+    frames = []
+    try:
+        mobile = bool(a.mobile)
+        ctx = browser.new_context(viewport={"width": 390, "height": 844} if mobile else {"width": 1280, "height": 800},
+                                  device_scale_factor=2 if mobile else 1, is_mobile=mobile, has_touch=mobile)
+        page = ctx.new_page()
+        page.goto(a.url, wait_until="load", timeout=30000)
+        if a.wait_for:
+            page.wait_for_selector(a.wait_for, timeout=15000)
+        page.wait_for_timeout(300)
+        frames.append(Image.open(io.BytesIO(page.screenshot())))
+        for kind, target, value in steps:
+            if kind == "click":
+                page.click(target, timeout=10000)
+            elif kind == "fill":
+                page.fill(target, value, timeout=10000)
+            elif kind == "press":
+                page.keyboard.press(target)
+            elif kind == "wait":
+                page.wait_for_timeout(int(target))
+            elif kind == "scroll":
+                page.mouse.wheel(0, int(target))
+            elif kind == "goto":
+                page.goto(target, wait_until="load", timeout=30000)
+            page.wait_for_timeout(250)
+            frames.append(Image.open(io.BytesIO(page.screenshot())))
+        ctx.close()
+    finally:
+        browser.close()
+        pw.stop()
+    print(make_gif(frames, a.out, a.frame_ms, width=390 if a.mobile else 640))
 
 
 ANSI = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(\x07|\x1b\\)|\x1b[@-Z\\-_]")
@@ -350,6 +427,11 @@ def main():
     w.add_argument("--mobile", action="store_true"); w.add_argument("--full-page", action="store_true")
     w.add_argument("--wait-for"); w.add_argument("--delay", type=int, default=500)
     w.set_defaults(fn=cmd_web)
+
+    f = sub.add_parser("flow", allow_abbrev=False); f.add_argument("url"); f.add_argument("out")
+    f.add_argument("--step", action="append", default=[], help="click:SEL · fill:SEL=TEXT · press:KEY · wait:MS · scroll:PX · goto:URL")
+    f.add_argument("--mobile", action="store_true"); f.add_argument("--wait-for")
+    f.add_argument("--frame-ms", type=int, default=900); f.set_defaults(fn=cmd_flow)
 
     t = sub.add_parser("term", allow_abbrev=False); t.add_argument("out"); t.add_argument("--cmd"); t.add_argument("--file")
     t.add_argument("--title", default=""); t.add_argument("--max-lines", type=int, default=60)

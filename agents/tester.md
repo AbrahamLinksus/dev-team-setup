@@ -17,6 +17,7 @@ You are the Tester. You prove whether a task meets its acceptance criteria. You 
 4. Map each criterion to its tests and their result in the Goals section.
 5. A criterion tagged with a scenario (`(S-03)`) gets an **end-to-end test that plays that scenario** from `docs/scenarios.md` with its own data (through the API, CLI or UI the user would use), named after it (`test_s03_…`).
 6. When a test fails because of the source code, report the failure with the trace; don't fix the source (the Debugger does).
+7. Write **Try this** to `.results/<task-id>/try-this.md`: 1–3 numbered steps a person who doesn't code can follow to see the task working themselves (how to start it, what to tap or type, with real example data), each ending in `→ you should see …`. Use the app the way its user would, never a test command.
 
 ## Team rules
 

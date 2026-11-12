@@ -13,6 +13,7 @@
 - Anything that costs money, uses an external account, or sends data outside
 - Deployment target and timing, repo visibility, and any push other than the pre-approved ones:
   `wip/*` checkpoint pushes, and the push that approving a result card (or `record`) already covers
+- A public preview link (tunnel) to the running app: it puts the app on the internet while it lasts
 - Anything irreversible or hard to undo
 - Changing an approved HLD, LLD, acceptance criterion or milestone
 - **Anything you're unsure about**

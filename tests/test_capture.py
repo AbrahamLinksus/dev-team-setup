@@ -169,5 +169,46 @@ class CaptureCliTest(unittest.TestCase):
             self.assertIn("venv used: 1", p.stdout, p.stderr)
 
 
+class FlowGifTest(unittest.TestCase):
+    """capture.py flow: a short recording for what one screenshot can't show."""
+
+    def test_steps_parse(self):
+        cap = load_capture()
+        self.assertEqual(cap.parse_step("click:#add"), ("click", "#add", ""))
+        self.assertEqual(cap.parse_step("fill:#title=Soup = good"), ("fill", "#title", "Soup = good"))
+        self.assertEqual(cap.parse_step("wait:500"), ("wait", "500", ""))
+        self.assertEqual(cap.parse_step("scroll:-300"), ("scroll", "-300", ""))
+        for bad in ("click", "tap:#x", "fill:#title", "wait:soon", "click:"):
+            with self.subTest(step=bad), self.assertRaises(ValueError):
+                cap.parse_step(bad)
+
+    def test_flow_is_documented_for_agents(self):
+        vc = (ROOT / "skills" / "setup-project" / "references" / "visual-capture.md").read_text(encoding="utf-8")
+        self.assertIn("$CAPTURE flow", vc)
+
+    def test_help_lists_flow(self):
+        out = run("--help").stdout
+        self.assertIn("flow", out)
+        self.assertIn("--step", run("flow", "--help").stdout)
+
+    def test_gif_has_one_frame_per_step_and_holds_the_last(self):
+        try:
+            from PIL import Image
+        except ImportError:
+            self.skipTest("Pillow not installed")
+        cap = load_capture()
+        frames = [Image.new("RGB", (1280, 800), c) for c in ("white", "red", "blue")]
+        with tempfile.TemporaryDirectory() as d:
+            out = cap.make_gif(frames, str(Path(d) / "flow.gif"), 700, width=480)
+            with Image.open(out) as gif:                  # closed before cleanup (Windows locks open files)
+                self.assertEqual(gif.format, "GIF")
+                self.assertEqual(gif.n_frames, 3)
+                self.assertEqual(gif.size, (480, 300))       # scaled for a phone, aspect kept
+                gif.seek(2)
+                self.assertEqual(gif.info["duration"], 2100)  # the end state stays on screen longer
+        with self.assertRaises(ValueError):
+            cap.make_gif([], "x.gif", 700)
+
+
 if __name__ == "__main__":
     unittest.main()

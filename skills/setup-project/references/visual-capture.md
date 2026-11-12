@@ -16,6 +16,7 @@ so a screenshot can never come from another task's server.
 | Task type | Visual | Command |
 |---|---|---|
 | Frontend / UI | App screenshots, desktop + mobile | start dev server in background → `python3 $CAPTURE web http://localhost:$PORT/<page> .results/T-07/ui --mobile --full-page --wait-for '<selector that means loaded>'` → stop server |
+| Flows a screenshot can't show (a dialog, scaling, a multi-step form) | Short GIF, one frame per step | `python3 $CAPTURE flow http://localhost:$PORT/<page> .results/T-07/flow.gif --mobile --step "fill:#servings=6" --step "click:#scale"` (≤ 8 steps; the last frame is held) |
 | Backend / API | FastAPI `/docs` screenshot + a real request/response | `python3 $CAPTURE web http://localhost:$PORT/docs .results/T-07/docs` and `python3 $CAPTURE term .results/T-07/req.png --cmd "curl -s -X POST localhost:$PORT/login -d '...' \| python3 -m json.tool" --title "POST /login"` |
 | CLI / scripts | Terminal output | `python3 $CAPTURE term out.png --cmd "<command>" --title "<what>"` |
 | Tests | Pass/fail + coverage | `python3 $CAPTURE term tests.png --cmd "uv run pytest -q --cov=src --cov-report=term" --title "tests"` |
@@ -29,6 +30,22 @@ so a screenshot can never come from another task's server.
 | Interactive charts (plotly html, coverage html) | Screenshot of the HTML | `python3 $CAPTURE html report.html report.png` |
 | CI / DevOps | Pipeline status, live URL screenshot | `term` with `gh run list`/`gh run view`; `web` on the deployed URL |
 | Docs | Rendered README top section | `md README.md readme.png` |
+
+## Phone preview (milestone end, opt-in)
+
+Screenshots show the app; a preview lets the owner use it on their phone. It is offered at each
+milestone card of a project with a UI or an API, and is **opt-in and Tier 1** (a public link):
+- **Ask once**, at the first milestone card: "Try it on your phone? We'd open a temporary link:
+  anyone who has it can use this build for 30 minutes, then it closes." **Yes, each milestone** /
+  **Not now**. Record the answer in STATE.md and DECISIONS.md.
+- **Private first:** if your tools can show a port to the owner's app without making it public
+  (e.g. a `report_preview_port` tool in a cloud session), use that and skip the tunnel.
+- **Otherwise:** the first time, a **devops** step writes `deploy/preview.sh` (devops must be on the
+  team; add it with the owner's yes if not). Run it yourself from the milestone's worktree with
+  Bash in the background: `timeout 1800 bash deploy/preview.sh` (Port 8000 + milestone number ×
+  100). Put the `PREVIEW:` URL on the milestone card with "open on your phone; closes in 30 min".
+  It stops by itself; stop it early when the owner answers the card. This is the only server
+  allowed to outlive a step, and only because `timeout` bounds it.
 
 Rules:
 - Start servers in the background, wait for the port, capture, then kill the server in

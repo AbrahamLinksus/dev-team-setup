@@ -652,6 +652,30 @@ class StructureTest(unittest.TestCase):
         self.assertIn("**Waive it** (a\nTier 1 decision: the card states the consequence", handover)
         self.assertIn("Production gate · 11 items", (SKILL / "references" / "result-card.md").read_text(encoding="utf-8"))
 
+    def test_cards_say_how_to_try_the_task(self):
+        # B-13: owners approved cards they had read but never tried
+        tester = (ROOT / "agents" / "tester.md").read_text(encoding="utf-8")
+        self.assertIn("Write **Try this** to `.results/<task-id>/try-this.md`", tester)
+        self.assertIn("never a test command", tester)
+        self.assertIn("the task's **Try this** steps", (SKILL / "references" / "team-rules.md").read_text(encoding="utf-8"))
+        card = (SKILL / "references" / "result-card.md").read_text(encoding="utf-8")
+        self.assertIn("Try this (≈2 min):", card)
+        self.assertIn("approves by using, not by reading", card)
+
+    def test_phone_preview_is_opt_in_and_bounded(self):
+        # B-14: the owner should try a milestone on their phone, not only see screenshots
+        vc = (SKILL / "references" / "visual-capture.md").read_text(encoding="utf-8")
+        self.assertIn("## Phone preview (milestone end, opt-in)", vc)
+        self.assertIn("**opt-in and Tier 1**", vc)
+        self.assertIn("`timeout 1800 bash deploy/preview.sh`", vc)
+        self.assertIn("**Private first:**", vc)
+        self.assertIn("A public preview link (tunnel)", (SKILL / "references" / "decision-policy.md").read_text(encoding="utf-8"))
+        devops = (ROOT / "agents" / "devops.md").read_text(encoding="utf-8")
+        self.assertIn("**Phone preview** (only when the brief says the owner opted in)", devops)
+        scopes = json.loads((SKILL / "scopes.json").read_text(encoding="utf-8"))
+        self.assertIn("deploy/**", scopes["agents"]["devops"]["write"])
+        self.assertIn("the **phone preview** if the owner opted in", (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8"))
+
     def test_resume_shows_where_we_are(self):
         # D27: a resumed project opens with a one-screen summary, not one line
         resume = (SKILL / "references" / "resume.md").read_text(encoding="utf-8")
