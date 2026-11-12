@@ -583,6 +583,14 @@ class StructureTest(unittest.TestCase):
         self.assertIn("Means for you · if wrong", (SKILL / "templates" / "DECISIONS.md").read_text(encoding="utf-8"))
         self.assertIn("what changing it later costs", (ROOT / "agents" / "architect.md").read_text(encoding="utf-8"))
 
+    def test_forced_tooling_choices_come_as_one_toolkit_card(self):
+        # B-03: a medium app asked the owner about ruff, mypy and pytest one card at a time
+        planning = (SKILL / "references" / "stage-1-6-planning.md").read_text(encoding="utf-8")
+        self.assertIn("**Standard toolkit card** (medium and large projects in builder mode", planning)
+        self.assertIn("**Approve toolkit** / **Show me each**", planning)
+        self.assertIn("keep their own cards:\n   Tier 1 still reaches the owner", planning)
+        self.assertIn("`toolkit` for a forced dev-tooling choice", (ROOT / "agents" / "architect.md").read_text(encoding="utf-8"))
+
     def test_resume_shows_where_we_are(self):
         # D27: a resumed project opens with a one-screen summary, not one line
         resume = (SKILL / "references" / "resume.md").read_text(encoding="utf-8")
