@@ -612,6 +612,15 @@ class StructureTest(unittest.TestCase):
         self.assertIn("the card states its consequence in one line", interview)
         self.assertIn("## 13. Data safety", (SKILL / "templates" / "SPEC.md").read_text(encoding="utf-8"))
 
+    def test_scenarios_become_criteria_and_end_to_end_tests(self):
+        # B-07: the critic's scenarios only help if the build proves them
+        planner = (ROOT / "agents" / "planner.md").read_text(encoding="utf-8")
+        self.assertIn("becomes at least one acceptance criterion on the task that builds that flow, tagged with its ID", planner)
+        self.assertIn("**end-to-end test that plays that scenario**", (ROOT / "agents" / "tester.md").read_text(encoding="utf-8"))
+        self.assertIn("an end-to-end test for each criterion tagged `(S-xx)`", (SKILL / "references" / "team-rules.md").read_text(encoding="utf-8"))
+        self.assertIn("`Scenarios covered: <n>/<n>`", (SKILL / "references" / "stage-1-6-planning.md").read_text(encoding="utf-8"))
+        self.assertIn("numbered `S-01`", (ROOT / "agents" / "product-critic.md").read_text(encoding="utf-8"))
+
     def test_resume_shows_where_we_are(self):
         # D27: a resumed project opens with a one-screen summary, not one line
         resume = (SKILL / "references" / "resume.md").read_text(encoding="utf-8")
