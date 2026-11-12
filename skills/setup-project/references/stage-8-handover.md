@@ -24,7 +24,12 @@ review** of the last milestone's tasks when any had theirs batched (`stage-7-bui
    **tester** (it has Bash): runs every command in the README's "How to run" and "How to test"
    in a fresh clone of the handover branch, each under `timeout`, captures the run with
    `$CAPTURE term`, and reports any command that fails or doesn't exist.
-5. **Production gate.** The reviewer also fills a `## Production gate` table in its full report:
+5. **Handover lint.** `$TASKGIT lint <repo>` (exit 10 = findings): scripts and hooks committed
+   without the executable bit, template leftovers in STATE.md (placeholders, run commands for a
+   stack the repo doesn't use), and `wip/*` branches already merged. The first two go to a fix
+   step (the owner agent for scripts, you for STATE.md); merged branches are listed on the
+   handover card with **Delete them (Recommended)** / Keep, and deleted only on that answer.
+6. **Production gate.** The reviewer also fills a `## Production gate` table in its full report:
    each applicable item of `docs/PRODUCTION.md` with its status, `Built + tested (<the test or
    capture that proves it>)` only when that proof exists and passed in the tester's run, else
    `Open`. Then **docs** writes those statuses into `docs/PRODUCTION.md`.
