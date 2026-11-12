@@ -16,6 +16,7 @@ so a screenshot can never come from another task's server.
 | Task type | Visual | Command |
 |---|---|---|
 | Frontend / UI | App screenshots, desktop + mobile | start dev server in background → `python3 $CAPTURE web http://localhost:$PORT/<page> .results/T-07/ui --mobile --full-page --wait-for '<selector that means loaded>'` → stop server |
+| Flows a screenshot can't show (a dialog, scaling, a multi-step form) | Short GIF, one frame per step | `python3 $CAPTURE flow http://localhost:$PORT/<page> .results/T-07/flow.gif --mobile --step "fill:#servings=6" --step "click:#scale"` (≤ 8 steps; the last frame is held) |
 | Backend / API | FastAPI `/docs` screenshot + a real request/response | `python3 $CAPTURE web http://localhost:$PORT/docs .results/T-07/docs` and `python3 $CAPTURE term .results/T-07/req.png --cmd "curl -s -X POST localhost:$PORT/login -d '...' \| python3 -m json.tool" --title "POST /login"` |
 | CLI / scripts | Terminal output | `python3 $CAPTURE term out.png --cmd "<command>" --title "<what>"` |
 | Tests | Pass/fail + coverage | `python3 $CAPTURE term tests.png --cmd "uv run pytest -q --cov=src --cov-report=term" --title "tests"` |
