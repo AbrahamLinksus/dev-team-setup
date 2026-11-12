@@ -11,7 +11,7 @@ Behaviour checks run with `claude plugin eval` (Claude Code 2.1.269+). The unit 
 | `explains-before-asking` | intake | the three-line opener comes before the first question (D31) |
 | `cards-plain-language` | intake | in builder mode (the owner doesn't write code), no tool or package name and no jargon reaches the owner without a plain gloss |
 
-Run all three groups (each needs different tool grants), capped at $11 in total:
+Run all three groups (each needs different tool grants), capped at $14 in total:
 
 ```bash
 sh evals/run.sh            # add --runs 1 for a quick, cheaper pass
