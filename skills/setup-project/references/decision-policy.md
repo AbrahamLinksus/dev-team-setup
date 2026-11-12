@@ -39,6 +39,8 @@ Options:
   A) <option> — <trade-off>
   B) <option> — <trade-off>
 Recommended: <A/B> because <reason>
+For the owner: <what the recommended option means for them, in plain words>
+If wrong: <what it costs to change later: an hour, a rework of T-xx, data lost…>
 Affects: <files / tasks / cost>
 ```
 
@@ -48,13 +50,21 @@ Use AskUserQuestion: the question holds the context in ≤2 lines; 2–4 options
 the recommended one first and labelled "(Recommended)"; each option's description holds
 its trade-off. Add a diagram or table image first if it helps compare the options.
 
-Before the question, one line: **Why we're asking:** naming the Tier 1 rule above that applies,
+Before the question, two lines every decision card has, from the agent's `For the owner` and
+`If wrong` (or the architect's list):
+- **What this means for you:** the recommended option's effect on the owner's app, in plain words
+  ("your recipes stay on this computer; nothing to sign up for").
+- **If this is wrong:** what changing it later costs ("about an hour now, a day after T-06").
+Technical detail (names, versions, benchmarks) goes in one collapsed `Technical detail:` line
+below them, in builder mode only on request.
+
+Then one line: **Why we're asking:** naming the Tier 1 rule above that applies,
 in plain words, e.g. "Why we're asking: adding a package is your call (it changes what the
 project depends on)." The owner should never wonder why the build stopped.
 
 Log every Tier 1 answer in `DECISIONS.md`:
 
 ```
-| ID | Date | Decision | Chosen | Alternatives | Decided by | Task |
-| D-07 | 2026-11-09 | Vector DB | Qdrant | pgvector, Chroma | the owner | T-04 |
+| ID | Date | Decision | Chosen | Means for you · if wrong | Alternatives | Task |
+| D-07 | 2026-11-09 | Vector DB | Qdrant | search by meaning works offline · swap ≈ 1 day | pgvector, Chroma | T-04 |
 ```

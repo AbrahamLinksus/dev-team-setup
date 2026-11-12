@@ -26,10 +26,17 @@ Part of the /setup-project Orchestrator (SKILL.md). Read this file when the stag
    ```
    Never state a cost that wasn't measured.
    Then restate the idea in one line. One AskUserQuestion call: repo name (2–3 kebab-case
-   suggestions) and where it lives: **Private** / **Public** (a GitHub repo) / **Try locally (no
-   GitHub)**. **Always ask; never default it.** Offer *Try locally* first when `gh auth status`
+   suggestions), where it lives: **Private** / **Public** (a GitHub repo) / **Try locally (no
+   GitHub)**, and **"Do you write code?"**: **No, explain things plainly** (builder mode) / **Yes,
+   show me the technical detail** (developer mode). **Always ask the repo questions; never default
+   them.** Record `Owner mode: builder|developer` in STATE.md; it sets card wording (below). Offer *Try locally* first when `gh auth status`
    fails, and say what it means: everything works, nothing leaves this computer, and the repo can
    be put on GitHub later (`git remote set-url origin <url> && git push -u origin --all`).
+   **Owner mode.** *builder*: cards lead with plain words; package names, versions, file paths and
+   tool names appear only with a plain gloss or under a collapsed "Technical detail" line; Tier 1
+   technical choices come as consequences ("a database that runs inside the app, nothing to set
+   up"), never as bare names. *developer*: technical terms are fine, no glossary. Both get every
+   Tier 1 decision. The owner can switch any time ("show me the details").
 4. **Try locally** → no GitHub at all: `git init --bare -b main <base>/<repo>.git`, then clone it in
    step 5 as usual. It's a real remote, so checkpoints, `approve` and `record` push to it the same
    way; record `Repo: local (<base>/<repo>.git)` in STATE.md and skip the GitHub-only steps

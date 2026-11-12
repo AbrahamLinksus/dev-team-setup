@@ -6,6 +6,9 @@
   `Stage 4 LLD · planning 4/6`). The owner always knows where the project is.
 - **Fixed order:** what happened → what it means for you → what you decide. Images go with
   "what happened"; the question is always last.
+- **Owner mode** (STATE.md): in *builder* mode, no package, tool or file name without a plain
+  gloss; put technical detail on one last line, `Technical detail: …`, which the owner can skip.
+  In *developer* mode, technical terms are fine and the glossary below is skipped.
 - **Plain words.** The first time a card in this project uses one of these terms, add its gloss
   once, in brackets, and never again:
 

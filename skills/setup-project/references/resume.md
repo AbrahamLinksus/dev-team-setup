@@ -12,7 +12,8 @@ Agent IDs from earlier sessions are not continued; every step after a resume spa
    folder) or clone it there. Resume from the folder that *holds* the repo, not from inside it:
    the worktrees `<repo>-wt/` sit next to the repo. A repo outside this session's folders (e.g.
    `~/projects/<repo>` from an older run) → `/add-dir` its parent first.
-2. Read STATE.md / TASKS.md / DECISIONS.md on main; `$TASKGIT list <repo>`.
+2. Read STATE.md / TASKS.md / DECISIONS.md on main; `$TASKGIT list <repo>`. Use STATE.md
+   "Owner mode" for every card from here on (missing → ask "Do you write code?" once).
    `Status: Paused` → set it back to Active and continue. `Status: Abandoned` or `Complete` → say so
    and ask whether to reopen it before doing anything.
 3. Per open wip branch (`plan`, `CR-n`, `T-xx`): `$TASKGIT start` (installs dependencies into a

@@ -561,6 +561,36 @@ class StructureTest(unittest.TestCase):
             self.assertIn(term, card)
         self.assertIn("**Why we're asking:**", (SKILL / "references" / "decision-policy.md").read_text(encoding="utf-8"))
 
+    def test_owner_mode_is_asked_once_and_sets_card_wording(self):
+        # B-01: cards were written for a developer whoever the owner was
+        intake = (SKILL / "references" / "stage-0-intake.md").read_text(encoding="utf-8")
+        self.assertIn('**"Do you write code?"**', intake)
+        self.assertIn("Record `Owner mode: builder|developer` in STATE.md", intake)
+        self.assertIn("Both get every\n   Tier 1 decision", intake)
+        self.assertIn("| Owner mode |", (SKILL / "templates" / "STATE.md").read_text(encoding="utf-8"))
+        self.assertIn('"Owner mode" for every card', (SKILL / "references" / "resume.md").read_text(encoding="utf-8"))
+        self.assertIn("`Technical detail: …`", (SKILL / "references" / "result-card.md").read_text(encoding="utf-8"))
+
+    def test_every_decision_card_says_what_it_means_and_what_if_wrong(self):
+        # B-02: decision cards named packages and stopped; a non-coder couldn't weigh them
+        for f in ("team-rules.md", "decision-policy.md"):
+            text = (SKILL / "references" / f).read_text(encoding="utf-8")
+            self.assertIn("For the owner: <what the recommended option means for them, in plain words>", text)
+            self.assertIn("If wrong: <what it costs to change later", text)
+        policy = (SKILL / "references" / "decision-policy.md").read_text(encoding="utf-8")
+        self.assertIn("**What this means for you:**", policy)
+        self.assertIn("**If this is wrong:**", policy)
+        self.assertIn("Means for you · if wrong", (SKILL / "templates" / "DECISIONS.md").read_text(encoding="utf-8"))
+        self.assertIn("what changing it later costs", (ROOT / "agents" / "architect.md").read_text(encoding="utf-8"))
+
+    def test_forced_tooling_choices_come_as_one_toolkit_card(self):
+        # B-03: a medium app asked the owner about ruff, mypy and pytest one card at a time
+        planning = (SKILL / "references" / "stage-1-6-planning.md").read_text(encoding="utf-8")
+        self.assertIn("**Standard toolkit card** (medium and large projects in builder mode", planning)
+        self.assertIn("**Approve toolkit** / **Show me each**", planning)
+        self.assertIn("keep their own cards:\n   Tier 1 still reaches the owner", planning)
+        self.assertIn("`toolkit` for a forced dev-tooling choice", (ROOT / "agents" / "architect.md").read_text(encoding="utf-8"))
+
     def test_resume_shows_where_we_are(self):
         # D27: a resumed project opens with a one-screen summary, not one line
         resume = (SKILL / "references" / "resume.md").read_text(encoding="utf-8")

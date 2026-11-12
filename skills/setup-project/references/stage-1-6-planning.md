@@ -64,7 +64,15 @@ reasons). Mention the approval and cost modes; the owner can type a change.
    layout differs from the defaults.
 3. Render component/sequence diagrams, package table, layer map.
 4. Group the architect's Tier 1 items: real trade-offs → decision cards (max 4 per call);
-   forced/obvious choices go in the package table, approved with the LLD. Then Approve
+   forced/obvious choices go in the package table, approved with the LLD.
+   **Standard toolkit card** (medium and large projects in builder mode; the quick track already
+   approves packages on its one design card): the items the architect marked `toolkit` (linters,
+   formatter, type checker, test runner, coverage, version pins) come as **one** card: what the
+   toolkit does for the owner in one line ("checks every change for mistakes before you see it"),
+   the list on a collapsed `Technical detail:` line, then **Approve toolkit** / **Show me each**
+   (each item as its own decision card). Items marked `trade-off` (database, framework, hosting,
+   anything paid or external, anything whose "If wrong" is more than a day) keep their own cards:
+   Tier 1 still reaches the owner, it just arrives as one decision where one is enough. Then Approve
    LLD + conventions + packages / Request changes / Reject. Log answers in DECISIONS.md.
 
 ## 5 · Environment setup ⏸
