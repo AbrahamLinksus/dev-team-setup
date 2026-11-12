@@ -618,9 +618,18 @@ class StructureTest(unittest.TestCase):
         # still gets a review, and high-risk tasks and large projects keep the per-task reviewer
         build = (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8")
         step3 = build[build.index("3. **tester and reviewer in parallel.**"):build.index("\n4. ")]
-        self.assertIn("**Batched review (small and medium projects", step3)
-        self.assertIn("runs the **tester\n   alone**", step3)
-        self.assertIn("keep the per-task reviewer", step3)
+        self.assertIn('**Small and medium projects (STATE.md "Size"): one agent per low-risk task.**', step3)
+        self.assertIn("keep the separate tester and per-task reviewer", step3)
+        # O5: the coder writes and runs the tests there, opened per task; the gates never open
+        self.assertIn("`$TASKGIT coder-tests <repo> T-xx` right after `start`", step3)
+        self.assertIn("`Tests: yours`", step3)
+        self.assertIn("The gates (`check.sh`, coverage and lint configs) stay closed to the coder", step3)
+        rules = (SKILL / "references" / "team-rules.md").read_text(encoding="utf-8")
+        self.assertIn("except when your brief says `Tests: yours`", rules)
+        self.assertIn("Never weaken or delete an existing test", rules)
+        self.assertIn("Tests:        <coder only", (SKILL / "references" / "brief-template.md").read_text(encoding="utf-8"))
+        self.assertIn("`Tests: coder` also gets", (SKILL / "references" / "resume.md").read_text(encoding="utf-8"))
+        self.assertIn("**One per-task exception:**", (ROOT / "docs" / "guardrails.md").read_text(encoding="utf-8"))
         batch = build[build.index("**Batched review** (first"):build.index("**Milestone end ⏸**")]
         self.assertIn('--grep="^Task: $id\\$"', batch)   # the trailer approve writes
         self.assertIn("without opening it", batch)

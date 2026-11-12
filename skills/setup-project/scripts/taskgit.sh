@@ -23,6 +23,7 @@
 #   taskgit.sh step       <repo> <id> <step> started|done|failed [<agent> "<note>"]
 #                                                        one call per agent step: (done/failed) scope as
 #                                                        <agent>, mark TASK_PROGRESS.md, checkpoint
+#   taskgit.sh coder-tests <repo> <id>                   let this task's coder write its own tests
 #   taskgit.sh sync       <repo> <id>                    merge origin/main into wip/<id>, run check.sh, push
 #   taskgit.sh diff       <repo> <id>                    full diff vs main (for the reviewer)
 #   taskgit.sh diffstat   <repo> <id>                    diff --stat vs main (for the result card)
@@ -380,6 +381,15 @@ case "$cmd" in
       echo "warning: no $PROGRESS in $wt; checkpointing without marking the step" >&2
     fi
     exec bash "${BASH_SOURCE[0]}" checkpoint "$repo" "$id" "$msg"
+    ;;
+
+  coder-tests)
+    # O5: let this task's coder write and run its own tests (a low-risk task on a small or medium
+    # project). The marker sits in the worktree's private git dir, which no agent can write; the
+    # scope guard reads it. It goes away with the worktree (approve / reject).
+    id=${3:?id}; ensure_wt
+    : > "$(gw rev-parse --absolute-git-dir)/devteam-coder-tests" || die 1 "could not write the coder-tests marker"
+    echo "coder-tests: the coder writes and runs the tests on wip/$id (gates stay protected)"
     ;;
 
   sync)
