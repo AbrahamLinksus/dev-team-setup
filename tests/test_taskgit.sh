@@ -576,6 +576,33 @@ if scenario catchup_after_approve; then
   check "no ids: every open worktree" expect_exit 4 tg catchup "$R"
 fi
 
+if scenario lint_before_handover; then
+  # what a fresh clone trips over: a hook without +x, STATE.md template leftovers, merged branches
+  new_repo lint
+  out=$(tg lint "$R" 2>&1)
+  check "the helper's check.sh has no +x: flagged" contains "$out" "not executable: scripts/check.sh"
+  chmod +x "$R/scripts/check.sh"; git -C "$R" update-index --chmod=+x scripts/check.sh && git -C "$R" commit -qm "+x" && git -C "$R" push -q origin main 2>/dev/null
+  check "a clean repo lints clean" expect_exit 0 tg lint "$R"
+  mkdir -p "$R/hooks"; printf '#!/bin/sh\necho hi\n' > "$R/hooks/pre-commit"; printf 'echo run\n' > "$R/run.sh"
+  chmod 644 "$R/hooks/pre-commit" "$R/run.sh"
+  printf '# State\n| Repo | {{github_owner}}/x |\nuv sync            # python deps\n' > "$R/STATE.md"
+  git -C "$R" add -A && git -C "$R" -c core.fileMode=true update-index --chmod=-x hooks/pre-commit run.sh \
+    && git -C "$R" commit -qm "add" && git -C "$R" push -q origin main 2>/dev/null
+  git -C "$R" push -q origin main:refs/heads/wip/T-09 2>/dev/null     # a branch already on main
+  out=$(tg lint "$R" 2>&1); code=$?
+  check "findings exit 10" test "$code" = 10
+  check "the hook without +x" contains "$out" "not executable: hooks/pre-commit"
+  check "the .sh without +x" contains "$out" "not executable: run.sh"
+  check "the template placeholder" contains "$out" "template placeholder left in STATE.md line 2"
+  check "the uv leftover" contains "$out" "runs uv, but the repo has no pyproject.toml"
+  check "the merged branch" contains "$out" "merged branch still open: wip/T-09"
+  chmod +x "$R/hooks/pre-commit" "$R/run.sh"; git -C "$R" update-index --chmod=+x hooks/pre-commit run.sh
+  printf '# State\n| Repo | me/x |\n' > "$R/STATE.md"
+  git -C "$R" add -A && git -C "$R" commit -qm fix && git -C "$R" push -q origin main 2>/dev/null
+  git -C "$R" push -q origin --delete wip/T-09 2>/dev/null
+  check "clean again after the fixes" expect_exit 0 tg lint "$R"
+fi
+
 if scenario step_command; then
   # O9: one call per agent step (scope + mark TASK_PROGRESS.md + checkpoint) instead of 3–4 turns
   new_repo step

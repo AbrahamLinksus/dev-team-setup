@@ -39,9 +39,12 @@
 #   taskgit.sh reject     <repo> <id>                    drop wip/<id> (local + remote) and its worktree
 #   taskgit.sh undo       <repo> <id>                    revert an approved task's commit on main and push
 #   taskgit.sh list       <repo>                         open wip/* branches on origin + last step
+#   taskgit.sh lint       <repo>                         handover lint: executable bits, STATE.md leftovers,
+#                                                        merged wip/* branches (exit 10 = findings)
 # Exit codes: 0 ok · 1 usage · 2 blocked files · 3 main not clean/diverged · 4 merge conflict
 #             5 check.sh failed after sync · 6 squash failed · 7 committed locally but not pushed
 #             8 approval held: a change request is open · 9 watch: the step looks stalled
+#             10 lint found something
 set -uo pipefail
 
 SHARED=(TASKS.md STATE.md DECISIONS.md)
@@ -664,6 +667,47 @@ PY
     g branch -q -D "$br" 2>/dev/null || true
     g push -q origin --delete "$br" 2>/dev/null || true
     echo "rejected: removed $br"
+    ;;
+
+  lint)
+    # Handover lint: what a fresh clone trips over and no test sees. Prints one line per finding;
+    # exit 10 when there are any, 0 when clean. Reads the main checkout and origin.
+    lint_hits=()
+    # 1. scripts and hooks committed without the executable bit (a fresh clone can't run them)
+    while IFS=$'\t' read -r meta path; do
+      [[ "${meta%% *}" == 100644 ]] || continue
+      case "$path" in
+        *.sh) ;;
+        scripts/*|hooks/*|bin/*|.githooks/*) [[ "$(head -c 2 "$repo/$path" 2>/dev/null)" == '#!' ]] || continue ;;
+        *) continue ;;
+      esac
+      lint_hits+=("not executable: $path (fix: git update-index --chmod=+x '$path')")
+    done < <(g -c core.quotepath=off ls-files -s)
+    # 2. template leftovers in STATE.md: placeholders, and run commands for a stack the repo doesn't use
+    if [[ -f "$repo/STATE.md" ]]; then
+      while IFS= read -r hit; do lint_hits+=("template placeholder left in STATE.md line ${hit%%:*}: ${hit#*:}"); done \
+        < <(grep -n '{{' "$repo/STATE.md" || true)
+      if [[ ! -f "$repo/pyproject.toml" && ! -f "$repo/uv.lock" ]]; then
+        while IFS= read -r hit; do lint_hits+=("STATE.md line ${hit%%:*} runs uv, but the repo has no pyproject.toml: ${hit#*:}"); done \
+          < <(grep -nE '^[[:space:]]*uv ' "$repo/STATE.md" || true)
+      fi
+      if [[ ! -f "$repo/package.json" ]]; then
+        while IFS= read -r hit; do lint_hits+=("STATE.md line ${hit%%:*} runs npm, but the repo has no package.json: ${hit#*:}"); done \
+          < <(grep -nE '^[[:space:]]*npm ' "$repo/STATE.md" || true)
+      fi
+    fi
+    # 3. wip/* branches whose work is already on main (approved, or nothing left to merge)
+    g fetch -q --prune origin 2>/dev/null || true
+    while IFS= read -r ref; do
+      [[ -z "$ref" ]] && continue
+      bid=${ref#origin/wip/}
+      if g merge-base --is-ancestor "$ref" "origin/$main" 2>/dev/null \
+         || [[ -n "$(g log -n 1 --format=%H --grep="^Task: $bid\$" "origin/$main" 2>/dev/null)" ]]; then
+        lint_hits+=("merged branch still open: wip/$bid (ask the owner, then: git push origin --delete wip/$bid)")
+      fi
+    done < <(g for-each-ref --format='%(refname:short)' 'refs/remotes/origin/wip/')
+    if (( ${#lint_hits[@]} )); then printf "lint: %s\\n" "${lint_hits[@]}"; exit 10; fi
+    echo "lint: clean"
     ;;
 
   list)

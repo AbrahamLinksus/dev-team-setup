@@ -694,6 +694,32 @@ class StructureTest(unittest.TestCase):
         self.assertIn("**OWNER.md** (handover)", (ROOT / "agents" / "docs.md").read_text(encoding="utf-8"))
         self.assertIn("`OWNER.md` (one screen for the owner", (SKILL / "references" / "stage-8-handover.md").read_text(encoding="utf-8"))
 
+    def test_small_minors_are_fixed_not_listed_at_handover(self):
+        # B-21: Recipe Box handed over with a list of 5-minute "known minors" nobody fixed
+        handover = (SKILL / "references" / "stage-8-handover.md").read_text(encoding="utf-8")
+        self.assertIn("0. **Fix, don't list.**", handover)
+        self.assertIn("sized ≈5 min or less is fixed now", handover)
+        self.assertIn("The handover never ships an unwaived \"known minor\"", handover)
+        self.assertIn("## Known minors", (SKILL / "templates" / "STATE.md").read_text(encoding="utf-8"))
+        self.assertIn("`(≈2 min)`", (ROOT / "agents" / "reviewer.md").read_text(encoding="utf-8"))
+        self.assertIn('added to STATE.md "Known minors"', (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8"))
+
+    def test_handover_lint_runs_before_the_card(self):
+        # B-22: a hook without +x and a 'uv sync' leftover in STATE.md reached the Recipe Box handover
+        handover = (SKILL / "references" / "stage-8-handover.md").read_text(encoding="utf-8")
+        self.assertIn("**Handover lint.** `$TASKGIT lint <repo>`", handover)
+        self.assertIn("**Delete them (Recommended)** / Keep", handover)
+        self.assertIn("  lint)", (SKILL / "scripts" / "taskgit.sh").read_text(encoding="utf-8"))
+
+    def test_ci_proves_the_readme_claims(self):
+        # B-23: a README said "Python 3.9+" and CI only ever ran 3.12
+        devops = (ROOT / "agents" / "devops.md").read_text(encoding="utf-8")
+        self.assertIn("**CI proves the README's claims**", devops)
+        self.assertIn("the **minimum** stated version plus the latest", devops)
+        self.assertIn('`requires-python = ">=3.11"`', (ROOT / "agents" / "env-setup.md").read_text(encoding="utf-8"))
+        self.assertIn("every README claim (OS, versions) has a matching CI job",
+                      " ".join((SKILL / "references" / "stage-8-handover.md").read_text(encoding="utf-8").split()))
+
     def test_resume_shows_where_we_are(self):
         # D27: a resumed project opens with a one-screen summary, not one line
         resume = (SKILL / "references" / "resume.md").read_text(encoding="utf-8")
