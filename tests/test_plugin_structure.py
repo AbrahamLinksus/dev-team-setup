@@ -18,7 +18,7 @@ SKILL = ROOT / "skills" / "setup-project"
 # D11: SKILL.md is a core; each stage's instructions live in references/stage-*.md and are read
 # when the stage starts. Content checks look at the core plus every stage file.
 STAGE_FILES = ("stage-0-intake.md", "stage-1-6-planning.md", "stage-7-build.md", "stage-8-handover.md",
-               "anytime.md", "resume.md")
+               "anytime.md", "resume.md", "maintenance.md")
 
 
 def skill_text() -> str:
@@ -719,6 +719,27 @@ class StructureTest(unittest.TestCase):
         self.assertIn('`requires-python = ">=3.11"`', (ROOT / "agents" / "env-setup.md").read_text(encoding="utf-8"))
         self.assertIn("every README claim (OS, versions) has a matching CI job",
                       " ".join((SKILL / "references" / "stage-8-handover.md").read_text(encoding="utf-8").split()))
+
+    def test_fixes_after_handover_reproduce_first(self):
+        # B-24: a bug report in plain words ends in a test that failed, a fix, and a card
+        m = (SKILL / "references" / "maintenance.md").read_text(encoding="utf-8")
+        fix = m[m.index("## `/setup-project fix"):m.index("## New feature")]
+        self.assertIn("**Reproduce first: tester.**", fix)
+        self.assertIn("**fails because of the bug**", fix)
+        self.assertLess(fix.index("Reproduce first"), fix.index("**Fix: debugger.**"))
+        self.assertIn("can't reproduce it → no code\n   changes", fix)
+        self.assertIn("`fix(<module>): <what> [FIX-<n>]`", fix)
+        self.assertIn("it's a feature", fix)
+        self.assertIn("`/setup-project fix <bug>` or `add <feature>`", (SKILL / "SKILL.md").read_text(encoding="utf-8"))
+
+    def test_features_after_handover_reuse_the_change_request_flow(self):
+        # B-25: a new feature on a finished project is a CR with its own size and a short handover
+        m = (SKILL / "references" / "maintenance.md").read_text(encoding="utf-8")
+        new = m[m.index("## New feature"):]
+        self.assertIn("Reuse the change-request\nflow (`change-requests.md`)", new)
+        self.assertIn("**fresh size estimate for the change alone**", new)
+        self.assertIn("short **handover**", new)
+        self.assertIn("Status: Active", new)
 
     def test_resume_shows_where_we_are(self):
         # D27: a resumed project opens with a one-screen summary, not one line

@@ -6,6 +6,7 @@ Behaviour checks run with `claude plugin eval` (Claude Code 2.1.269+). The unit 
 | Case | Tag | Checks |
 |---|---|---|
 | `ignores-bare-continue` | routing | a bare "continue" with no setup-project STATE.md doesn't start the skill |
+| `fix-routes-to-maintenance` | routing | `/setup-project fix <bug>` is treated as a bug report for a finished project, never as a new idea |
 | `ignores-generic-setup` | routing | an ordinary setup question doesn't start the multi-agent pipeline |
 | `stops-without-team-tools` | surface | without the Agent tool and Bash (claude.ai chat), the skill stops in one line (D6) |
 | `explains-before-asking` | intake | the three-line opener comes before the first question (D31) |

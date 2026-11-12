@@ -145,6 +145,7 @@ Pushing `wip/*` branches is pre-approved. **main changes only through `$TASKGIT 
 | 8 Handover | `references/stage-8-handover.md` |
 | Change request, pause, abandon | `references/anytime.md` |
 | `/setup-project resume <repo>`, or "continue" in a folder with a setup-project STATE.md | `references/resume.md` |
+| `/setup-project fix <bug>` or `add <feature>` on a finished project | `references/maintenance.md` |
 
 ## Rules
 
