@@ -175,6 +175,7 @@ AGENTS = [
              "Docker: multi-stage builds, non-root user, small images, only when the LLD calls for it.",
              "Deployment only when the brief says the owner asked for it: GCP (Cloud Run) by default for containers, Vercel for Next.js frontends, Render for simple services. Choosing the target is Tier 1.",
              "Secrets go in the platform's secret manager or GitHub secrets, never in files.",
+             "**Phone preview** (only when the brief says the owner opted in): write `deploy/preview.sh`, which starts the app on `$PORT` and opens a temporary tunnel to it (`cloudflared tunnel --url http://localhost:$PORT`, or `npx localtunnel --port $PORT`), prints the public URL on a line starting `PREVIEW:`, and stops both when it ends. The caller runs it under `timeout`; never start it yourself and leave it running.",
              "Visuals: `$CAPTURE term` of `gh run list` / `gh run view`, and `$CAPTURE web` of the deployed URL.",
          ]),
     dict(name="git-pr", model="haiku", color="yellow", tools=[B, R, W],

@@ -30,6 +30,22 @@ so a screenshot can never come from another task's server.
 | CI / DevOps | Pipeline status, live URL screenshot | `term` with `gh run list`/`gh run view`; `web` on the deployed URL |
 | Docs | Rendered README top section | `md README.md readme.png` |
 
+## Phone preview (milestone end, opt-in)
+
+Screenshots show the app; a preview lets the owner use it on their phone. It is offered at each
+milestone card of a project with a UI or an API, and is **opt-in and Tier 1** (a public link):
+- **Ask once**, at the first milestone card: "Try it on your phone? We'd open a temporary link:
+  anyone who has it can use this build for 30 minutes, then it closes." **Yes, each milestone** /
+  **Not now**. Record the answer in STATE.md and DECISIONS.md.
+- **Private first:** if your tools can show a port to the owner's app without making it public
+  (e.g. a `report_preview_port` tool in a cloud session), use that and skip the tunnel.
+- **Otherwise:** the first time, a **devops** step writes `deploy/preview.sh` (devops must be on the
+  team; add it with the owner's yes if not). Run it yourself from the milestone's worktree with
+  Bash in the background: `timeout 1800 bash deploy/preview.sh` (Port 8000 + milestone number ×
+  100). Put the `PREVIEW:` URL on the milestone card with "open on your phone; closes in 30 min".
+  It stops by itself; stop it early when the owner answers the card. This is the only server
+  allowed to outlive a step, and only because `timeout` bounds it.
+
 Rules:
 - Start servers in the background, wait for the port, capture, then kill the server in
   the same command. Never leave servers running after the turn.
