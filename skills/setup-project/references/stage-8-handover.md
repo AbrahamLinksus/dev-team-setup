@@ -14,7 +14,9 @@ review** of the last milestone's tasks when any had theirs batched (`stage-7-bui
    worktree and captures it fresh (`$CAPTURE web <url> <wt>/.results/handover/app --mobile`, plus
    a `$CAPTURE term` of the test run), then stops it. You copy the 2–4 best PNGs to
    `<wt>/docs/images/` (tracked) and list those paths in the docs agent's `Read:`.
-1. **devops**: CI running `scripts/check.sh` on push/PR (deploy only if the owner asks).
+1. **devops**: CI running `scripts/check.sh` on push/PR (deploy only if the owner asks), with a matrix
+   built from the README's stated OS and runtime versions, minimum version included. The handover
+   reviewer checks that every README claim (OS, versions) has a matching CI job.
 2. **architect**: as-built sync of `docs/LLD.md` (changes since the last milestone), then
    `docs/ARCHITECTURE.md` (as built) and `docs/WALKTHROUGH.md` (templates).
 3. **docs**: README "How to run / How to test / How to extend" with the screenshots in `docs/images/`,

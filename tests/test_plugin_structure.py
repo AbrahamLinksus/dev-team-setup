@@ -711,6 +711,15 @@ class StructureTest(unittest.TestCase):
         self.assertIn("**Delete them (Recommended)** / Keep", handover)
         self.assertIn("  lint)", (SKILL / "scripts" / "taskgit.sh").read_text(encoding="utf-8"))
 
+    def test_ci_proves_the_readme_claims(self):
+        # B-23: a README said "Python 3.9+" and CI only ever ran 3.12
+        devops = (ROOT / "agents" / "devops.md").read_text(encoding="utf-8")
+        self.assertIn("**CI proves the README's claims**", devops)
+        self.assertIn("the **minimum** stated version plus the latest", devops)
+        self.assertIn('`requires-python = ">=3.11"`', (ROOT / "agents" / "env-setup.md").read_text(encoding="utf-8"))
+        self.assertIn("every README claim (OS, versions) has a matching CI job",
+                      " ".join((SKILL / "references" / "stage-8-handover.md").read_text(encoding="utf-8").split()))
+
     def test_resume_shows_where_we_are(self):
         # D27: a resumed project opens with a one-screen summary, not one line
         resume = (SKILL / "references" / "resume.md").read_text(encoding="utf-8")
