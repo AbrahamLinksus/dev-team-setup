@@ -571,6 +571,18 @@ class StructureTest(unittest.TestCase):
         self.assertIn('"Owner mode" for every card', (SKILL / "references" / "resume.md").read_text(encoding="utf-8"))
         self.assertIn("`Technical detail: …`", (SKILL / "references" / "result-card.md").read_text(encoding="utf-8"))
 
+    def test_every_decision_card_says_what_it_means_and_what_if_wrong(self):
+        # B-02: decision cards named packages and stopped; a non-coder couldn't weigh them
+        for f in ("team-rules.md", "decision-policy.md"):
+            text = (SKILL / "references" / f).read_text(encoding="utf-8")
+            self.assertIn("For the owner: <what the recommended option means for them, in plain words>", text)
+            self.assertIn("If wrong: <what it costs to change later", text)
+        policy = (SKILL / "references" / "decision-policy.md").read_text(encoding="utf-8")
+        self.assertIn("**What this means for you:**", policy)
+        self.assertIn("**If this is wrong:**", policy)
+        self.assertIn("Means for you · if wrong", (SKILL / "templates" / "DECISIONS.md").read_text(encoding="utf-8"))
+        self.assertIn("what changing it later costs", (ROOT / "agents" / "architect.md").read_text(encoding="utf-8"))
+
     def test_resume_shows_where_we_are(self):
         # D27: a resumed project opens with a one-screen summary, not one line
         resume = (SKILL / "references" / "resume.md").read_text(encoding="utf-8")

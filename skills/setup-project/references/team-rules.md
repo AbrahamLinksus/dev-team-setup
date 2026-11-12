@@ -57,7 +57,8 @@ Full report: <path> | none
 If it would exceed 12 lines, keep one line per goal and summarise the rest as
 "Agent decisions: <n>, see full report" / "Issues: <n>, see full report".
 
-Or, when you hit a Tier 1 decision, return this instead (unchanged):
+Or, when you hit a Tier 1 decision, return this instead (the owner may not write code, so
+`For the owner` and `If wrong` use no package or tool names):
 
 ```
 DECISION NEEDED
@@ -66,6 +67,8 @@ Options:
   A) <option> — <trade-off>
   B) <option> — <trade-off>
 Recommended: <A/B> because <reason>
+For the owner: <what the recommended option means for them, in plain words>
+If wrong: <what it costs to change later: an hour, a rework of T-xx, data lost…>
 Affects: <files / tasks / cost>
 ```
 
