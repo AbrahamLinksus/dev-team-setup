@@ -9,6 +9,7 @@ Behaviour checks run with `claude plugin eval` (Claude Code 2.1.269+). The unit 
 | `ignores-generic-setup` | routing | an ordinary setup question doesn't start the multi-agent pipeline |
 | `stops-without-team-tools` | surface | without the Agent tool and Bash (claude.ai chat), the skill stops in one line (D6) |
 | `explains-before-asking` | intake | the three-line opener comes before the first question (D31) |
+| `cards-plain-language` | intake | in builder mode (the owner doesn't write code), no tool or package name and no jargon reaches the owner without a plain gloss |
 
 Run all three groups (each needs different tool grants), capped at $11 in total:
 
