@@ -62,8 +62,8 @@ if a PushNotification tool is available (load it with ToolSearch).
 Cards and images go out with SendUserFile / SendUserMessage where they exist; in the terminal
 CLI they don't, so follow the fallback in `result-card.md` (card file + printed image paths).
 
-**Planning crew** (always used, never part of the team pick): planner, researcher,
-architect, env-setup. The **build team** is picked in stage 3 from the HLD. Approve, reject and
+**Planning crew** (always used, never part of the team pick): planner, product-critic,
+researcher, architect, env-setup. The **build team** is picked in stage 3 from the HLD. Approve, reject and
 record are one script call each, so you run `$TASKGIT` yourself rather than spawning an agent
 for them (git-pr stays available for a task whose commit message needs real summarising).
 

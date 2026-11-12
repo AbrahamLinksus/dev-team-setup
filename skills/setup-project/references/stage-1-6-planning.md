@@ -9,6 +9,8 @@ a QUESTIONS block, until it returns SPEC COMPLETE (at most 6 rounds; then open i
 assumptions listed on the spec card). Ask every
 round's questions in one AskUserQuestion call (recommended option first, "Decide for me"
 where sensible) and send a one-line progress note between rounds.
+**product-critic** then stress-tests the spec with usage scenarios; its high gaps are asked on
+the spec card (`spec-interview.md`, Spec critic).
 UI projects: planner writes lo-fi wireframes; render them (mobile + desktop).
 Spec card: wireframes + spec summary + every *(assumed)* line → Approve / Request changes /
 Answer more questions. Nothing is designed before the spec is approved.

@@ -19,8 +19,19 @@ round n:
   answers go back to the planner in the next brief (verbatim)
 until planner returns "SPEC COMPLETE", or round 6 is answered: then the brief says
   "final round: turn every open item into an (assumed) line and return SPEC COMPLETE"
-then: wireframes (UI projects) → spec card ⏸
+then: product-critic (scenarios + gaps) → wireframes (UI projects) → spec card ⏸
 ```
+
+## Spec critic (after SPEC COMPLETE, before the spec card)
+
+Spawn **product-critic** (`Read: docs/SPEC.md`). It writes 8–15 realistic usage scenarios with
+edge data to `docs/scenarios.md` and checks the spec handles each, returning
+`GAPS: <n> (high <h>, medium <m>, low <l>)`. On the spec card:
+- **High gaps** become questions in the same AskUserQuestion call as the approval (max 3, from
+  the critic's `## Gaps` lines, options included); answers go to the planner for one more round
+  (it doesn't count toward the 6), then the card is sent again.
+- Medium and low gaps are listed on the card in one line each; the owner can promote any.
+- No gaps → one line: "Checked against <s> real-life scenarios: no gaps found."
 
 Between rounds, send the owner a one-line progress note:
 "Spec round 2 done: 7/12 sections complete; next: data + non-functional".
@@ -82,7 +93,7 @@ The PNGs are committed with the spec (they're part of the handover).
 
 ## Spec card ⏸
 
-Images: wireframes (max 4; offer the rest on request) + the spec rendered with
+The critic's gaps come first (see Spec critic above). Images: wireframes (max 4; offer the rest on request) + the spec rendered with
 `$CAPTURE md docs/SPEC.md` if it fits on 2 screens, otherwise a summary table:
 stories · flows · screens · non-goals · done criteria · assumptions.
 Ask: Approve spec / Request changes (type them) / Answer more questions.

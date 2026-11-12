@@ -66,7 +66,7 @@ class StructureTest(unittest.TestCase):
         self.assertIn("scope_guard.py", (ROOT / "hooks" / "scope_guard.sh").read_text())
 
     def test_agents_frontmatter(self):
-        self.assertEqual(len(AGENTS), 26)
+        self.assertEqual(len(AGENTS), 27)
         for path in AGENTS:
             with self.subTest(agent=path.name):
                 fm = frontmatter(path)
@@ -354,7 +354,7 @@ class StructureTest(unittest.TestCase):
         self.assertIn("Paused", (SKILL / "templates" / "STATE.md").read_text(encoding="utf-8"))
 
     def test_agent_descriptions_are_short(self):
-        # K23: all 26 descriptions are loaded into every session, even ones that never use the plugin
+        # K23: all agent descriptions are loaded into every session, even ones that never use the plugin
         total = sum(len(frontmatter(p)["description"]) for p in AGENTS)
         self.assertLess(total, 3500, f"agent descriptions total {total} characters")
 
@@ -590,6 +590,19 @@ class StructureTest(unittest.TestCase):
         self.assertIn("**Approve toolkit** / **Show me each**", planning)
         self.assertIn("keep their own cards:\n   Tier 1 still reaches the owner", planning)
         self.assertIn("`toolkit` for a forced dev-tooling choice", (ROOT / "agents" / "architect.md").read_text(encoding="utf-8"))
+
+    def test_spec_critic_checks_the_spec_before_its_card(self):
+        # B-05: Recipe Box's spec missed range amounts, ⅓ rounding and backups; nobody used it first
+        critic = (ROOT / "agents" / "product-critic.md").read_text(encoding="utf-8")
+        self.assertIn("**8–15 realistic usage scenarios**", critic)
+        self.assertIn("`GAPS: <n> (high <h>, medium <m>, low <l>) · scenarios <s>`", critic)
+        self.assertIn("never implementation", critic)
+        self.assertEqual(frontmatter(ROOT / "agents" / "product-critic.md")["tools"], ["Read", "Write", "Glob"])
+        interview = (SKILL / "references" / "spec-interview.md").read_text(encoding="utf-8")
+        self.assertIn("product-critic (scenarios + gaps) → wireframes (UI projects) → spec card", interview)
+        self.assertIn("**High gaps** become questions", interview)
+        self.assertIn("it doesn't count toward the 6", interview)
+        self.assertIn("planner, product-critic,", (SKILL / "SKILL.md").read_text(encoding="utf-8"))
 
     def test_resume_shows_where_we_are(self):
         # D27: a resumed project opens with a one-screen summary, not one line

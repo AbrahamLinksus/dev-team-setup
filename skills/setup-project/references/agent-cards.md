@@ -23,6 +23,7 @@ its line in the progress note so the owner sees what it may and may not touch. A
 - mlops · may change: any project file · can't: the task and state files, the design docs, raw data, frontend code, the quality gates (check.sh, lint/test configs, CI), tests, git internals, .env files · shell: runs code and tests (no git writes, no installs)
 - modeler · may change: `src/**`, `models/**`, `notebooks/**`, tests, its own reports · can't: anything else, git internals, .env files · shell: runs code and tests (no git writes, no installs)
 - planner · may change: `docs/SPEC.md`, `docs/wireframes/**`, `docs/HLD.md`, `TASKS.md`, its own reports · can't: anything else, git internals, .env files · shell: no shell
+- product-critic · may change: `docs/scenarios.md`, its own reports · can't: anything else, git internals, .env files · shell: no shell
 - prompt-engineer · may change: `prompts/**`, `**/prompts/**`, `**/prompts.py`, `**/*_prompt.py`, `**/*_prompts.py`, `**/prompt_*.py`, its own reports · can't: anything else, git internals, .env files · shell: runs code and tests (no git writes, no installs)
 - rag-engineer · may change: any project file · can't: the task and state files, the design docs, raw data, frontend code, the quality gates (check.sh, lint/test configs, CI), tests, git internals, .env files · shell: runs code and tests (no git writes, no installs)
 - researcher · may change: `docs/research.md`, its own reports · can't: anything else, git internals, .env files · shell: no shell
