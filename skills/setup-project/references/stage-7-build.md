@@ -64,6 +64,9 @@ Per task `T-xx`:
    check result, so this step is skipped: mark the test and review steps `⏭ coder` and
    `⏭ batched`, and put "Tests by the coder · review batched at milestone end" on its card. Its
    review comes once per milestone (below), one reviewer for all such tasks instead of one each.
+   The **tester spawns only on failure**: if the coder's REPORT shows coverage still short, spawn
+   the tester for that task (no new review); any other failing check goes to the **debugger** as
+   above, which makes the task high-risk.
    The gates (`check.sh`, coverage and lint configs) stay closed to the coder. Large projects,
    and every task whose scope is high-risk, keep the separate tester and per-task reviewer; a
    debugger round or a Major finding turns the task high-risk, and its next round has both.

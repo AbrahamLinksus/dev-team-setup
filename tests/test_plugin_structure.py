@@ -647,6 +647,8 @@ class StructureTest(unittest.TestCase):
         self.assertIn("`$TASKGIT coder-tests <repo> T-xx` right after `start`", step3)
         self.assertIn("`Tests: yours`", step3)
         self.assertIn("The gates (`check.sh`, coverage and lint configs) stay closed to the coder", step3)
+        # B-34: the tester only comes in when the coder's own run leaves coverage short
+        self.assertIn("The **tester spawns only on failure**", step3)
         rules = (SKILL / "references" / "team-rules.md").read_text(encoding="utf-8")
         self.assertIn("except when your brief says `Tests: yours`", rules)
         self.assertIn("Never weaken or delete an existing test", rules)
