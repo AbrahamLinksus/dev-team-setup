@@ -19,5 +19,13 @@ review** of the last milestone's tasks when any had theirs batched (`stage-7-bui
    **tester** (it has Bash): runs every command in the README's "How to run" and "How to test"
    in a fresh clone of the handover branch, each under `timeout`, captures the run with
    `$CAPTURE term`, and reports any command that fails or doesn't exist.
-Handover card (`result-card.md`) → Approve handover / Request changes. Then STATE.md →
-"Complete" and a final `record`.
+5. **Production gate.** The reviewer also fills a `## Production gate` table in its full report:
+   each applicable item of `docs/PRODUCTION.md` with its status, `Built + tested (<the test or
+   capture that proves it>)` only when that proof exists and passed in the tester's run, else
+   `Open`. Then **docs** writes those statuses into `docs/PRODUCTION.md`.
+Handover card (`result-card.md`) → Approve handover / Request changes. **Approve is offered only
+when no gate item is Open.** Each open item instead gets, in the same AskUserQuestion call (max 4
+per call): **Build it** (a fix task, normal flow, then the gate is re-checked) / **Waive it** (a
+Tier 1 decision: the card states the consequence, e.g. "anyone with the link can read every
+recipe", logged in DECISIONS.md and written to the item as `Waived by the owner (D-xx: …)`).
+Then STATE.md → "Complete" and a final `record`.

@@ -91,6 +91,7 @@
         "docs/SPEC.md",
         "docs/wireframes/**",
         "docs/HLD.md",
+        "docs/PRODUCTION.md",
         "TASKS.md",
         ".results/**"
       ],

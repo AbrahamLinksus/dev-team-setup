@@ -621,6 +621,37 @@ class StructureTest(unittest.TestCase):
         self.assertIn("`Scenarios covered: <n>/<n>`", (SKILL / "references" / "stage-1-6-planning.md").read_text(encoding="utf-8"))
         self.assertIn("numbered `S-01`", (ROOT / "agents" / "product-critic.md").read_text(encoding="utf-8"))
 
+    def test_production_checklist_per_project_type(self):
+        # B-09: "production-ready" meant whatever the last reviewer remembered
+        prod = (SKILL / "templates" / "PRODUCTION.md").read_text(encoding="utf-8")
+        for section in ("## All projects", "## Local app", "## Web app", "## API", "## AI/ML service"):
+            self.assertIn(section, prod)
+        rows = [ln for ln in prod.splitlines() if re.match(r"\| G-", ln)]
+        self.assertGreaterEqual(len(rows), 20)
+        for row in rows:
+            cells = [c.strip() for c in row.strip("|").split("|")]
+            with self.subTest(item=cells[0]):
+                self.assertEqual(len(cells), 5)
+                self.assertTrue(cells[2], "every item says how it is proven")
+                self.assertEqual(cells[4], "Open")
+        self.assertEqual(len({r.split("|")[1] for r in rows}), len(rows), "item IDs are unique")
+        self.assertIn("## Production gate (who proves what)", (SKILL / "references" / "agent-catalog.md").read_text(encoding="utf-8"))
+
+    def test_gate_items_are_criteria_and_block_the_handover(self):
+        # B-10: gate items are built inside the slices; B-11: an open item blocks Approve
+        planner = (ROOT / "agents" / "planner.md").read_text(encoding="utf-8")
+        self.assertIn("**Production gate** (with the task list)", planner)
+        self.assertIn("tagged `(G-03)`", planner)
+        self.assertIn("those count toward the task cap", planner)
+        scopes = json.loads((SKILL / "scopes.json").read_text(encoding="utf-8"))
+        self.assertIn("docs/PRODUCTION.md", scopes["agents"]["planner"]["write"])
+        self.assertIn("`Production gate: <n> items, <n> N/A`", (SKILL / "references" / "stage-1-6-planning.md").read_text(encoding="utf-8"))
+        handover = (SKILL / "references" / "stage-8-handover.md").read_text(encoding="utf-8")
+        self.assertIn("**Approve is offered only\nwhen no gate item is Open.**", handover)
+        self.assertIn("**Build it**", handover)
+        self.assertIn("**Waive it** (a\nTier 1 decision: the card states the consequence", handover)
+        self.assertIn("Production gate · 11 items", (SKILL / "references" / "result-card.md").read_text(encoding="utf-8"))
+
     def test_resume_shows_where_we_are(self):
         # D27: a resumed project opens with a one-screen summary, not one line
         resume = (SKILL / "references" / "resume.md").read_text(encoding="utf-8")

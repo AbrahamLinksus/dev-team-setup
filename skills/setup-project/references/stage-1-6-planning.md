@@ -97,7 +97,9 @@ it, which every owner can read ("Round 2: 3 features at the same time"). A paral
 1.5 with 4+ tasks prints a warning: the card says why (or the planner moves shared helpers into
 the foundation task).
 Planning card (spec, HLD, team, LLD, env, task graph, task count per milestone, project size, and
-`Scenarios covered: <n>/<n>`: each scenario in `docs/scenarios.md` tagged on some criterion). Show the task
+`Scenarios covered: <n>/<n>`: each scenario in `docs/scenarios.md` tagged on some criterion, and
+`Production gate: <n> items, <n> N/A`: every applicable item of `docs/PRODUCTION.md` tagged on a
+criterion). The planner's brief gives it the `templates/PRODUCTION.md` path. Show the task
 count against the size's cap (**small 8, medium 15, large 30**); over the cap, list each extra
 task's `Why separate:` line so the owner can ask to merge them.
 In `balanced` or `fast` cost mode, add the build-model tip (`approval-modes.md`).

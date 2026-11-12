@@ -126,4 +126,14 @@ changes. Offer the same fresh-session choice after a change request merges.
 Images: running app (or main output) screenshot, the as-built system diagram, README
 "How to run" rendered. Then a list of what was delivered: `docs/ARCHITECTURE.md`,
 `docs/WALKTHROUGH.md`, README sections, CI status, final coverage, open issues / tech debt.
-Ask: Approve handover / Request changes.
+Then the **production gate table** (≤5 columns: ID · item in plain words · status · proof):
+
+```
+Production gate · 11 items · 9 built + tested · 1 waived · 1 open
+G-02 Data survives a restart        ✅ test_restart_keeps_recipes
+G-03 Backup / export                ✅ test_export_all_recipes
+G-W2 Others can't see your data     ⛔ open: no test acts as another user
+G-L1 Works offline                  🟡 waived (D-14): needs a connection to sync
+```
+Ask: Approve handover / Request changes, and Approve only when no item is open (see
+`stage-8-handover.md`).
