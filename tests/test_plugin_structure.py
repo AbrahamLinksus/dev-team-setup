@@ -694,6 +694,16 @@ class StructureTest(unittest.TestCase):
         self.assertIn("**OWNER.md** (handover)", (ROOT / "agents" / "docs.md").read_text(encoding="utf-8"))
         self.assertIn("`OWNER.md` (one screen for the owner", (SKILL / "references" / "stage-8-handover.md").read_text(encoding="utf-8"))
 
+    def test_small_minors_are_fixed_not_listed_at_handover(self):
+        # B-21: Recipe Box handed over with a list of 5-minute "known minors" nobody fixed
+        handover = (SKILL / "references" / "stage-8-handover.md").read_text(encoding="utf-8")
+        self.assertIn("0. **Fix, don't list.**", handover)
+        self.assertIn("sized ≈5 min or less is fixed now", handover)
+        self.assertIn("The handover never ships an unwaived \"known minor\"", handover)
+        self.assertIn("## Known minors", (SKILL / "templates" / "STATE.md").read_text(encoding="utf-8"))
+        self.assertIn("`(≈2 min)`", (ROOT / "agents" / "reviewer.md").read_text(encoding="utf-8"))
+        self.assertIn('added to STATE.md "Known minors"', (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8"))
+
     def test_resume_shows_where_we_are(self):
         # D27: a resumed project opens with a one-screen summary, not one line
         resume = (SKILL / "references" / "resume.md").read_text(encoding="utf-8")

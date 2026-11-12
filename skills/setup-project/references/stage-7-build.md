@@ -121,7 +121,8 @@ approved diffs to one file without opening it:
 and spawn one **reviewer** on it (brief: the task IDs and their acceptance criteria; for tasks
 with `Tests: coder`, also check that the tests really exercise each criterion). Critical or
 Major findings → a fix task per affected task (`T-03r`, its owner agent, high-risk, normal flow)
-before the milestone card; Minor findings go on the milestone card.
+before the milestone card; Minor findings go on the milestone card. Every Minor finding a card
+shows (task or milestone) is also added to STATE.md "Known minors" with its size, for the handover.
 
 **Milestone end ⏸** (every milestone but the last): task `M<n>-docs` with two steps: **architect** as-built sync of
 `docs/LLD.md` (changes since last milestone, section numbers kept stable), then **docs**
