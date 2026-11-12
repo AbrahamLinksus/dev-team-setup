@@ -815,11 +815,15 @@ class StructureTest(unittest.TestCase):
     def test_independent_tasks_start_in_one_message(self):
         # P2: agents only run concurrently when spawned in the same message
         build = (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8")
-        block = build[build.index("**Start independent tasks together"):build.index("**Don't let the team idle")]
+        block = build[build.index("**Schedule from the graph"):build.index("**Don't let the team idle")]
         self.assertIn("same message", block)
-        self.assertIn("up to **3**", block)
         self.assertIn("one Agent call per task", block)
-        self.assertIn("when unsure, they're not\nindependent", block)
+        # B-36: the graph decides what is independent (T-17/T-18 shared a file nobody noticed)
+        self.assertIn("`python3 $TASKGRAPH <repo>/TASKS.md --ready`", block)
+        self.assertIn("up to\n3 running in total, longest remaining chain first", block)
+        self.assertIn("run `--ready` again", block)
+        self.assertIn("`Status: In progress` in TASKS.md", build)
+        self.assertIn("TASKGRAPH=<root>/skills/setup-project/scripts/taskgraph.py", (SKILL / "SKILL.md").read_text(encoding="utf-8"))
 
     def test_fast_mode_keeps_design_and_risky_reviews_strong(self):
         # P3: faster models for mechanical roles, never for the design or high-risk reviews

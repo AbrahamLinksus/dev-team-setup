@@ -40,6 +40,7 @@ it for the whole run: every owner question is answered from that file, never Ask
 - `CAPTURE=<root>/skills/setup-project/scripts/capture.py`
 - `TASKGIT=<root>/skills/setup-project/scripts/taskgit.sh`
 - `COST=<root>/skills/setup-project/scripts/cost.py`: `python3 $COST <base> --since "<project start from STATE.md>" --task <id> --budget <budget>` prints the card's Cost line; exit 3 = over budget
+- `TASKGRAPH=<root>/skills/setup-project/scripts/taskgraph.py`: waves, critical path, `--ready` tasks
 - `TEAM_RULES=<root>/skills/setup-project/references/team-rules.md`
 - Templates: `<root>/skills/setup-project/templates/`
 

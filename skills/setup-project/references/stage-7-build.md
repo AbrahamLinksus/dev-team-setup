@@ -4,18 +4,18 @@ Part of the /setup-project Orchestrator (SKILL.md). Read this file when the stag
 
 ## 7 · Build loop
 
-Take every `Backlog` task whose dependencies are `Done`; run independent tasks in parallel
-(own worktrees; shared files are only edited on main).
+**Schedule from the graph, never by eye.** `python3 $TASKGRAPH <repo>/TASKS.md --ready` prints the
+tasks to start now: dependencies `Done`, no file in their `Files:` shared with a running task, up to
+3 running in total, longest remaining chain first. Run it whenever a task finishes, is approved or
+waits on a card; tasks run in their own worktrees, and shared files are only edited on main.
 
-**Start independent tasks together, really at the same time.** Agents run in parallel only when
+**Start the ready tasks together, really at the same time.** Agents run in parallel only when
 they're spawned in the **same message**; one Agent call per message runs them one after another.
-So pick up to **3** ready tasks that don't depend on each other and don't plan to touch the same
-files (check their `Context:` and the LLD modules in TASKS.md; when unsure, they're not
-independent). `$TASKGIT start` each one, mark each step ⏳ and checkpoint, then send **one message
+`$TASKGIT start` each task `--ready` printed, mark each step ⏳ and checkpoint, then send **one message
 with one Agent call per task** (each with its own brief, worktree path and port). Handle each
 task's REPORT as it comes back and carry on with that task alone; when one finishes or waits on a
-card, start the next ready task the same way. More than 3 at once makes the checks compete for the
-machine and the owner's cards pile up.
+card, run `--ready` again and start what it prints the same way. More than 3 at once makes the
+checks compete for the machine and the owner's cards pile up.
 
 **Don't let the team idle while a card waits.** Waiting for the owner is most of a build's
 wall-clock time, and a question blocks your turn until it's answered. So before you ask a
@@ -41,7 +41,8 @@ Per task `T-xx`:
 
 1. `$TASKGIT start <repo> T-xx` (a new worktree gets the locked dependencies installed: `uv sync`,
    `npm ci`, …; a warning names the log if that fails, then give it to env-setup before any code step);
-   write `TASK_PROGRESS.md`; widget → in progress.
+   write `TASK_PROGRESS.md`; widget → in progress; set its `Status: In progress` in TASKS.md in the
+   main checkout (`--ready` reads it there; the next approve or record commits it).
 2. Owner agent (step protocol). A task with two owners (`Owner: backend-coder, frontend-coder`)
    gets one implement step per owner, in the listed order, in the same worktree. `DECISION NEEDED` → record it in TASK_PROGRESS.md, checkpoint,
    ask the owner, resume with the answer.
