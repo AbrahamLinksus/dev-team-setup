@@ -636,6 +636,12 @@ class StructureTest(unittest.TestCase):
         self.assertIn("--ready --avoid M<n>", build)
         self.assertIn("let each finish its current step (checkpointed), then restart", build)
 
+    def test_open_tasks_catch_up_after_each_approve(self):
+        # B-46: conflicts surfaced only at the final sync, after the whole task was done
+        build = (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8")
+        self.assertIn("**Early sync:** right after it, `$TASKGIT catchup <repo>", build)
+        self.assertIn("  catchup)", (SKILL / "scripts" / "taskgit.sh").read_text(encoding="utf-8"))
+
     def test_plan_vs_actual_files(self):
         # B-43: a task that edits files it didn't declare would let --ready start a colliding task
         build = (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8")

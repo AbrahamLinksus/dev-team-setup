@@ -101,6 +101,10 @@ Per task `T-xx`:
      a conventional-commit message built from the card (`feat(auth): add login endpoint [T-07]`).
      approve commits those updates in the task's own commit: one commit per task, no `record`.
      If approve fails, the updates stay in the main checkout; fix the cause and approve again.
+     **Early sync:** right after it, `$TASKGIT catchup <repo> <ids of the other open tasks between
+     steps>` merges the new main into them (no checks). Exit 4 names the branches that conflict:
+     give each to its owner agent before its next step, so the conflict is fixed during the task,
+     not found at its card.
    - **Request changes** that stays within the task's acceptance criteria → back to step 2,
      continuing the owner agent (see **Rework continuation** in SKILL.md). Anything wider is a
      **change request** (`references/anytime.md`).
