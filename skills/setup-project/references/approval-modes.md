@@ -64,7 +64,7 @@ keep moving while a card waits (`stage-7-build.md`, "Don't let the team idle").
 **fast** (quickest wall-clock time; Sonnet writes faster than Opus):
 - Spawn with `model: "sonnet"` every agent whose definition says Opus, **except planner and
   architect**: the design everything else follows stays on the strongest model. That covers
-  reviewer, debugger, evaluator, explainer and statistician. Haiku and Sonnet agents keep theirs.
+  product-critic, reviewer, debugger, evaluator, explainer and statistician. Haiku and Sonnet agents keep theirs.
 - **High-risk tasks still get an Opus reviewer.** Classify before the review when the planned scope
   already makes it high-risk; if the final classification turns a task high-risk after a Sonnet
   review, re-review with Opus before its card.

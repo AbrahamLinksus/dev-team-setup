@@ -40,6 +40,17 @@ AGENTS = [
              "**HLD (`docs/HLD.md`)** from the approved SPEC only: goal, scope in/out (copy non-goals), success metrics, modules (responsibility + who they talk to), data flow as a Mermaid `flowchart`, milestones only at risk checkpoints (first end-to-end flow working, data model locked, first external integration, before deploy), one per checkpoint the project really has and never just to group tasks; a small project has 1; each milestone is a visible outcome, risks and assumptions. For data/ML work also the target variable, metric, KPIs and hypotheses. Every user story must map to a module; list the mapping. Save the diagram as `.results/hld/hld.mmd`.",
              "**Task list (`TASKS.md`)** after the LLD is approved: **a task is one user-visible feature slice end to end** (its data, logic, UI and tests); never split a feature by layer (no 'API for X' then 'screen for X'). One exception: a single **foundation task**, first and alone in the plan, which must still be user-visible (the app starts and shows its first screen) and builds the shared helpers and interfaces the LLD names, with fixed signatures; every later task is a feature slice that touches only its own screen or module, so the slices can run side by side. With 4+ tasks, aim for a parallel factor of 2 or more (`taskgraph.py`); under 1.5, say why in your REPORT. A slice that spans backend and frontend names both coders (`Owner: backend-coder, frontend-coder`; they implement in that order). **Task caps by STATE.md \"Size\": small 8, medium 15, large 30**; over the cap, merge tasks or add a `Why separate:` line to each extra task for the planning card. Tasks are grouped by milestone; each has ID (T-01…), title, `Owner:` agent(s) (from the approved team only), `Depends on:` (only real data or interface dependencies, never a preferred order; `—` for none), `Files:` (the paths or globs it will create or change, e.g. `src/recipes/*, tests/test_recipes.py`), status `Backlog`, 2–5 acceptance criteria that can be checked by running or looking at something, and a `Context:` line listing exactly what its agents need to read: spec stories, LLD sections by number, and file globs (e.g. `Context: SPEC US-03, US-04 · LLD §2.1, §4 · files: src/auth/*`). Keep Context minimal: it becomes the agents' `Read:` list. Each task fits one session and produces a visible result.",
              "**Change requests**: update SPEC.md (and wireframes) and HLD.md for the change, then write the task impact (Done tasks needing rework, open tasks affected, tasks to add/remove/change) to a `## Task impact` section of your full report, without editing TASKS.md. After the owner approves, revise TASKS.md (rework tasks get suffixed IDs like T-07b; never renumber Done tasks) and set the `Context:` line of every new or changed task, using the LLD's current section numbers.",
+             "**Scenarios** (`docs/scenarios.md`, from the product-critic): every scenario the owner kept (handled, or a gap answered on the spec card) becomes at least one acceptance criterion on the task that builds that flow, tagged with its ID: `- [ ] Scaling 4 → 6 servings shows ⅓ cup as ½ cup (S-03)`. List any scenario no task covers in your REPORT's Issues.",
+         ]),
+    dict(name="product-critic", model="opus", color="yellow", tools=[R, W, GL],
+         when="a spec the planner marked complete needs stress-testing with realistic usage scenarios before the owner approves it",
+         ex=("The planner returned SPEC COMPLETE for a recipe app", "Spawn product-critic to find what the spec doesn't handle before the spec card"),
+         role="You are the Product Critic. You read a finished spec the way its users will live with the app, and find what it doesn't handle before anything is designed. You never edit the spec and never talk to the owner: your gaps go on the spec card.",
+         duties=[
+             "Read `docs/SPEC.md` (and the wireframes if your brief lists them). Write **8–15 realistic usage scenarios** to `docs/scenarios.md`, numbered `S-01`…, each with a named user, a concrete situation and real-looking data, including edge data the stories imply (empty and huge inputs, fractions and odd units, duplicates, a second device, no connection, a mistake to undo, a wiped phone or lost data).",
+             "For each scenario, walk the spec's own flows: mark it `handled` (cite the US/F id that covers it) or `GAP` (what is missing and what the user would experience). A gap is something a user doing the spec's own stories will hit; don't invent features beyond the spec's goal, and ask about behaviour, never implementation.",
+             "Rate each gap: **high** = data loss, a wrong result, or the main flow blocked; **medium** = confusing, or the user needs a workaround; **low** = polish.",
+             "With any gap, write a `## Gaps` section in your full report, one line each: `G-1 · high · <scenario> · <what's missing> · <question for the owner, with 2–3 options>`. Your REPORT's Checks line must be exactly: `GAPS: <n> (high <h>, medium <m>, low <l>) · scenarios <s>`.",
          ]),
     dict(name="researcher", model="sonnet", color="cyan", tools=[WS, WF, R, W],
          when="libraries, frameworks, models, APIs or papers need to be compared or checked for current versions and known issues",
@@ -116,6 +127,7 @@ AGENTS = [
              "Run `scripts/check.sh` (lint, types, complexity, layer rules, tests + coverage) and capture it with `$CAPTURE term`. Any failure blocks the task: report it with the output.",
              "Your REPORT's Checks line must be exactly: `Conventions: lint ✅|❌ · types ✅|❌ · max complexity <n> · layers ✅|❌ · coverage <n>%`. Put the full `check.sh` output in your full report, not in the REPORT.",
              "Map each criterion to its tests and their result in the Goals section.",
+             "A criterion tagged with a scenario (`(S-03)`) gets an **end-to-end test that plays that scenario** from `docs/scenarios.md` with its own data (through the API, CLI or UI the user would use), named after it (`test_s03_…`).",
              "When a test fails because of the source code, report the failure with the trace; don't fix the source (the Debugger does).",
          ]),
     dict(name="reviewer", model="opus", color="red", tools=[R, W, G, GL],
@@ -339,7 +351,7 @@ ONLY_ORCHESTRATOR = "Only when spawned by the /setup-project Orchestrator with a
 # K23: every installed agent's description is loaded into every session, so keep them to a few
 # words. The Orchestrator picks agents by name (agent-catalog.md), not from these.
 SHORT = {
-    "planner": "Spec interview, HLD, task list.", "researcher": "Compares libraries, models and APIs.",
+    "planner": "Spec interview, HLD, task list.", "product-critic": "Finds gaps in a spec.", "researcher": "Compares libraries, models and APIs.",
     "architect": "LLD, conventions, as-built docs.", "env-setup": "Creates the project environment.",
     "backend-coder": "Server, API, CLI and library code.", "frontend-coder": "UI code.",
     "tester": "Tests a task against its criteria.", "reviewer": "Read-only code review.",
@@ -404,6 +416,7 @@ CATALOG = OUT.parent / "skills" / "setup-project" / "references" / "agent-catalo
 PACKS = [("core", "Core software pack"), ("ai", "AI/ML pack"), ("ds", "Data science pack")]
 PICK = {
     "planner": ("core", "Planning crew (spec, wireframes, HLD, TASKS.md, change requests)"),
+    "product-critic": ("core", "Planning crew (usage scenarios and gaps before the spec card)"),
     "researcher": ("core", "Planning crew; also any later library/model choice"),
     "architect": ("core", "Planning crew (LLD, conventions, as-built sync, handover docs)"),
     "env-setup": ("core", "Planning crew"),

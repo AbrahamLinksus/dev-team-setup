@@ -13,6 +13,7 @@
     "design": [
       "docs/SPEC.md",
       "docs/wireframes/**",
+      "docs/scenarios.md",
       "docs/HLD.md",
       "docs/LLD.md",
       "docs/CONVENTIONS.md",
@@ -94,6 +95,13 @@
         ".results/**"
       ],
       "deny": [],
+      "bash": "none"
+    },
+    "product-critic": {
+      "write": [
+        "docs/scenarios.md",
+        ".results/**"
+      ],
       "bash": "none"
     },
     "researcher": {

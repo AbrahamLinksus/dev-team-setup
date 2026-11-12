@@ -9,6 +9,8 @@ a QUESTIONS block, until it returns SPEC COMPLETE (at most 6 rounds; then open i
 assumptions listed on the spec card). Ask every
 round's questions in one AskUserQuestion call (recommended option first, "Decide for me"
 where sensible) and send a one-line progress note between rounds.
+**product-critic** then stress-tests the spec with usage scenarios; its high gaps are asked on
+the spec card (`spec-interview.md`, Spec critic).
 UI projects: planner writes lo-fi wireframes; render them (mobile + desktop).
 Spec card: wireframes + spec summary + every *(assumed)* line → Approve / Request changes /
 Answer more questions. Nothing is designed before the spec is approved.
@@ -94,7 +96,8 @@ Check it with `python3 $TASKGRAPH <wt>/TASKS.md`: exit 2 (a cycle, an unknown ID
 it, which every owner can read ("Round 2: 3 features at the same time"). A parallel factor under
 1.5 with 4+ tasks prints a warning: the card says why (or the planner moves shared helpers into
 the foundation task).
-Planning card (spec, HLD, team, LLD, env, task graph, task count per milestone, project size). Show the task
+Planning card (spec, HLD, team, LLD, env, task graph, task count per milestone, project size, and
+`Scenarios covered: <n>/<n>`: each scenario in `docs/scenarios.md` tagged on some criterion). Show the task
 count against the size's cap (**small 8, medium 15, large 30**); over the cap, list each extra
 task's `Why separate:` line so the owner can ask to merge them.
 In `balanced` or `fast` cost mode, add the build-model tip (`approval-modes.md`).

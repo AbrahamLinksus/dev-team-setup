@@ -49,7 +49,7 @@ Generated from one spec: edit `tools/gen_agents.py`, then run `python3 tools/gen
 
 | Pack | Agents |
 |---|---|
-| Core software | planner (Opus), researcher, architect (Opus), env-setup, backend-coder, frontend-coder, tester, reviewer (Opus, read-only), debugger (Opus), docs (Haiku), devops, git-pr (Haiku) |
+| Core software | planner (Opus), product-critic (Opus, read-only on code), researcher, architect (Opus), env-setup, backend-coder, frontend-coder, tester, reviewer (Opus, read-only), debugger (Opus), docs (Haiku), devops, git-pr (Haiku) |
 | AI/ML | trainer, evaluator (Opus, LLM-as-judge), rag-engineer, prompt-engineer, agent-engineer (incl. MCP servers), mlops |
 | Data science | data-acquisition (incl. scraping), data-cleaner (asks before dropping data, Pandera), eda (notebooks), statistician (Opus, causal inference), modeler (features + time series), explainer (Opus), visualizer, insights-reporter |
 

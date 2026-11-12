@@ -1,7 +1,7 @@
 # Agent catalog
 
-**Planning crew (always used, not part of the team pick):** planner, researcher, architect,
-env-setup. They run the spec, HLD, LLD and environment stages. The Orchestrator runs
+**Planning crew (always used, not part of the team pick):** planner, product-critic, researcher,
+architect, env-setup. They run the spec, HLD, LLD and environment stages. The Orchestrator runs
 `taskgit.sh approve/reject/record` itself; git-pr is optional (only for a commit message that
 needs real summarising).
 
@@ -15,6 +15,7 @@ code. Show the module → agent mapping on the team card so the owner sees why e
 | Agent | Model | Tools | Pick when |
 |---|---|---|---|
 | planner | Opus | Read, Write, Edit, Glob | Planning crew (spec, wireframes, HLD, TASKS.md, change requests) |
+| product-critic | Opus | Read, Write, Glob | Planning crew (usage scenarios and gaps before the spec card) |
 | researcher | Sonnet | WebSearch, WebFetch, Read, Write | Planning crew; also any later library/model choice |
 | architect | Opus | Read, Write, Edit, Glob, Grep | Planning crew (LLD, conventions, as-built sync, handover docs) |
 | env-setup | Sonnet | Bash, Read, Write, Edit, Glob | Planning crew |
@@ -54,7 +55,7 @@ code. Show the module → agent mapping on the team card so the owner sees why e
 
 ## Typical teams
 
-The build team only: the planning crew (planner, researcher, architect, env-setup) runs every
+The build team only: the planning crew (planner, product-critic, researcher, architect, env-setup) runs every
 project anyway.
 
 - **Full-stack web app**: backend-coder, frontend-coder, tester, reviewer, debugger, docs, devops

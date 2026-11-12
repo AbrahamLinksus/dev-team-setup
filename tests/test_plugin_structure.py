@@ -66,7 +66,7 @@ class StructureTest(unittest.TestCase):
         self.assertIn("scope_guard.py", (ROOT / "hooks" / "scope_guard.sh").read_text())
 
     def test_agents_frontmatter(self):
-        self.assertEqual(len(AGENTS), 26)
+        self.assertEqual(len(AGENTS), 27)
         for path in AGENTS:
             with self.subTest(agent=path.name):
                 fm = frontmatter(path)
@@ -354,7 +354,7 @@ class StructureTest(unittest.TestCase):
         self.assertIn("Paused", (SKILL / "templates" / "STATE.md").read_text(encoding="utf-8"))
 
     def test_agent_descriptions_are_short(self):
-        # K23: all 26 descriptions are loaded into every session, even ones that never use the plugin
+        # K23: all agent descriptions are loaded into every session, even ones that never use the plugin
         total = sum(len(frontmatter(p)["description"]) for p in AGENTS)
         self.assertLess(total, 3500, f"agent descriptions total {total} characters")
 
@@ -590,6 +590,36 @@ class StructureTest(unittest.TestCase):
         self.assertIn("**Approve toolkit** / **Show me each**", planning)
         self.assertIn("keep their own cards:\n   Tier 1 still reaches the owner", planning)
         self.assertIn("`toolkit` for a forced dev-tooling choice", (ROOT / "agents" / "architect.md").read_text(encoding="utf-8"))
+
+    def test_spec_critic_checks_the_spec_before_its_card(self):
+        # B-05: Recipe Box's spec missed range amounts, ⅓ rounding and backups; nobody used it first
+        critic = (ROOT / "agents" / "product-critic.md").read_text(encoding="utf-8")
+        self.assertIn("**8–15 realistic usage scenarios**", critic)
+        self.assertIn("`GAPS: <n> (high <h>, medium <m>, low <l>) · scenarios <s>`", critic)
+        self.assertIn("never implementation", critic)
+        self.assertEqual(frontmatter(ROOT / "agents" / "product-critic.md")["tools"], ["Read", "Write", "Glob"])
+        interview = (SKILL / "references" / "spec-interview.md").read_text(encoding="utf-8")
+        self.assertIn("product-critic (scenarios + gaps) → wireframes (UI projects) → spec card", interview)
+        self.assertIn("**High gaps** become questions", interview)
+        self.assertIn("it doesn't count toward the 6", interview)
+        self.assertIn("planner, product-critic,", (SKILL / "SKILL.md").read_text(encoding="utf-8"))
+
+    def test_data_safety_is_always_asked(self):
+        # B-06: Recipe Box shipped with no backup and nobody had decided that
+        interview = (SKILL / "references" / "spec-interview.md").read_text(encoding="utf-8")
+        self.assertIn("| Data safety | Backup, second device, what a wipe loses, and undo each answered **by the owner**", interview)
+        self.assertIn("never offer \"Decide for me\"", interview)
+        self.assertIn("the card states its consequence in one line", interview)
+        self.assertIn("## 13. Data safety", (SKILL / "templates" / "SPEC.md").read_text(encoding="utf-8"))
+
+    def test_scenarios_become_criteria_and_end_to_end_tests(self):
+        # B-07: the critic's scenarios only help if the build proves them
+        planner = (ROOT / "agents" / "planner.md").read_text(encoding="utf-8")
+        self.assertIn("becomes at least one acceptance criterion on the task that builds that flow, tagged with its ID", planner)
+        self.assertIn("**end-to-end test that plays that scenario**", (ROOT / "agents" / "tester.md").read_text(encoding="utf-8"))
+        self.assertIn("an end-to-end test for each criterion tagged `(S-xx)`", (SKILL / "references" / "team-rules.md").read_text(encoding="utf-8"))
+        self.assertIn("`Scenarios covered: <n>/<n>`", (SKILL / "references" / "stage-1-6-planning.md").read_text(encoding="utf-8"))
+        self.assertIn("numbered `S-01`", (ROOT / "agents" / "product-critic.md").read_text(encoding="utf-8"))
 
     def test_resume_shows_where_we_are(self):
         # D27: a resumed project opens with a one-screen summary, not one line

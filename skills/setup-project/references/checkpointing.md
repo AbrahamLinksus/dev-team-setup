@@ -36,7 +36,7 @@ Status: ⬜ pending · ⏳ in progress · ✅ done · ❌ failed. The note is th
 from the agent's short REPORT; the full report's path is `.results/<id>/<step>-<agent>.md`.
 `Agents:` records each agent's ID and how often it was continued (max 2), for rework only.
 
-On `wip/plan`, TASK_PROGRESS.md also records the spec round (`Spec round: 3 · 9/12 complete`)
+On `wip/plan`, TASK_PROGRESS.md also records the spec round (`Spec round: 3 · 9/13 complete`)
 and the last QUESTIONS block that hasn't been answered yet, so a resumed session re-asks
 exactly those questions. On `wip/CR-<n>` it records the CR text verbatim and the CR step (1–8).
 
