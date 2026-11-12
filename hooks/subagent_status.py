@@ -19,6 +19,7 @@ import time
 
 PLUGIN = "dev-team-setup"
 ICON = {"running": "⏳", "completed": "✅", "failed": "❌", "killed": "⏹"}
+STALL_SECONDS = 20 * 60   # a step running this long gets a warning sign (taskgit.sh watch does the rest)
 
 
 def tokens(n: float) -> str:
@@ -34,7 +35,10 @@ def row(task: dict, now: float, width: int) -> str | None:
     agent_type = str(task.get("agentType") or "")
     if not agent_type.startswith(PLUGIN + ":"):
         return None
-    parts = [f"{ICON.get(task.get('status'), '·')} {agent_type.split(':')[-1]}"]
+    icon = ICON.get(task.get("status"), "·")
+    if task.get("status") == "running" and task.get("startTime") and now - float(task["startTime"]) / 1000 >= STALL_SECONDS:
+        icon = "⚠️ stalled?"
+    parts = [f"{icon} {agent_type.split(':')[-1]}"]
     # The Orchestrator spawns every agent with description "<task id> · <step>" (SKILL.md, step protocol)
     what = str(task.get("description") or "").strip()
     if what:

@@ -28,6 +28,15 @@ dependency, no shared files in their planned scope):
   AskUserQuestion call (at most 4 questions): one interruption instead of two.
 A rejection costs nothing extra: the other task never depended on it.
 
+**Stall watchdog.** Whenever you mark an agent step started, also start
+`$TASKGIT watch <repo> <id> <step>` with the Bash tool in the background (`run_in_background`).
+It ends by itself when the step is marked done or failed (exit 0: nothing to do). **Exit 9**
+prints a `STALLED:` line: the step has run over 3× its usual time on earlier tasks, or 20 minutes.
+Then don't keep waiting: look at the agent's status row (`⚠️ stalled?` after 20 minutes) and
+`git -C <wt> log -1`, send a push notification with the STALLED line if the tool exists, and
+either start one more watch (the agent is clearly progressing) or stop the agent and spawn the
+step fresh (its partial files are on the branch). Without background Bash, skip the watch.
+
 Per task `T-xx`:
 
 1. `$TASKGIT start <repo> T-xx` (a new worktree gets the locked dependencies installed: `uv sync`,

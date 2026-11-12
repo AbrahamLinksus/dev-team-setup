@@ -24,6 +24,8 @@
 #   taskgit.sh step       <repo> <id> <step> started|done|failed [<agent> "<note>"]
 #                                                        one call per agent step: (done/failed) scope as
 #                                                        <agent>, mark TASK_PROGRESS.md, checkpoint
+#   taskgit.sh watch      <repo> <id> <step>             (background) exit 0 when the step ends, 9 if it
+#                                                        runs over 3x its usual time or 20 min: stalled
 #   taskgit.sh coder-tests <repo> <id>                   let this task's coder write its own tests
 #   taskgit.sh sync       <repo> <id>                    merge origin/main into wip/<id>, run check.sh, push
 #   taskgit.sh diff       <repo> <id>                    full diff vs main (for the reviewer)
@@ -36,7 +38,7 @@
 #   taskgit.sh list       <repo>                         open wip/* branches on origin + last step
 # Exit codes: 0 ok · 1 usage · 2 blocked files · 3 main not clean/diverged · 4 merge conflict
 #             5 check.sh failed after sync · 6 squash failed · 7 committed locally but not pushed
-#             8 approval held: a change request is open
+#             8 approval held: a change request is open · 9 watch: the step looks stalled
 set -uo pipefail
 
 SHARED=(TASKS.md STATE.md DECISIONS.md)
@@ -390,6 +392,67 @@ case "$cmd" in
       echo "warning: no $PROGRESS in $wt; checkpointing without marking the step" >&2
     fi
     exec bash "${BASH_SOURCE[0]}" checkpoint "$repo" "$id" "$msg"
+    ;;
+
+  watch)
+    # Stall watchdog. Run it in the background when an agent step starts: it exits quietly (0) as
+    # soon as the step is marked done or failed, or exits 9 with a STALLED line once the step has
+    # run longer than 3x the median of the same step on earlier tasks (from the timing log), and
+    # never longer than 20 minutes. The Orchestrator is woken by the exit either way, so a stuck
+    # agent is noticed within 20 minutes instead of when someone looks.
+    id=${3:?id}; stp=${4:?step}
+    log="$(g rev-parse --absolute-git-dir)/devteam-timing.log"
+    PYTHONIOENCODING=utf-8 python3 - "$log" "$id" "$stp" "${TASKGIT_STALL_SECONDS:-}" "${TASKGIT_WATCH_POLL:-30}" <<'PY'
+import statistics, sys, time
+from datetime import datetime, timezone
+log, tid, step, override, poll = sys.argv[1:6]
+CAP = 20 * 60
+
+def events():
+    try:
+        with open(log, encoding="utf-8") as f:
+            rows = [line.rstrip("\n").split("\t") for line in f]
+    except OSError:
+        return []
+    out = []
+    for r in rows:
+        if len(r) == 3:
+            try:
+                t = datetime.strptime(r[0], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc).timestamp()
+            except ValueError:
+                continue
+            out.append((t, r[1], r[2]))
+    return out
+
+def durations(ev):  # finished runs of this step on any task: started -> done
+    began, out = {}, []
+    for t, i, msg in ev:
+        if msg == f"{step} started":
+            began[i] = t
+        elif msg == f"{step} done" and i in began and i != tid:
+            out.append(t - began.pop(i))
+    return out
+
+ev = events()
+past = durations(ev)
+usual = statistics.median(past) if past else None
+limit = float(override) if override else (min(3 * usual, CAP) if usual else CAP)
+while True:
+    ev = events()
+    mine = [(t, m) for t, i, m in ev if i == tid and m in (f"{step} started", f"{step} done")]
+    starts = [t for t, m in mine if m.endswith("started")]
+    start = starts[-1] if starts else None
+    if start is None or any(m.endswith("done") and t >= start for t, m in mine):
+        print(f"watch: {tid} {step} finished")
+        sys.exit(0)
+    ran = time.time() - start
+    if ran >= limit:
+        u = f"usual {usual / 60:.0f} min" if usual else "no earlier runs to compare"
+        print(f"STALLED: {tid} · {step} has run {ran / 60:.0f} min ({u}). Check the agent before waiting longer.")
+        sys.exit(9)
+    time.sleep(max(1.0, min(float(poll), limit - ran)))
+PY
+    exit $?
     ;;
 
   coder-tests)

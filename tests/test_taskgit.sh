@@ -523,6 +523,30 @@ if scenario approve_folds_the_record; then
   check "main checkout clean after undo" clean_main
 fi
 
+if scenario watch_flags_a_stalled_step; then
+  # A step that hung (T-19 implement sat 1h43m in a replay) is flagged instead of waited on
+  new_repo watch
+  T=$(tg start "$R" T-01)
+  LOG="$R/.git/devteam-timing.log"
+  ago() { python3 -c "import time,sys; print(time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(time.time()-int(sys.argv[1]))))" "$1"; }
+  # earlier tasks took about a minute to implement; this one started 200 s ago: over 3x the median
+  printf '%s\tT-00\timplement started\n%s\tT-00\timplement done\n' "$(ago 1000)" "$(ago 940)" >> "$LOG"
+  printf '%s\tT-01\timplement started\n' "$(ago 200)" >> "$LOG"
+  out=$(TASKGIT_WATCH_POLL=1 tg watch "$R" T-01 implement 2>&1); code=$?
+  check "a step over 3x its usual time exits 9" test "$code" = 9
+  check "and says so with the usual time" contains "$out" "STALLED: T-01 · implement has run 3 min (usual 1 min)"
+  # a step that finishes in time ends the watch quietly
+  tgq step "$R" T-01 review started
+  ( sleep 2; tgq step "$R" T-01 review "done" reviewer "ok" ) &
+  out=$(TASKGIT_STALL_SECONDS=30 TASKGIT_WATCH_POLL=1 tg watch "$R" T-01 review 2>&1); code=$?
+  wait
+  check "a finished step exits 0" test "$code" = 0
+  check "and says it finished" contains "$out" "watch: T-01 review finished"
+  # no earlier runs: the 20-minute cap applies (shortened here)
+  tgq step "$R" T-01 docs started
+  check "no history: stalls at the cap" expect_exit 9 env TASKGIT_STALL_SECONDS=1 TASKGIT_WATCH_POLL=1 bash "$TG" watch "$R" T-01 docs
+fi
+
 if scenario step_command; then
   # O9: one call per agent step (scope + mark TASK_PROGRESS.md + checkpoint) instead of 3–4 turns
   new_repo step

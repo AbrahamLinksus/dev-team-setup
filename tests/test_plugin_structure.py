@@ -525,6 +525,12 @@ class StructureTest(unittest.TestCase):
         self.assertEqual(lines[0]["content"], "⏳ tester · T-04 · test · 1m15s · 41k tok · 21% ctx")
         self.assertTrue(lines[1]["content"].startswith("✅ reviewer · T-04 · review"))
         self.assertLessEqual(len(lines[1]["content"]), 60)
+        # B-37: a step running 20 minutes or more is marked on its row
+        slow = {"columns": 80, "tasks": [{"id": "s", "agentType": "dev-team-setup:backend-coder", "status": "running",
+                                          "description": "T-19 · implement", "startTime": now_ms - 21 * 60000}]}
+        out = subprocess.run([sys.executable, str(ROOT / "hooks" / "subagent_status.py")], input=json.dumps(slow),
+                             capture_output=True, text=True, encoding="utf-8").stdout
+        self.assertTrue(json.loads(out)["content"].startswith("⚠️ stalled? backend-coder · T-19 · implement · 21m"))
         bad = subprocess.run([sys.executable, str(ROOT / "hooks" / "subagent_status.py")], input="not json",
                              capture_output=True, text=True)
         self.assertEqual((bad.returncode, bad.stdout), (0, ""))
