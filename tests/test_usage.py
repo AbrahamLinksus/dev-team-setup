@@ -121,6 +121,48 @@ class MeasureTest(unittest.TestCase):
         self.assertEqual(run("--budget", "1.5").returncode, 3)             # over budget
         self.assertIn("$0.00 so far", run("--since", "2026-11-11 00:00 +00:00").stdout)   # before the project
 
+    def test_cost_by_role_and_rework(self):
+        # B-17: the Result line says which roles a task's money went to;
+        # B-18: the milestone card names tasks over 2x the median, with their debugger rounds
+        import re as _re
+        base = self.d / "base"
+        base.mkdir()
+        logs = self.d / "logs"
+        ld = logs / _re.sub(r"[^A-Za-z0-9]", "-", str(base.resolve()))
+        ts = "2026-11-10T10:00:00Z"
+        main = [{"type": "user", "timestamp": ts, "message": {"content": "go"}},
+                {"type": "cost-state", "totalCostUSD": 10.0, "modelUsage": {"opus": {
+                    "inputTokens": 0, "cacheCreationInputTokens": 0, "cacheReadInputTokens": 0, "outputTokens": 0}}}]
+        (ld / "s1" / "subagents").mkdir(parents=True)
+        (ld / "s1.jsonl").write_text("\n".join(json.dumps(x) for x in main) + "\n", encoding="utf-8")
+        n = 0
+
+        def spawn(task, agent, out_tokens):
+            nonlocal n
+            n += 1
+            lines = [{"type": "user", "timestamp": ts, "message": {"content": f"BRIEF · {task} · {agent} · step"}},
+                     {"type": "assistant", "timestamp": ts, "message": {"id": f"m{n}", "model": "opus",
+                                                                         "usage": usage_of(0, 0, 0, out_tokens)}}]
+            (ld / "s1" / "subagents" / f"a{n}.jsonl").write_text(
+                "\n".join(json.dumps(x) for x in lines) + "\n", encoding="utf-8")
+        spawn("T-01", "backend-coder", 600); spawn("T-01", "tester", 300); spawn("T-01", "reviewer", 100)
+        spawn("T-02", "backend-coder", 1000)
+        spawn("T-03", "backend-coder", 1000); spawn("T-03", "debugger", 1500); spawn("T-03", "debugger", 1500)
+        script = SCRIPTS / "cost.py"
+
+        def run(*a):
+            return subprocess.run([sys.executable, str(script), str(base), "--since", "2026-11-10 09:00 +00:00", *a],
+                                  capture_output=True, text=True, encoding="utf-8", env={**os.environ, "DEVTEAM_LOGS": str(logs)})
+        # 6,000 weighted output tokens in all, $10: T-01 is 1,000 of them
+        self.assertEqual(run("--task", "T-01", "--result").stdout.strip(),
+                         "≈$1.67 · backend-coder 60% · tester 30% · reviewer 10%")
+        r = json.loads(run("--task", "T-01", "--json").stdout)
+        self.assertEqual(r["roles_usd"], {"backend-coder": 1.0, "tester": 0.5, "reviewer": 0.17})
+        out = run("--rework", "T-01", "T-02", "T-03").stdout
+        self.assertEqual(out.strip(), "Rework: T-03 $6.67 (4.0x the median $1.67) · 2 debugger rounds")
+        self.assertIn("no task over 2x", run("--rework", "T-01", "T-02").stdout)
+        self.assertNotEqual(run("--result").returncode, 0)   # --result needs --task
+
     def test_text_io_names_its_encoding(self):
         # Without encoding=, Python uses the locale (cp1252 on Windows), which can't read or write
         # the logs' "·" and "→". Linux CI never sees it, so check the code.

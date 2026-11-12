@@ -96,7 +96,9 @@ Per task `T-xx`:
    in STATE.md and use it from now on) / **Pause** (`anytime.md`). Never continue over budget unasked.
 6. Result card now, queued for a batch, or (autopilot, low-risk with every goal ✅) approved first
    and sent afterwards with Undo, per approval mode (`approval-modes.md`). Then:
-   - **Approve** → first update `TASKS.md` (status `Done`, Result line), `DECISIONS.md` and
+   - **Approve** → first update `TASKS.md` (status `Done`, Result line ending with the cost by role:
+     `python3 $COST <base> --since "<start>" --task T-xx --result` → `≈$0.42 · backend-coder 55% ·
+     tester 30% · reviewer 15%`), `DECISIONS.md` and
      `STATE.md` in the main checkout, then run `$TASKGIT approve <repo> T-xx "<msg>"` yourself, with
      a conventional-commit message built from the card (`feat(auth): add login endpoint [T-07]`).
      approve commits those updates in the task's own commit: one commit per task, no `record`.
@@ -123,7 +125,9 @@ before the milestone card; Minor findings go on the milestone card.
 
 **Milestone end ⏸** (every milestone but the last): task `M<n>-docs` with two steps: **architect** as-built sync of
 `docs/LLD.md` (changes since last milestone, section numbers kept stable), then **docs**
-README pass. Then the **phone preview** if the owner opted in (`visual-capture.md`).
+README pass. On the milestone card, the **rework flag**: `python3 $COST <base> --since "<start>"
+--rework <the milestone's task IDs>` lists tasks that cost over 2× the milestone's median, with their
+debugger rounds (one line each, or "no task over 2x"). Then the **phone preview** if the owner opted in (`visual-capture.md`).
 Write the milestone's changed files to `<wt>/.results/M<n>-docs/changed-files.txt`
 (`git -C <repo> diff --name-only <last milestone's commit> main`, without opening it) and put it in
 the architect's `Read:`: the sync edits only the LLD sections for those paths. **Skip the sync**

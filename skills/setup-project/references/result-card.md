@@ -130,10 +130,14 @@ Ask (AskUserQuestion, header `M<n>`):
 Send the LLD "Changes since last milestone" section rendered as an image when there are
 changes. Offer the same fresh-session choice after a change request merges.
 
+Milestone cards also carry the **rework flag** from `cost.py --rework` (tasks over 2× the
+milestone's median cost and their debugger rounds), so the owner sees where money went to fixes.
+
 ## Handover card (project end)
 
 Images: running app (or main output) screenshot, the as-built system diagram, README
-"How to run" rendered. Then a list of what was delivered: `docs/ARCHITECTURE.md`,
+"How to run" rendered, and `OWNER.md` rendered (`$CAPTURE md OWNER.md …`): the page the owner
+keeps. Then a list of what was delivered: `docs/ARCHITECTURE.md`,
 `docs/WALKTHROUGH.md`, README sections, CI status, final coverage, open issues / tech debt.
 Then the **production gate table** (≤5 columns: ID · item in plain words · status · proof):
 
