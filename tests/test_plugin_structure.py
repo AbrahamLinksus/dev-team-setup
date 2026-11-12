@@ -591,21 +591,44 @@ class StructureTest(unittest.TestCase):
 
     def test_project_size_is_set_at_the_spec_and_recorded(self):
         # O3: run B gave a 5-task app the process of a large one; the size decides how much it gets
-        size = "Size: <small|medium|large> · ≈<n> tasks · <one-line reason>"
+        # B-29: a guessed task count sized Recipe Box as medium; risk signals are in the spec itself
+        size = "Size: <small|medium|large> · signals: <the risk signals present, or none> · <n> stories"
         for f in ("spec-interview.md", "team-rules.md"):
             self.assertIn(size, (SKILL / "references" / f).read_text(encoding="utf-8"))
         planner = (ROOT / "agents" / "planner.md").read_text(encoding="utf-8")
-        self.assertIn("**small** ≤6 tasks, **medium** 7–20, **large** more than 20", planner)
+        self.assertIn("never by a task count", planner)
+        signals = "backend, auth, database, multi-user, external services/payments, AI/ML, deployment"
+        self.assertIn(signals, planner)
+        self.assertIn("**0–1 signals = small, 2–3 = medium, 4+ = large**", planner)
+        self.assertIn("more than 15 user stories bumps it up one size", planner)
         planning = (SKILL / "references" / "stage-1-6-planning.md").read_text(encoding="utf-8")
+        self.assertIn(signals, " ".join(planning.split()))
         self.assertIn("**Project size.**", planning)
         self.assertIn("High-risk tasks always get the full team", planning)
-        self.assertIn('update STATE.md "Size"', planning)
+        self.assertNotIn("update it from the real task count", planning)
         self.assertIn("| Size |", (SKILL / "templates" / "STATE.md").read_text(encoding="utf-8"))
+
+    def test_tasks_are_feature_slices_under_a_cap(self):
+        # B-30: run B split features by layer (API task, then screen task), doubling the task count
+        planner = (ROOT / "agents" / "planner.md").read_text(encoding="utf-8")
+        self.assertIn("**a task is one user-visible feature slice end to end**", planner)
+        self.assertIn("never split a feature by layer", planner)
+        self.assertIn("a single **foundation task**, which must still be user-visible", planner)
+        self.assertIn('**Task caps by STATE.md "Size": small 8, medium 15, large 30**', planner)
+        self.assertIn("`Why separate:`", planner)
+        planning = (SKILL / "references" / "stage-1-6-planning.md").read_text(encoding="utf-8")
+        self.assertIn("**small 8, medium 15, large 30**", planning)
+        self.assertIn("never one layer", (SKILL / "templates" / "TASKS.md").read_text(encoding="utf-8"))
+        build = (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8")
+        self.assertIn("one implement step per owner, in the listed order", build)
 
     def test_milestones_follow_the_size_and_the_last_one_is_the_handover(self):
         # O4: run B had 4 milestones for 5 tasks; each cost a docs task and a session restart
+        # B-31: milestones sit at risk checkpoints only; a small project has one
         planner = (ROOT / "agents" / "planner.md").read_text(encoding="utf-8")
-        self.assertIn("small 1; medium about 1 per 4 tasks; large 3–6", planner)
+        self.assertIn("milestones only at risk checkpoints (first end-to-end flow working, data model locked, "
+                      "first external integration, before deploy)", planner)
+        self.assertIn("never just to group tasks; a small project has 1", planner)
         self.assertNotIn("milestones (3–6", planner)
         build = (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8")
         self.assertIn("(every milestone but the last)", build)

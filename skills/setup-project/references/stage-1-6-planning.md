@@ -12,10 +12,14 @@ where sensible) and send a one-line progress note between rounds.
 UI projects: planner writes lo-fi wireframes; render them (mobile + desktop).
 Spec card: wireframes + spec summary + every *(assumed)* line → Approve / Request changes /
 Answer more questions. Nothing is designed before the spec is approved.
-**Project size.** The planner's `Size:` line (small ≤6 tasks, medium 7–20, large >20) goes on the
-spec card and into STATE.md "Size". It sets how much process the build gets: milestones, design
-depth, and who tests and reviews low-risk tasks. High-risk tasks always get the full team. At
-stage 6, update it from the real task count; the owner can change it on the planning card.
+**Project size.** The planner sizes by **risk signals**, not by a guessed task count: backend,
+auth, database, multi-user, external services/payments, AI/ML, deployment. 0–1 signals = small,
+2–3 = medium, 4+ = large; more than 15 user stories bumps it up one size. Its `Size:` line (size,
+the signals present, the story count) goes on the spec card, in plain words ("small: no accounts,
+no server, nothing deployed"), and into STATE.md "Size". It sets how much process the build gets:
+milestones, design depth, the task cap, and who tests and reviews low-risk tasks.
+High-risk tasks always get the full team. It changes only when a signal is added or removed (a change request, or
+the design adds a server); the owner can change it on any planning card.
 **Small idea?** When the size is **small** (or the spec has at most 5 user stories) and there is no
 AI/ML or data-science work,
 split Approve into **Approve · quick track (Recommended)** / **Approve · full track**, saying in
@@ -73,8 +77,10 @@ check with terminal images.
 
 ## 6 · Tasks + plan merge ⏸
 
-**planner** → `TASKS.md`. Planning card (spec, HLD, team, LLD, env, task count per milestone, project size).
-When the real task count puts the project in another size, update STATE.md "Size" and say so on the card.
+**planner** → `TASKS.md`: one task per user-visible feature slice, plus at most one foundation task.
+Planning card (spec, HLD, team, LLD, env, task count per milestone, project size). Show the task
+count against the size's cap (**small 8, medium 15, large 30**); over the cap, list each extra
+task's `Why separate:` line so the owner can ask to merge them.
 In `balanced` or `fast` cost mode, add the build-model tip (`approval-modes.md`).
 On approval run `$TASKGIT approve <repo> plan "chore: spec, design, environment and tasks"` yourself.
 Mirror the current milestone in the task widget.

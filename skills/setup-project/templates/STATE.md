@@ -9,7 +9,7 @@
 | Local folder | {{base}}/{{repo}} (worktrees in {{base}}/{{repo}}-wt/; start sessions in {{base}}) |
 | Status | {{Active · Paused (reason) · Abandoned (reason) · Complete}} |
 | Stage | {{0 Intake · 1 Spec · 2 HLD · 3 Team pick · 4 LLD · 5 Env · 6 Tasks · 7 Build · 8 Handover}} |
-| Size | {{small · medium · large}} (≈{{n}} tasks): sets milestones, design depth, who tests and reviews low-risk tasks |
+| Size | {{small · medium · large}} · signals: {{risk signals present, or none}}: sets milestones, design depth, the task cap, who tests and reviews low-risk tasks |
 | Milestone | {{M2 · name}} ({{done}}/{{total}} tasks) |
 | Next step | {{T-08 · owner · what}} |
 | Started | {{YYYY-MM-DD HH:MM ±HH:MM}} (cost.py --since) · Budget {{USD, 0 = no cap}} |

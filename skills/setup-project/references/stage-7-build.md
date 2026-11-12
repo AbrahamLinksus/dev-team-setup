@@ -33,7 +33,8 @@ Per task `T-xx`:
 1. `$TASKGIT start <repo> T-xx` (a new worktree gets the locked dependencies installed: `uv sync`,
    `npm ci`, …; a warning names the log if that fails, then give it to env-setup before any code step);
    write `TASK_PROGRESS.md`; widget → in progress.
-2. Owner agent (step protocol). `DECISION NEEDED` → record it in TASK_PROGRESS.md, checkpoint,
+2. Owner agent (step protocol). A task with two owners (`Owner: backend-coder, frontend-coder`)
+   gets one implement step per owner, in the listed order, in the same worktree. `DECISION NEEDED` → record it in TASK_PROGRESS.md, checkpoint,
    ask the owner, resume with the answer.
 3. **tester and reviewer in parallel.** Write the owner agent's diff to a file without opening it
    (`$TASKGIT diff <repo> T-xx > <wt>/.results/T-xx/changes.diff`), run
@@ -103,7 +104,8 @@ Fresh session → update STATE.md "Next step", `$TASKGIT record <repo> "chore: m
 then tell the owner: "Start a new chat and run `/setup-project resume <repo>`", and stop.
 **The last milestone** has no docs task and no milestone card: its last approved task leads
 straight into the handover (stage 8), whose architect and docs steps cover the same ground.
-Each milestone costs a docs task and a session restart, so the planner sizes them to the project.
+Each milestone costs a docs task and a session restart, so the planner places them only at risk
+checkpoints (first end-to-end flow, data model locked, first integration, before deploy).
 
 **Long session check (between tasks).** Your own context grows with every task, and every call
 re-reads all of it, so a long session costs more per task the longer it runs. After you
