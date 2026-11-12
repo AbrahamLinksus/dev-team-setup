@@ -200,12 +200,12 @@ class FlowGifTest(unittest.TestCase):
         frames = [Image.new("RGB", (1280, 800), c) for c in ("white", "red", "blue")]
         with tempfile.TemporaryDirectory() as d:
             out = cap.make_gif(frames, str(Path(d) / "flow.gif"), 700, width=480)
-            gif = Image.open(out)
-            self.assertEqual(gif.format, "GIF")
-            self.assertEqual(gif.n_frames, 3)
-            self.assertEqual(gif.size, (480, 300))       # scaled for a phone, aspect kept
-            gif.seek(2)
-            self.assertEqual(gif.info["duration"], 2100)  # the end state stays on screen longer
+            with Image.open(out) as gif:                  # closed before cleanup (Windows locks open files)
+                self.assertEqual(gif.format, "GIF")
+                self.assertEqual(gif.n_frames, 3)
+                self.assertEqual(gif.size, (480, 300))       # scaled for a phone, aspect kept
+                gif.seek(2)
+                self.assertEqual(gif.info["duration"], 2100)  # the end state stays on screen longer
         with self.assertRaises(ValueError):
             cap.make_gif([], "x.gif", 700)
 
