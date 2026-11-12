@@ -652,6 +652,16 @@ class StructureTest(unittest.TestCase):
         self.assertIn("**Waive it** (a\nTier 1 decision: the card states the consequence", handover)
         self.assertIn("Production gate · 11 items", (SKILL / "references" / "result-card.md").read_text(encoding="utf-8"))
 
+    def test_cards_say_how_to_try_the_task(self):
+        # B-13: owners approved cards they had read but never tried
+        tester = (ROOT / "agents" / "tester.md").read_text(encoding="utf-8")
+        self.assertIn("Write **Try this** to `.results/<task-id>/try-this.md`", tester)
+        self.assertIn("never a test command", tester)
+        self.assertIn("the task's **Try this** steps", (SKILL / "references" / "team-rules.md").read_text(encoding="utf-8"))
+        card = (SKILL / "references" / "result-card.md").read_text(encoding="utf-8")
+        self.assertIn("Try this (≈2 min):", card)
+        self.assertIn("approves by using, not by reading", card)
+
     def test_resume_shows_where_we_are(self):
         # D27: a resumed project opens with a one-screen summary, not one line
         resume = (SKILL / "references" / "resume.md").read_text(encoding="utf-8")

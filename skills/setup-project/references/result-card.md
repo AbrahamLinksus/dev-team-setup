@@ -62,6 +62,11 @@ Agent decisions: bcrypt for hashing (D-12)
 Cost: ≈$0.42 this task · $3.10 so far · budget $25 (12%)
 Guard: stopped tester once (tried to edit app code) · reverted 0 files
 Plan vs actual: 1 file outside the plan (src/shared/tokens.py), added to T-07's Files
+
+Try this (≈2 min):
+1. Run `uv run app` and open http://localhost:8007 → you should see the login page
+2. Sign in as demo@example.com / demo1234 → you should land on "My recipes"
+3. Type a wrong password 6 times → you should see "Too many tries, wait a minute"
 ```
 
 Rules:
@@ -78,6 +83,10 @@ Rules:
   (tab-separated: time, task id, agent, tool, target, reason; `grep -c $'	T-07	'`) plus the files
   `$TASKGIT scope` reverted, and say in plain words what was stopped ("tried to edit app code",
   "tried to read .env"). Nothing blocked or reverted → `Guard: nothing blocked`.
+- **Try this** comes from `.results/<id>/try-this.md` (the tester's, or the coder's with
+  `Tests: yours`), verbatim. Every task with something a person can use has it; a task with
+  nothing to try (a pure refactor) says `Try this: nothing new to try; it changes how the code is
+  organised`. It is how the owner approves by using, not by reading.
 - The Plan vs actual line appears only when `taskgraph.py --undeclared` found files; a file in
   another task's `Files:` is worth a word ("T-09 also plans to change it; it waits for this one").
 - The Cost line is `python3 $COST` output, verbatim (task share is an estimate, hence ≈). If it

@@ -130,6 +130,7 @@ AGENTS = [
              "Map each criterion to its tests and their result in the Goals section.",
              "A criterion tagged with a scenario (`(S-03)`) gets an **end-to-end test that plays that scenario** from `docs/scenarios.md` with its own data (through the API, CLI or UI the user would use), named after it (`test_s03_…`).",
              "When a test fails because of the source code, report the failure with the trace; don't fix the source (the Debugger does).",
+             "Write **Try this** to `.results/<task-id>/try-this.md`: 1–3 numbered steps a person who doesn't code can follow to see the task working themselves (how to start it, what to tap or type, with real example data), each ending in `→ you should see …`. Use the app the way its user would, never a test command.",
          ]),
     dict(name="reviewer", model="opus", color="red", tools=[R, W, G, GL],
          when="a task has passed its tests and needs a read-only review for bugs, security, edge cases, LLD violations and style",
