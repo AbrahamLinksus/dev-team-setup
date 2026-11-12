@@ -6,7 +6,7 @@ match it (a test checks). Claude Code only offers an update when the version cha
 ## 0.8.0
 
 Right-sized builds that run in parallel, plain-language decisions, a spec critic, a production
-gate and life after handover. Backlog M0–M7 (PRs #134–#141), merged through `backlog/v0.8`.
+gate and life after handover. Backlog M0–M7 (PRs #134–#142), merged through `backlog/v0.8`.
 
 - **Right-sizing:**
   - project size from the spec's risk signals (backend, auth, database, multi-user, external
