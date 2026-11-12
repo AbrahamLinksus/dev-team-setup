@@ -614,6 +614,20 @@ class StructureTest(unittest.TestCase):
         self.assertNotIn("update it from the real task count", planning)
         self.assertIn("| Size |", (SKILL / "templates" / "STATE.md").read_text(encoding="utf-8"))
 
+    def test_task_graph_on_the_planning_card(self):
+        # B-41: the owner sees what runs together before the build; B-42: foundation first, then slices
+        planning = (SKILL / "references" / "stage-1-6-planning.md").read_text(encoding="utf-8")
+        self.assertIn("**The task graph goes on the planning card:**", planning)
+        self.assertIn("--mermaid", planning)
+        self.assertIn("`--summary` lines", planning)
+        self.assertIn("exit 2 (a cycle, an unknown ID, a task missing", planning)
+        self.assertIn("## Planning card (stage 6)", (SKILL / "references" / "result-card.md").read_text(encoding="utf-8"))
+        planner = (ROOT / "agents" / "planner.md").read_text(encoding="utf-8")
+        self.assertIn("first and alone in the plan", planner)
+        self.assertIn("touches only its own screen or module", planner)
+        self.assertIn("aim for a parallel factor of 2 or more", planner)
+        self.assertIn("Name the **shared modules** in the LLD", (ROOT / "agents" / "architect.md").read_text(encoding="utf-8"))
+
     def test_lld_has_a_size_cap_and_a_narrow_sync(self):
         # B-20: the LLD grew past what any brief reads, and every milestone re-synced all of it
         architect = (ROOT / "agents" / "architect.md").read_text(encoding="utf-8")
@@ -629,7 +643,7 @@ class StructureTest(unittest.TestCase):
         planner = (ROOT / "agents" / "planner.md").read_text(encoding="utf-8")
         self.assertIn("**a task is one user-visible feature slice end to end**", planner)
         self.assertIn("never split a feature by layer", planner)
-        self.assertIn("a single **foundation task**, which must still be user-visible", planner)
+        self.assertIn("which must still be user-visible (the app starts and shows its first screen)", planner)
         self.assertIn('**Task caps by STATE.md "Size": small 8, medium 15, large 30**', planner)
         self.assertIn("`Why separate:`", planner)
         planning = (SKILL / "references" / "stage-1-6-planning.md").read_text(encoding="utf-8")

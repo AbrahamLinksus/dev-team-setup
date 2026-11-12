@@ -19,6 +19,12 @@
   | check.sh | the project's automatic quality checks (tests, lint, types) |
   | Tier 1 | a decision only you make |
 
+## Planning card (stage 6)
+
+Images: the task graph (`tasks.png`: rounds left to right, critical path highlighted), then the
+`taskgraph.py --summary` lines as text: one line per round, the longest chain, the parallel
+factor and any warning. The owner sees what runs together before anything is built.
+
 ## Per-task card
 
 Order: the image(s) first, then the card, then the approval question (AskUserQuestion).

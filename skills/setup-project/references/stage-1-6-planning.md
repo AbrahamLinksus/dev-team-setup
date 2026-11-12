@@ -78,7 +78,15 @@ check with terminal images.
 ## 6 · Tasks + plan merge ⏸
 
 **planner** → `TASKS.md`: one task per user-visible feature slice, plus at most one foundation task.
-Planning card (spec, HLD, team, LLD, env, task count per milestone, project size). Show the task
+Check it with `python3 $TASKGRAPH <wt>/TASKS.md`: exit 2 (a cycle, an unknown ID, a task missing
+`Owner`, `Depends on` or `Files`) → back to the planner with the error line.
+**The task graph goes on the planning card:** `python3 $TASKGRAPH <wt>/TASKS.md --mermaid >
+<wt>/.results/plan/tasks.mmd`, then `python3 $CAPTURE mermaid <wt>/.results/plan/tasks.mmd
+<wt>/.results/plan/tasks.png` (the critical path is highlighted), and the `--summary` lines under
+it, which every owner can read ("Round 2: 3 features at the same time"). A parallel factor under
+1.5 with 4+ tasks prints a warning: the card says why (or the planner moves shared helpers into
+the foundation task).
+Planning card (spec, HLD, team, LLD, env, task graph, task count per milestone, project size). Show the task
 count against the size's cap (**small 8, medium 15, large 30**); over the cap, list each extra
 task's `Why separate:` line so the owner can ask to merge them.
 In `balanced` or `fast` cost mode, add the build-model tip (`approval-modes.md`).
