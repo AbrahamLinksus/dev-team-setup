@@ -110,7 +110,11 @@ before the milestone card; Minor findings go on the milestone card.
 
 **Milestone end ⏸** (every milestone but the last): task `M<n>-docs` with two steps: **architect** as-built sync of
 `docs/LLD.md` (changes since last milestone, section numbers kept stable), then **docs**
-README pass. Milestone card (includes the LLD changes): **Approve + continue in a fresh
+README pass. Write the milestone's changed files to `<wt>/.results/M<n>-docs/changed-files.txt`
+(`git -C <repo> diff --name-only <last milestone's commit> main`, without opening it) and put it in
+the architect's `Read:`: the sync edits only the LLD sections for those paths. **Skip the sync**
+(mark it `⏭ no design changes`) when no changed path outside `docs/`, tests and the shared files
+appears in `docs/LLD.md` (`grep -c -F -f` on the list's top folders finds nothing). Milestone card (includes the LLD changes): **Approve + continue in a fresh
 session (Recommended)** / Approve and continue here / Request changes.
 Fresh session → update STATE.md "Next step", `$TASKGIT record <repo> "chore: milestone M<n>"`,
 then tell the owner: "Start a new chat and run `/setup-project resume <repo>`", and stop.

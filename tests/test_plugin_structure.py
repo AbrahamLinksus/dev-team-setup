@@ -614,6 +614,16 @@ class StructureTest(unittest.TestCase):
         self.assertNotIn("update it from the real task count", planning)
         self.assertIn("| Size |", (SKILL / "templates" / "STATE.md").read_text(encoding="utf-8"))
 
+    def test_lld_has_a_size_cap_and_a_narrow_sync(self):
+        # B-20: the LLD grew past what any brief reads, and every milestone re-synced all of it
+        architect = (ROOT / "agents" / "architect.md").read_text(encoding="utf-8")
+        self.assertIn('**Size cap by STATE.md "Size": small 150 lines, medium 400, large 900**', architect)
+        self.assertIn("Edit **only the sections that describe those paths**", architect)
+        self.assertIn("small 150 lines, medium 400, large 900", (SKILL / "templates" / "LLD.md").read_text(encoding="utf-8"))
+        build = (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8")
+        self.assertIn("changed-files.txt", build)
+        self.assertIn("**Skip the sync**", build)
+
     def test_tasks_are_feature_slices_under_a_cap(self):
         # B-30: run B split features by layer (API task, then screen task), doubling the task count
         planner = (ROOT / "agents" / "planner.md").read_text(encoding="utf-8")

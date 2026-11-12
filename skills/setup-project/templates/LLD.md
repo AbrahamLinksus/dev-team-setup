@@ -5,6 +5,8 @@
 > interfaces, contracts and schema in one place; it refers to other modules only by number.
 > **Numbers are stable**: at milestone as-built syncs and change requests, update sections in
 > place and give new sections new numbers. Never renumber; mark removed sections `(removed)`.
+> **Size cap** (STATE.md "Size"): small 150 lines, medium 400, large 900. The as-built sync edits
+> only the sections whose paths the milestone changed.
 
 ## §0 Overview
 ### §0.1 Stack
