@@ -581,7 +581,20 @@ if scenario lint_before_handover; then
   new_repo lint
   out=$(tg lint "$R" 2>&1)
   check "the helper's check.sh has no +x: flagged" contains "$out" "not executable: scripts/check.sh"
-  chmod +x "$R/scripts/check.sh"; git -C "$R" update-index --chmod=+x scripts/check.sh && git -C "$R" commit -qm "+x" && git -C "$R" push -q origin main 2>/dev/null
+  check "a missing OWNER.md is flagged" contains "$out" "OWNER.md is missing"
+  check "a missing production gate is flagged" contains "$out" "docs/PRODUCTION.md is missing"
+  mkdir -p "$R/docs"; echo "# For the owner" > "$R/OWNER.md"
+  printf '| ID | Item | Proven by | Task | Status |\n|---|---|---|---|---|\n| G-01 | Errors in plain words | a test | T-02 | Open |\n| G-02 | Restart keeps data | a test | T-03 | Built + tested (test_restart) |\n' > "$R/docs/PRODUCTION.md"
+  printf '# State\n\n## Known minors\n| Task | Where | Fix | Size |\n|---|---|---|---|\n| T-01 | a.py:3 | rename | S |\n| T-02 | b.js | focus | ≈2 min |\n| T-03 | c.py | split | ≈20 min |\n\n## Context additions\n' > "$R/STATE.md"
+  out=$(tg lint "$R" 2>&1)
+  check "an open gate item is flagged" contains "$out" "production gate item still open: G-01 Errors in plain words"
+  check "a built gate item is not" bash -c "! grep -q 'G-02' <<<'$out'"
+  check "a minor sized 'S' is flagged" contains "$out" "known minor not sized in minutes ('S'): T-01 a.py:3"
+  check "a 2-minute minor left unfixed is flagged" contains "$out" "known minor small enough to fix now (≈2 min): T-02 b.js"
+  check "a 20-minute minor is left for the card" bash -c "! grep -q 'T-03' <<<'$out'"
+  sedi 's/| Open |/| Waived by the owner (D-09: plain errors later) |/' "$R/docs/PRODUCTION.md"
+  printf '# State\n\n## Known minors\n| Task | Where | Fix | Size |\n|---|---|---|---|\n| T-03 | c.py | split | ≈20 min |\n' > "$R/STATE.md"
+  chmod +x "$R/scripts/check.sh"; git -C "$R" add -A; git -C "$R" update-index --chmod=+x scripts/check.sh && git -C "$R" commit -qm "+x" && git -C "$R" push -q origin main 2>/dev/null
   check "a clean repo lints clean" expect_exit 0 tg lint "$R"
   mkdir -p "$R/hooks"; printf '#!/bin/sh\necho hi\n' > "$R/hooks/pre-commit"; printf 'echo run\n' > "$R/run.sh"
   chmod 644 "$R/hooks/pre-commit" "$R/run.sh"
@@ -598,9 +611,13 @@ if scenario lint_before_handover; then
   check "the merged branch" contains "$out" "merged branch still open: wip/T-09"
   chmod +x "$R/hooks/pre-commit" "$R/run.sh"; git -C "$R" update-index --chmod=+x hooks/pre-commit run.sh
   printf '# State\n| Repo | me/x |\n' > "$R/STATE.md"
+  git -C "$R" add -A
   git -C "$R" add -A && git -C "$R" commit -qm fix && git -C "$R" push -q origin main 2>/dev/null
   git -C "$R" push -q origin --delete wip/T-09 2>/dev/null
   check "clean again after the fixes" expect_exit 0 tg lint "$R"
+  # with an id, project files come from that task's worktree (the handover branch)
+  H=$(tg start "$R" handover); git -C "$H" rm -q OWNER.md; tgq checkpoint "$R" handover "drop owner page"
+  check "lint <repo> handover reads the handover worktree" contains "$(tg lint "$R" handover 2>&1)" "OWNER.md is missing"
 fi
 
 if scenario step_command; then

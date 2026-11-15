@@ -647,7 +647,7 @@ class StructureTest(unittest.TestCase):
         self.assertIn("docs/PRODUCTION.md", scopes["agents"]["planner"]["write"])
         self.assertIn("`Production gate: <n> items, <n> N/A`", (SKILL / "references" / "stage-1-6-planning.md").read_text(encoding="utf-8"))
         handover = (SKILL / "references" / "stage-8-handover.md").read_text(encoding="utf-8")
-        self.assertIn("**Approve is offered only\nwhen no gate item is Open.**", handover)
+        self.assertIn("**Approve is offered only\nwhen no gate item is Open**", handover)
         self.assertIn("**Build it**", handover)
         self.assertIn("**Waive it** (a\nTier 1 decision: the card states the consequence", handover)
         self.assertIn("Production gate · 11 items", (SKILL / "references" / "result-card.md").read_text(encoding="utf-8"))
@@ -707,7 +707,10 @@ class StructureTest(unittest.TestCase):
     def test_handover_lint_runs_before_the_card(self):
         # B-22: a hook without +x and a 'uv sync' leftover in STATE.md reached the Recipe Box handover
         handover = (SKILL / "references" / "stage-8-handover.md").read_text(encoding="utf-8")
-        self.assertIn("**Handover lint.** `$TASKGIT lint <repo>`", handover)
+        self.assertIn("**Handover lint, last, right before the card.** `$TASKGIT lint <repo> handover`", handover)
+        # home-cookbook run: handed over with no OWNER.md, no production gate and 44 unfixed minors
+        self.assertIn("and the lint reports nothing but merged branches", handover)
+        self.assertLess(handover.index("5. **Production gate.**"), handover.index("6. **Handover lint"))
         self.assertIn("**Delete them (Recommended)** / Keep", handover)
         self.assertIn("  lint)", (SKILL / "scripts" / "taskgit.sh").read_text(encoding="utf-8"))
 
