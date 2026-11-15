@@ -10,6 +10,7 @@
 | Status | {{Active · Paused (reason) · Abandoned (reason) · Complete}} |
 | Stage | {{0 Intake · 1 Spec · 2 HLD · 3 Team pick · 4 LLD · 5 Env · 6 Tasks · 7 Build · 8 Handover}} |
 | Plugin | dev-team-setup {{version}} (`$TASKGIT version` at intake; resume checks it) |
+| Runners | {{on · off}}: on = task-runner agents run each task, one session for the project; off = this Claude Code can't nest agents |
 | Owner mode | {{builder · developer}}: builder = plain words, technical detail collapsed; developer = technical terms |
 | Size | {{small · medium · large}} · signals: {{risk signals present, or none}}: sets milestones, design depth, the task cap, who tests and reviews low-risk tasks |
 | Milestone | {{M2 · name}} ({{done}}/{{total}} tasks) |

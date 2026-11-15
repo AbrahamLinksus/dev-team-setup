@@ -1,5 +1,5 @@
 {
-  "_comment": "What each agent may change. Globs are relative to the project worktree root. '@group' expands a group. bash modes: none | readonly (no file-changing commands) | code (run code/tests; no git writes, no installs) | full (code + installs; env-setup only) | git (taskgit.sh + read-only git; git-pr only). Projects can override per agent in .devteam/scopes.json (written by the architect, approved with the LLD). The 'gates' group (check.sh, lint/type/test configs, CI) and the tests are denied to the code-writing roles they judge: only env-setup (configs), devops (CI) and tester (tests) change them.",
+  "_comment": "What each agent may change. Globs are relative to the project worktree root. '@group' expands a group. bash modes: none | readonly (no file-changing commands) | code (run code/tests; no git writes, no installs) | full (code + installs; env-setup only) | git (taskgit.sh + read-only git; git-pr only) | runner (like git, but only the taskgit commands of one task: no approve, reject, record, undo, catchup, start or lint; task-runner only). Projects can override per agent in .devteam/scopes.json (written by the architect, approved with the LLD). The 'gates' group (check.sh, lint/type/test configs, CI) and the tests are denied to the code-writing roles they judge: only env-setup (configs), devops (CI) and tester (tests) change them.",
   "scratch": [
     "/tmp/**"
   ],
@@ -221,6 +221,12 @@
         ".results/**"
       ],
       "bash": "git"
+    },
+    "task-runner": {
+      "write": [
+        ".results/**"
+      ],
+      "bash": "runner"
     },
     "trainer": {
       "write": [

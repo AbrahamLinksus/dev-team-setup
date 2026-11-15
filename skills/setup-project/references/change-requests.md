@@ -32,7 +32,8 @@ offline", "add login", "drop the export feature", "use Postgres instead".
              re-plan on top of current main (sync first), then approve again.
              After the merge: log the CR as a Tier 1 decision in DECISIONS.md and update
              STATE.md in the main checkout, then $TASKGIT record.
-8 Resume     offer "Continue in a fresh session (Recommended)" / "Continue here" (fresh session:
+8 Resume     offer "Continue here (Recommended)" / "Continue in a fresh session" (the fresh one is
+             Recommended only with STATE.md `Runners: off`; fresh session:
              update STATE.md "Next step", record, tell the owner to run /setup-project resume <repo>).
              approvals unblock. Queued cards: re-sync each task ($TASKGIT sync) and re-show
              the card if the CR affected it. Open task branches affected by the CR: sync them

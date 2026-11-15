@@ -26,6 +26,7 @@ code. Show the module → agent mapping on the team card so the owner sees why e
 | debugger | Opus | Read, Write, Edit, Bash, Glob, Grep | Always when code is written (on failures) |
 | docs | Haiku | Read, Write, Edit, Glob | Always (README, architecture notes) |
 | devops | Sonnet | Bash, Read, Write, Edit, Glob | CI needed, Docker, or deployment (GCP, Vercel, Render) |
+| task-runner | Sonnet | Agent, Bash, Read, Write, Glob | Always when nested agents work: runs one task's steps and returns its card |
 | git-pr | Haiku | Bash, Read, Write | Optional: drafts the squash commit message for a large task |
 
 ## AI/ML pack

@@ -40,6 +40,7 @@ A project can only **narrow** these rules (`.devteam/scopes.json`, approved with
 | researcher | `docs/research.md`, its own reports | anything else, git internals, .env files | no shell |
 | reviewer | its own reports | anything else, git internals, .env files | no shell |
 | statistician | its own reports | anything else, git internals, .env files | read-only shell |
+| task-runner | its own reports | anything else, git internals, .env files | only the plugin's task scripts (no approvals) |
 | tester | tests, its own reports | anything else, git internals, .env files | runs code and tests (no git writes, no installs) |
 | trainer | any project file | the task and state files, the design docs, raw data, the quality gates (check.sh, lint/test configs, CI), tests, git internals, .env files | runs code and tests (no git writes, no installs) |
 | visualizer | `src/viz/**`, `dashboards/**`, `streamlit_app.py`, `reports/**`, `notebooks/**`, its own reports | anything else, git internals, .env files | runs code and tests (no git writes, no installs) |
