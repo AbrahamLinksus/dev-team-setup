@@ -787,6 +787,11 @@ class StructureTest(unittest.TestCase):
         self.assertIn(signals, planner)
         self.assertIn("**0–1 signals = small, 2–3 = medium, 4+ = large**", planner)
         self.assertIn("more than 15 user stories bumps it up one size", planner)
+        # home-cookbook run: a home-only server, SQLite and "at home" counted as backend, database
+        # and deployment, so Recipe Box sized medium (3 milestones, ~$70); they carry no such risk
+        for not_a_signal in ("an app serving its own pages on this computer or the home network is not one",
+                             "SQLite or files inside the app are not", "running at home is not"):
+            self.assertIn(not_a_signal, planner)
         planning = (SKILL / "references" / "stage-1-6-planning.md").read_text(encoding="utf-8")
         self.assertIn(signals, " ".join(planning.split()))
         self.assertIn("**Project size.**", planning)

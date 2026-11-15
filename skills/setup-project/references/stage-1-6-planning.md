@@ -16,7 +16,9 @@ Spec card: wireframes + spec summary + every *(assumed)* line → Approve / Requ
 Answer more questions. Nothing is designed before the spec is approved.
 **Project size.** The planner sizes by **risk signals**, not by a guessed task count: backend,
 auth, database, multi-user, external services/payments, AI/ML, deployment. 0–1 signals = small,
-2–3 = medium, 4+ = large; more than 15 user stories bumps it up one size. Its `Size:` line (size,
+2–3 = medium, 4+ = large; more than 15 user stories bumps it up one size. A signal counts only
+for its real risk: a server only this computer or the home network reaches, SQLite or files, one
+household, and running at home count as **none** (planner duty in `agents/planner.md`). Its `Size:` line (size,
 the signals present, the story count) goes on the spec card, in plain words ("small: no accounts,
 no server, nothing deployed"), and into STATE.md "Size". It sets how much process the build gets:
 milestones, design depth, the task cap, and who tests and reviews low-risk tasks.
