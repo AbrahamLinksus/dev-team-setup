@@ -12,7 +12,11 @@ Agent IDs from earlier sessions are not continued; every step after a resume spa
    folder) or clone it there. Resume from the folder that *holds* the repo, not from inside it:
    the worktrees `<repo>-wt/` sit next to the repo. A repo outside this session's folders (e.g.
    `~/projects/<repo>` from an older run) → `/add-dir` its parent first.
-2. Read STATE.md / TASKS.md / DECISIONS.md on main; `$TASKGIT list <repo>`. Use STATE.md
+2. Read STATE.md / TASKS.md / DECISIONS.md on main; `$TASKGIT list <repo>`. **Version check:**
+   `$TASKGIT version` differs from STATE.md "Plugin" → before anything else, one card: "This project
+   was started with dev-team-setup <old>; this session runs <new>, whose steps differ." **Stop: I'll
+   restart with <old> (Recommended)** / Continue with <new> (update STATE.md "Plugin"). A project
+   built by two versions mixes their rules (the home-cookbook handover ran on the old one). Use STATE.md
    "Owner mode" for every card from here on (missing → ask "Do you write code?" once).
    `Status: Paused` → set it back to Active and continue. `Status: Abandoned` → say so and ask
    whether to reopen it before doing anything. `Status: Complete` → ask what's next: **Fix

@@ -17,6 +17,7 @@
 #     and re-runs scripts/check.sh, so a task is always tested against current main.
 #
 # Usage:
+#   taskgit.sh version                                   the plugin version (recorded in STATE.md at intake)
 #   taskgit.sh start      <repo> <id>                    create/restore worktree, install locked deps
 #                                                        (uv/npm/pnpm/yarn; TASKGIT_SKIP_DEPS=1 skips); prints its path
 #   taskgit.sh checkpoint <repo> <id> "<step msg>"       commit all on wip/<id>, push
@@ -63,6 +64,9 @@ read_lines() {  # read_lines <array-name> < input: one array element per line
 file_size() { wc -c < "$1" | tr -d ' '; }
 
 cmd=${1:-}; [[ -z "$cmd" ]] && usage
+if [[ "$cmd" == version ]]; then   # the plugin's version (STATE.md records it; resume compares)
+  sed -n 's/^ *"version": *"\([^"]*\)".*/\1/p' "$HERE/../../../.claude-plugin/plugin.json" | head -n 1; exit 0
+fi
 repo=${2:-}; [[ -z "$repo" ]] && usage
 [[ -d "$repo/.git" || -f "$repo/.git" ]] || die 1 "$repo is not a git checkout"
 repo=$(cd "$repo" && pwd); wtroot="${repo}-wt"

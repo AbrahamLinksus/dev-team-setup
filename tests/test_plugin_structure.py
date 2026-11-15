@@ -832,6 +832,23 @@ class StructureTest(unittest.TestCase):
         self.assertIn("--ready --avoid M<n>", build)
         self.assertIn("let each finish its current step (checkpointed), then restart", build)
 
+    def test_small_projects_are_offered_the_balanced_cost_mode(self):
+        planning = (SKILL / "references" / "stage-1-6-planning.md").read_text(encoding="utf-8")
+        self.assertIn("**Small and medium projects still on the default `quality`:**", planning)
+        self.assertIn("**Balanced (Recommended)**", planning)
+
+    def test_resume_checks_the_plugin_version(self):
+        # home-cookbook run: sessions alternated between 0.8 (--plugin-dir) and the installed 0.7
+        version = json.loads((ROOT / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))["version"]
+        out = subprocess.run(["bash", str(SKILL / "scripts" / "taskgit.sh"), "version"], capture_output=True,
+                             text=True, encoding="utf-8").stdout.strip()
+        self.assertEqual(out, version)
+        resume = (SKILL / "references" / "resume.md").read_text(encoding="utf-8")
+        self.assertIn("**Version check:**", resume)
+        self.assertIn("**Stop: I'll\n   restart with <old> (Recommended)**", resume)
+        self.assertIn("| Plugin |", (SKILL / "templates" / "STATE.md").read_text(encoding="utf-8"))
+        self.assertIn("`Plugin: dev-team-setup <$TASKGIT version>`", (SKILL / "references" / "stage-0-intake.md").read_text(encoding="utf-8"))
+
     def test_taskgit_runs_from_the_base_folder(self):
         # home-cookbook run: approve merged fine, then "exited 1" on pwd from inside the removed worktree
         build = (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8")
