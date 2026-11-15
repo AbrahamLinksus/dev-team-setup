@@ -28,6 +28,7 @@ from pathlib import Path
 
 TASK_RE = re.compile(r"^#{2,4}\s+(T-\d+[A-Za-z0-9]*)\s*(?:[·:—-]\s*)?(.*?)\s*$")
 MILESTONE_RE = re.compile(r"^##\s+(M\d+)\b\s*(?:[·:—-]\s*)?(.*?)\s*$")
+FROZEN_RE = re.compile(r"^Frozen:\s*(.*?)\s*$", re.I)
 FIELD_RE = re.compile(r"^\s*-\s*(Owner|Depends on|Files|Status):\s*(.*?)\s*$", re.I)
 ID_RE = re.compile(r"T-\d+[A-Za-z0-9]*")
 REQUIRED = ("owner", "depends on", "files")
@@ -67,7 +68,8 @@ def parse(text: str) -> dict[str, dict]:
         f = d.pop("fields")
         d["owner"] = [o.strip() for o in f["owner"].split(",") if o.strip()]
         d["depends"] = ID_RE.findall(f["depends on"])
-        d["files"] = [p[2:] if p.startswith("./") else p for p in (q.strip() for q in f["files"].split(",")) if p]
+        d["files"] = [p[2:] if p.startswith("./") else p
+                      for p in (re.sub(r"\s*\(.*?\)\s*$", "", q.strip()) for q in f["files"].split(",")) if p]
         d["status"] = (f.get("status") or "Backlog").split("·")[0].strip()
     unknown = sorted({f"{t} → {dep}" for t, d in tasks.items() for dep in d["depends"] if dep not in tasks})
     if unknown:
@@ -75,6 +77,34 @@ def parse(text: str) -> dict[str, dict]:
     if not tasks:
         raise Invalid("no tasks found (headings like '### T-01 · title')")
     return tasks
+
+
+def frozen_paths(text: str) -> list[str]:
+    """The `Frozen:` line(s) outside any task: shared code the foundation built (the guard enforces it)."""
+    out: list[str] = []
+    in_task = False
+    for line in text.splitlines():
+        if TASK_RE.match(line):
+            in_task = True
+        elif line.startswith("#"):
+            in_task = False
+        m = FROZEN_RE.match(line)
+        if m and not in_task and "{{" not in m.group(1):
+            out += [p.strip() for p in m.group(1).replace("`", "").split(",") if p.strip()]
+    return out
+
+
+def frozen_warnings(tasks: dict[str, dict], frozen: list[str]) -> list[str]:
+    roots = {t for t, d in tasks.items() if not d["depends"]}
+    out = []
+    for t in sorted(tasks):
+        if t in roots:
+            continue
+        hit = [f for f in tasks[t]["files"] if any(overlaps(f, g) for g in frozen)]
+        if hit:
+            out.append(f"{t} claims frozen shared code ({', '.join(hit)}): move that change into the foundation, "
+                       f"or make it its own shared-change task")
+    return out
 
 
 def overlaps(a: str, b: str) -> bool:
@@ -270,8 +300,11 @@ def main(argv: list[str] | None = None) -> int:
     if a.max < 1:
         ap.error("--max must be at least 1")
     try:
-        tasks = parse(Path(a.tasks_md).read_text(encoding="utf-8"))
+        text = Path(a.tasks_md).read_text(encoding="utf-8")
+        tasks = parse(text)
         graph = build(tasks, a.max)
+        graph["frozen"] = frozen_paths(text)
+        graph["warnings"] += frozen_warnings(tasks, graph["frozen"])
         if a.size:
             graph["warnings"] += size_warnings(tasks, a.size)
     except OSError as e:

@@ -181,6 +181,19 @@ class TaskGraphTest(unittest.TestCase):
         self.assertIn("9 tasks is over the small cap of 8", " ".join(self.graph(nine, "--size", "small")["warnings"]))
         self.assertNotEqual(self.run_tg(text, "--size", "tiny").returncode, 0)
 
+    def test_frozen_shared_code_is_read_and_feature_claims_on_it_are_flagged(self):
+        text = ("Frozen: src/core/*, `tests/conftest.py`\n\n" + task("T-01", files="src/core/db.py, tests/conftest.py")
+                + task("T-02", "T-01", "src/search/*, tests/search/*")
+                + task("T-03", "T-01", "src/fav/* (star only), tests/conftest.py"))
+        g = self.graph(text)
+        self.assertEqual(g["frozen"], ["src/core/*", "tests/conftest.py"])
+        joined = " ".join(g["warnings"])
+        self.assertIn("T-03 claims frozen shared code (tests/conftest.py)", joined)
+        self.assertNotIn("T-01 claims", joined)          # the foundation builds it
+        self.assertNotIn("T-02", joined)
+        t3 = next(t for t in g["tasks"] if t["id"] == "T-03")
+        self.assertEqual(t3["files"], ["src/fav/*", "tests/conftest.py"])   # "(note)" dropped, as the guard does
+
     def test_undeclared_files_are_reported(self):
         r = self.run_tg(RECIPE_BOX, "--undeclared", "T-03",
                         stdin="src/search/index.py\nweb/search.js\nweb/favourite-toggle.js\n")

@@ -12,6 +12,9 @@ The single source of these rules. Every agent reads this file before starting.
 
 ## Scope is enforced
 - Each role may only change certain paths and run certain shell commands (`skills/setup-project/scopes.json`, plus the project's `.devteam/scopes.json`). A hook blocks out-of-scope writes and commands, and after every step the Orchestrator reverts any out-of-scope file changes. If a block stops you from finishing, report it under Issues; don't try to work around it.
+- Your task's `Files:` in TASKS.md is its **claim**. A file another running task claims, or a
+  shared file the foundation froze, is blocked for you. Don't work around it: finish what you can
+  and put `Needs file: <path> (why)` under Issues.
 - No git write commands (the Orchestrator and git-pr own history). No package installs except env-setup with an approved plan.
 
 ## Decisions

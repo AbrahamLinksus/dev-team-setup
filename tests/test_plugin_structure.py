@@ -848,6 +848,18 @@ class StructureTest(unittest.TestCase):
         self.assertIn("| Plugin |", (SKILL / "templates" / "STATE.md").read_text(encoding="utf-8"))
         self.assertIn("`Plugin: dev-team-setup <$TASKGIT version>`", (SKILL / "references" / "stage-0-intake.md").read_text(encoding="utf-8"))
 
+    def test_files_are_claims_and_shared_code_is_frozen(self):
+        planner = (ROOT / "agents" / "planner.md").read_text(encoding="utf-8")
+        self.assertIn("**Files is a claim**", planner)
+        self.assertIn("one **wire-up task** at the end", planner)
+        self.assertIn("`Frozen:` line at the top of TASKS.md", planner)
+        architect = (ROOT / "agents" / "architect.md").read_text(encoding="utf-8")
+        self.assertIn("**Registries are one file per entry**", architect)
+        self.assertIn("each feature has its own test folder", architect)
+        self.assertIn("Frozen: {{", (SKILL / "templates" / "TASKS.md").read_text(encoding="utf-8"))
+        self.assertIn("`Needs file: <path> (why)`", (SKILL / "references" / "team-rules.md").read_text(encoding="utf-8"))
+        self.assertIn("**`Needs file: <path>` in a REPORT**", (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8"))
+
     def test_taskgit_runs_from_the_base_folder(self):
         # home-cookbook run: approve merged fine, then "exited 1" on pwd from inside the removed worktree
         build = (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8")
