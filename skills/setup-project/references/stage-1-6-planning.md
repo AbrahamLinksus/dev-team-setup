@@ -16,7 +16,9 @@ Spec card: wireframes + spec summary + every *(assumed)* line → Approve / Requ
 Answer more questions. Nothing is designed before the spec is approved.
 **Project size.** The planner sizes by **risk signals**, not by a guessed task count: backend,
 auth, database, multi-user, external services/payments, AI/ML, deployment. 0–1 signals = small,
-2–3 = medium, 4+ = large; more than 15 user stories bumps it up one size. Its `Size:` line (size,
+2–3 = medium, 4+ = large; more than 15 user stories bumps it up one size. A signal counts only
+for its real risk: a server only this computer or the home network reaches, SQLite or files, one
+household, and running at home count as **none** (planner duty in `agents/planner.md`). Its `Size:` line (size,
 the signals present, the story count) goes on the spec card, in plain words ("small: no accounts,
 no server, nothing deployed"), and into STATE.md "Size". It sets how much process the build gets:
 milestones, design depth, the task cap, and who tests and reviews low-risk tasks.
@@ -38,7 +40,8 @@ trims 6:
 - **Default team, no team-pick card:** the coders the HLD's modules need (backend-coder and/or
   frontend-coder), plus tester, reviewer, debugger and docs, with their catalog models.
 - **One design card ⏸:** the data-flow diagram, the team line, the package table and every
-  Tier 1 item from the architect → Approve design / Request changes. Real trade-offs still get
+  Tier 1 item from the architect → Approve design / Request changes. Still on the default
+  `quality` cost mode → the same **Cost mode** question as the team-pick card, Balanced first. Real trade-offs still get
   their own decision cards (Tier 1 never shrinks).
 - Stage 5 (install) is unchanged: installing is Tier 1.
 - **Stage 6:** one milestone. Approval mode for this project is **batch-low-risk** unless the
@@ -58,6 +61,10 @@ From the HLD modules and `agent-catalog.md`, propose the build team: a table of 
 agent(s) · model · one-line reason. AskUserQuestion: "Approve this team?" (Approve /
 Remove some) plus up to 3 multiSelect questions of optional agents (max 4 each, with
 reasons). Mention the approval and cost modes; the owner can type a change.
+**Small and medium projects still on the default `quality`:** add a question **Cost mode** with
+**Balanced (Recommended)**: "design stays on the strongest model; reviews and fixes of low-risk
+tasks use a faster, cheaper one" / Quality / Fast. Record the answer in STATE.md; it applies from
+this card on. (The home-cookbook run stayed on quality: every review and fix ran on Opus.)
 
 ## 4 · LLD + conventions + packages ⏸
 
@@ -88,8 +95,12 @@ check with terminal images.
 ## 6 · Tasks + plan merge ⏸
 
 **planner** → `TASKS.md`: one task per user-visible feature slice, plus at most one foundation task.
-Check it with `python3 $TASKGRAPH <wt>/TASKS.md`: exit 2 (a cycle, an unknown ID, a task missing
-`Owner`, `Depends on` or `Files`) → back to the planner with the error line.
+Check it with `python3 $TASKGRAPH <wt>/TASKS.md --size <STATE.md Size>`: exit 2 (a cycle, an unknown
+ID, a task missing `Owner`, `Depends on` or `Files`) → back to the planner with the error line.
+**Any warning sends the plan back once** (over the task cap or milestone limit, or a parallel factor
+under 1.5 with 4+ tasks): the planner merges tasks and milestones, and for files shared by 3+
+tasks the **architect** splits them per feature in the LLD first, then the planner re-plans. A
+warning that survives the second plan goes on the planning card with the planner's reason.
 **The task graph goes on the planning card:** `python3 $TASKGRAPH <wt>/TASKS.md --mermaid >
 <wt>/.results/plan/tasks.mmd`, then `python3 $CAPTURE mermaid <wt>/.results/plan/tasks.mmd
 <wt>/.results/plan/tasks.png` (the critical path is highlighted), and the `--summary` lines under

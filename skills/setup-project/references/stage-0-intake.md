@@ -50,7 +50,7 @@ Part of the /setup-project Orchestrator (SKILL.md). Read this file when the stag
    `~/projects`) each edit asks for permission, and remote or phone sessions refuse outright.
    If `<base>` is itself a git checkout (the session was started inside another project), ask
    the owner for a folder, then add it with `/add-dir <folder>` before cloning there.
-   Record `<base>` in STATE.md. Copy templates: `STATE.md`, `TASKS.md`, `DECISIONS.md` at the
+   Record `<base>` in STATE.md, and `Plugin: dev-team-setup <$TASKGIT version>`. Copy templates: `STATE.md`, `TASKS.md`, `DECISIONS.md` at the
    root; `SPEC.md`, `HLD.md`, `LLD.md`, `CONVENTIONS.md` into `docs/`. `.gitignore`: `.env`,
    `.results/`, `.venv/`, `node_modules/` (env-setup adds the data and model ignores for data/ML work). Commit + push (covered by the visibility answer).
 6. `$TASKGIT start <repo> plan`: stages 1–6 run on `wip/plan`.

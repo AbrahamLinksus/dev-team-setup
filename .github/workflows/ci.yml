@@ -18,7 +18,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        # ubuntu-24.04, not -latest: ubuntu-latest moved to 26.04, which has no Python 3.9 (the
+        # minimum this plugin supports, macOS's stock python3), so its 3.9 job failed at setup
+        os: [ubuntu-24.04, macos-latest]
         python: ["3.9", "3.13"]
     runs-on: ${{ matrix.os }}
     steps:

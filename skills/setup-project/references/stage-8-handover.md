@@ -26,17 +26,20 @@ review** of the last milestone's tasks when any had theirs batched (`stage-7-bui
    **tester** (it has Bash): runs every command in the README's "How to run" and "How to test"
    in a fresh clone of the handover branch, each under `timeout`, captures the run with
    `$CAPTURE term`, and reports any command that fails or doesn't exist.
-5. **Handover lint.** `$TASKGIT lint <repo>` (exit 10 = findings): scripts and hooks committed
-   without the executable bit, template leftovers in STATE.md (placeholders, run commands for a
-   stack the repo doesn't use), and `wip/*` branches already merged. The first two go to a fix
-   step (the owner agent for scripts, you for STATE.md); merged branches are listed on the
-   handover card with **Delete them (Recommended)** / Keep, and deleted only on that answer.
-6. **Production gate.** The reviewer also fills a `## Production gate` table in its full report:
+5. **Production gate.** The reviewer also fills a `## Production gate` table in its full report:
    each applicable item of `docs/PRODUCTION.md` with its status, `Built + tested (<the test or
    capture that proves it>)` only when that proof exists and passed in the tester's run, else
    `Open`. Then **docs** writes those statuses into `docs/PRODUCTION.md`.
+6. **Handover lint, last, right before the card.** `$TASKGIT lint <repo> handover` (exit 10 =
+   findings) checks that the handover really happened: `OWNER.md` exists, `docs/PRODUCTION.md`
+   exists with no item `Open`, every known minor is sized in minutes and none of ≈5 min or less is
+   left; and what a fresh clone trips over: scripts and hooks without the executable bit, template
+   leftovers in STATE.md, `wip/*` branches already merged. Fix what a step can fix (a missing
+   `OWNER.md` → docs; scripts → the owner agent; STATE.md → you) and run it again. What's left
+   goes on the card: open gate items and larger minors as Build/Fix or Waive (below), merged
+   branches as **Delete them (Recommended)** / Keep, deleted only on that answer.
 Handover card (`result-card.md`) → Approve handover / Request changes. **Approve is offered only
-when no gate item is Open.** Each open item instead gets, in the same AskUserQuestion call (max 4
+when no gate item is Open** and the lint reports nothing but merged branches. Each open item instead gets, in the same AskUserQuestion call (max 4
 per call): **Build it** (a fix task, normal flow, then the gate is re-checked) / **Waive it** (a
 Tier 1 decision: the card states the consequence, e.g. "anyone with the link can read every
 recipe", logged in DECISIONS.md and written to the item as `Waived by the owner (D-xx: …)`).

@@ -17,6 +17,7 @@
 #     and re-runs scripts/check.sh, so a task is always tested against current main.
 #
 # Usage:
+#   taskgit.sh version                                   the plugin version (recorded in STATE.md at intake)
 #   taskgit.sh start      <repo> <id>                    create/restore worktree, install locked deps
 #                                                        (uv/npm/pnpm/yarn; TASKGIT_SKIP_DEPS=1 skips); prints its path
 #   taskgit.sh checkpoint <repo> <id> "<step msg>"       commit all on wip/<id>, push
@@ -39,8 +40,9 @@
 #   taskgit.sh reject     <repo> <id>                    drop wip/<id> (local + remote) and its worktree
 #   taskgit.sh undo       <repo> <id>                    revert an approved task's commit on main and push
 #   taskgit.sh list       <repo>                         open wip/* branches on origin + last step
-#   taskgit.sh lint       <repo>                         handover lint: executable bits, STATE.md leftovers,
-#                                                        merged wip/* branches (exit 10 = findings)
+#   taskgit.sh lint       <repo> [<id>]                  handover lint: executable bits, OWNER.md, an open
+#                                                        production gate, unsized or small known minors,
+#                                                        STATE.md leftovers, merged wip/* branches (exit 10)
 # Exit codes: 0 ok · 1 usage · 2 blocked files · 3 main not clean/diverged · 4 merge conflict
 #             5 check.sh failed after sync · 6 squash failed · 7 committed locally but not pushed
 #             8 approval held: a change request is open · 9 watch: the step looks stalled
@@ -62,6 +64,9 @@ read_lines() {  # read_lines <array-name> < input: one array element per line
 file_size() { wc -c < "$1" | tr -d ' '; }
 
 cmd=${1:-}; [[ -z "$cmd" ]] && usage
+if [[ "$cmd" == version ]]; then   # the plugin's version (STATE.md records it; resume compares)
+  sed -n 's/^ *"version": *"\([^"]*\)".*/\1/p' "$HERE/../../../.claude-plugin/plugin.json" | head -n 1; exit 0
+fi
 repo=${2:-}; [[ -z "$repo" ]] && usage
 [[ -d "$repo/.git" || -f "$repo/.git" ]] || die 1 "$repo is not a git checkout"
 repo=$(cd "$repo" && pwd); wtroot="${repo}-wt"
@@ -597,6 +602,11 @@ PY
     g push -q origin --delete "$br" 2>/dev/null || true
     g worktree prune
     echo "approved: $(g log --oneline -1)"
+    tasks_updated=0; for f in ${pending[@]+"${pending[@]}"}; do [[ "$f" == TASKS.md ]] && tasks_updated=1; done
+    if [[ "$id" == T-* || "$id" == FIX-* ]] && (( ! tasks_updated )); then
+      echo "note: TASKS.md wasn't updated before this approve, so $id's status and Result line aren't in its commit. Update them in the main checkout before the next approve (it commits them), or run 'record' now." >&2
+    fi
+    case "$PWD/" in "$wt"/*) echo "note: your shell was inside the worktree this approve removed; cd to $(dirname "$repo") (run taskgit from there)" >&2 ;; esac
     ;;
 
   record)
@@ -670,20 +680,48 @@ PY
     ;;
 
   lint)
-    # Handover lint: what a fresh clone trips over and no test sees. Prints one line per finding;
-    # exit 10 when there are any, 0 when clean. Reads the main checkout and origin.
-    lint_hits=()
+    # Handover lint: what a fresh clone trips over and no test sees, and the handover steps that
+    # must have happened. Prints one line per finding; exit 10 when there are any, 0 when clean.
+    # Project files are read from the handover worktree when an id is given (lint <repo> handover),
+    # else from the main checkout; STATE.md always from the main checkout, which owns it.
+    lint_hits=(); src="$repo"
+    if [[ -n "${3:-}" ]]; then id=$3; ensure_wt; src="$wt"; fi
     # 1. scripts and hooks committed without the executable bit (a fresh clone can't run them)
     while IFS=$'\t' read -r meta path; do
       [[ "${meta%% *}" == 100644 ]] || continue
       case "$path" in
         *.sh) ;;
-        scripts/*|hooks/*|bin/*|.githooks/*) [[ "$(head -c 2 "$repo/$path" 2>/dev/null)" == '#!' ]] || continue ;;
+        scripts/*|hooks/*|bin/*|.githooks/*) [[ "$(head -c 2 "$src/$path" 2>/dev/null)" == '#!' ]] || continue ;;
         *) continue ;;
       esac
       lint_hits+=("not executable: $path (fix: git update-index --chmod=+x '$path')")
-    done < <(g -c core.quotepath=off ls-files -s)
-    # 2. template leftovers in STATE.md: placeholders, and run commands for a stack the repo doesn't use
+    done < <(git -C "$src" -c core.quotepath=off ls-files -s)
+    # 2. the handover's own deliverables: the owner's page, and a production gate with nothing open
+    [[ -f "$src/OWNER.md" ]] || lint_hits+=("OWNER.md is missing (the docs agent writes it from templates/OWNER.md)")
+    if [[ ! -f "$src/docs/PRODUCTION.md" ]]; then
+      lint_hits+=("docs/PRODUCTION.md is missing (the planner copies it from templates/PRODUCTION.md at stage 6)")
+    else
+      while IFS= read -r item; do lint_hits+=("production gate item still open: $item (build it or have the owner waive it)"); done \
+        < <(awk -F'|' '/^\| *G-/ { s = $(NF-1); a = $2; b = $3; gsub(/^ +| +$/, "", s); gsub(/^ +| +$/, "", a); gsub(/^ +| +$/, "", b); if (s == "Open") print a " " b }' "$src/docs/PRODUCTION.md")
+    fi
+    # 3. known minors: each sized in minutes; ≈5 min or less must have been fixed at handover
+    if [[ -f "$repo/STATE.md" ]]; then
+      while IFS=$'\t' read -r kind size where; do
+        case "$kind" in
+          small) lint_hits+=("known minor small enough to fix now (≈$size min): $where") ;;
+          unsized) lint_hits+=("known minor not sized in minutes ('$size'): $where") ;;
+        esac
+      done < <(awk -F'|' '
+        /^## Known minors/ { on = 1; next }  /^## / { on = 0 }
+        on && /^\|/ && NF >= 6 {
+          t = $2; w = $3; z = $(NF-1); gsub(/^ +| +$/, "", t); gsub(/^ +| +$/, "", w); gsub(/^ +| +$/, "", z)
+          if (t == "Task" || t ~ /^-+$/ || t == "") next
+          n = z; sub(/^≈ */, "", n)
+          if (n ~ /^[0-9]+ *min/) { sub(/ *min.*/, "", n); if (n + 0 <= 5) printf "small\t%s\t%s %s\n", n, t, w }
+          else printf "unsized\t%s\t%s %s\n", z, t, w
+        }' "$repo/STATE.md")
+    fi
+    # 4. template leftovers in STATE.md: placeholders, and run commands for a stack the repo doesn't use
     if [[ -f "$repo/STATE.md" ]]; then
       while IFS= read -r hit; do lint_hits+=("template placeholder left in STATE.md line ${hit%%:*}: ${hit#*:}"); done \
         < <(grep -n '{{' "$repo/STATE.md" || true)
@@ -696,7 +734,7 @@ PY
           < <(grep -nE '^[[:space:]]*npm ' "$repo/STATE.md" || true)
       fi
     fi
-    # 3. wip/* branches whose work is already on main (approved, or nothing left to merge)
+    # 5. wip/* branches whose work is already on main (approved, or nothing left to merge)
     g fetch -q --prune origin 2>/dev/null || true
     while IFS= read -r ref; do
       [[ -z "$ref" ]] && continue

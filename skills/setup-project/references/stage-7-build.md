@@ -40,6 +40,10 @@ Then don't keep waiting: look at the agent's status row (`⚠️ stalled?` after
 either start one more watch (the agent is clearly progressing) or stop the agent and spawn the
 step fresh (its partial files are on the branch). Without background Bash, skip the watch.
 
+**Run every `$TASKGIT` command from `<base>`** (the folder that holds the repo), never from inside a
+worktree: `approve` and `reject` delete the worktree, and a shell left inside a deleted folder
+makes the next command fail (an `approve` that merged fine then "exits 1" on `pwd`).
+
 Per task `T-xx`:
 
 1. `$TASKGIT start <repo> T-xx` (a new worktree gets the locked dependencies installed: `uv sync`,
@@ -122,7 +126,8 @@ and spawn one **reviewer** on it (brief: the task IDs and their acceptance crite
 with `Tests: coder`, also check that the tests really exercise each criterion). Critical or
 Major findings → a fix task per affected task (`T-03r`, its owner agent, high-risk, normal flow)
 before the milestone card; Minor findings go on the milestone card. Every Minor finding a card
-shows (task or milestone) is also added to STATE.md "Known minors" with its size, for the handover.
+shows (task or milestone) is also added to STATE.md "Known minors" with its size in minutes
+(`≈2 min`, from the reviewer), for the handover.
 
 **Milestone end ⏸** (every milestone but the last): task `M<n>-docs` with two steps: **architect** as-built sync of
 `docs/LLD.md` (changes since last milestone, section numbers kept stable), then **docs**

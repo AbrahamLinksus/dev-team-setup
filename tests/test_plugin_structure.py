@@ -647,7 +647,7 @@ class StructureTest(unittest.TestCase):
         self.assertIn("docs/PRODUCTION.md", scopes["agents"]["planner"]["write"])
         self.assertIn("`Production gate: <n> items, <n> N/A`", (SKILL / "references" / "stage-1-6-planning.md").read_text(encoding="utf-8"))
         handover = (SKILL / "references" / "stage-8-handover.md").read_text(encoding="utf-8")
-        self.assertIn("**Approve is offered only\nwhen no gate item is Open.**", handover)
+        self.assertIn("**Approve is offered only\nwhen no gate item is Open**", handover)
         self.assertIn("**Build it**", handover)
         self.assertIn("**Waive it** (a\nTier 1 decision: the card states the consequence", handover)
         self.assertIn("Production gate · 11 items", (SKILL / "references" / "result-card.md").read_text(encoding="utf-8"))
@@ -707,7 +707,10 @@ class StructureTest(unittest.TestCase):
     def test_handover_lint_runs_before_the_card(self):
         # B-22: a hook without +x and a 'uv sync' leftover in STATE.md reached the Recipe Box handover
         handover = (SKILL / "references" / "stage-8-handover.md").read_text(encoding="utf-8")
-        self.assertIn("**Handover lint.** `$TASKGIT lint <repo>`", handover)
+        self.assertIn("**Handover lint, last, right before the card.** `$TASKGIT lint <repo> handover`", handover)
+        # home-cookbook run: handed over with no OWNER.md, no production gate and 44 unfixed minors
+        self.assertIn("and the lint reports nothing but merged branches", handover)
+        self.assertLess(handover.index("5. **Production gate.**"), handover.index("6. **Handover lint"))
         self.assertIn("**Delete them (Recommended)** / Keep", handover)
         self.assertIn("  lint)", (SKILL / "scripts" / "taskgit.sh").read_text(encoding="utf-8"))
 
@@ -787,6 +790,11 @@ class StructureTest(unittest.TestCase):
         self.assertIn(signals, planner)
         self.assertIn("**0–1 signals = small, 2–3 = medium, 4+ = large**", planner)
         self.assertIn("more than 15 user stories bumps it up one size", planner)
+        # home-cookbook run: a home-only server, SQLite and "at home" counted as backend, database
+        # and deployment, so Recipe Box sized medium (3 milestones, ~$70); they carry no such risk
+        for not_a_signal in ("an app serving its own pages on this computer or the home network is not one",
+                             "SQLite or files inside the app are not", "running at home is not"):
+            self.assertIn(not_a_signal, planner)
         planning = (SKILL / "references" / "stage-1-6-planning.md").read_text(encoding="utf-8")
         self.assertIn(signals, " ".join(planning.split()))
         self.assertIn("**Project size.**", planning)
@@ -800,12 +808,20 @@ class StructureTest(unittest.TestCase):
         self.assertIn("**The task graph goes on the planning card:**", planning)
         self.assertIn("--mermaid", planning)
         self.assertIn("`--summary` lines", planning)
-        self.assertIn("exit 2 (a cycle, an unknown ID, a task missing", planning)
+        self.assertIn("exit 2 (a cycle, an unknown\nID, a task missing", planning)
         self.assertIn("## Planning card (stage 6)", (SKILL / "references" / "result-card.md").read_text(encoding="utf-8"))
         planner = (ROOT / "agents" / "planner.md").read_text(encoding="utf-8")
         self.assertIn("first and alone in the plan", planner)
         self.assertIn("touches only its own screen or module", planner)
         self.assertIn("aim for a parallel factor of 2 or more", planner)
+        # home-cookbook run: factor 1.25, every feature edited web/api.py; a warning alone didn't stop it
+        self.assertIn("under 1.5, re-plan before you return", planner)
+        self.assertIn("(editing doesn't need deleting)", planner)
+        architect = (ROOT / "agents" / "architect.md").read_text(encoding="utf-8")
+        self.assertIn("**Design for parallel work: one folder or file set per feature.**", architect)
+        self.assertIn("A file every feature must edit is a design bug", architect)
+        self.assertIn("**Any warning sends the plan back once**", planning)
+        self.assertIn("--size <STATE.md Size>", planning)
         self.assertIn("Name the **shared modules** in the LLD", (ROOT / "agents" / "architect.md").read_text(encoding="utf-8"))
 
     def test_stages_overlap_and_milestone_cards_leave_no_gap(self):
@@ -815,6 +831,27 @@ class StructureTest(unittest.TestCase):
         self.assertIn("**No idle gap while the milestone card waits:**", build)
         self.assertIn("--ready --avoid M<n>", build)
         self.assertIn("let each finish its current step (checkpointed), then restart", build)
+
+    def test_small_projects_are_offered_the_balanced_cost_mode(self):
+        planning = (SKILL / "references" / "stage-1-6-planning.md").read_text(encoding="utf-8")
+        self.assertIn("**Small and medium projects still on the default `quality`:**", planning)
+        self.assertIn("**Balanced (Recommended)**", planning)
+
+    def test_resume_checks_the_plugin_version(self):
+        # home-cookbook run: sessions alternated between 0.8 (--plugin-dir) and the installed 0.7
+        # `taskgit.sh version` itself is checked in tests/test_taskgit.sh (Windows runs it under Git
+        # Bash; a bare "bash" from Python finds WSL's bash.exe there)
+        self.assertIn('"$cmd" == version', (SKILL / "scripts" / "taskgit.sh").read_text(encoding="utf-8"))
+        resume = (SKILL / "references" / "resume.md").read_text(encoding="utf-8")
+        self.assertIn("**Version check:**", resume)
+        self.assertIn("**Stop: I'll\n   restart with <old> (Recommended)**", resume)
+        self.assertIn("| Plugin |", (SKILL / "templates" / "STATE.md").read_text(encoding="utf-8"))
+        self.assertIn("`Plugin: dev-team-setup <$TASKGIT version>`", (SKILL / "references" / "stage-0-intake.md").read_text(encoding="utf-8"))
+
+    def test_taskgit_runs_from_the_base_folder(self):
+        # home-cookbook run: approve merged fine, then "exited 1" on pwd from inside the removed worktree
+        build = (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8")
+        self.assertIn("**Run every `$TASKGIT` command from `<base>`**", build)
 
     def test_open_tasks_catch_up_after_each_approve(self):
         # B-46: conflicts surfaced only at the final sync, after the whole task was done
@@ -860,7 +897,8 @@ class StructureTest(unittest.TestCase):
         planner = (ROOT / "agents" / "planner.md").read_text(encoding="utf-8")
         self.assertIn("milestones only at risk checkpoints (first end-to-end flow working, data model locked, "
                       "first external integration, before deploy)", planner)
-        self.assertIn("never just to group tasks; a small project has 1", planner)
+        # home-cookbook run: Recipe Box got 3 milestones, each a docs task and a fresh session
+        self.assertIn("**at most: small 1, medium 2, large 4**", planner)
         self.assertNotIn("milestones (3–6", planner)
         build = (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8")
         self.assertIn("(every milestone but the last)", build)

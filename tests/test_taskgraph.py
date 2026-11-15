@@ -168,6 +168,19 @@ class TaskGraphTest(unittest.TestCase):
         self.assertEqual(sorted(self.run_tg(text, "--ready").stdout.split()), ["T-03", "T-04"])
         self.assertEqual(self.run_tg(text, "--ready", "--avoid", "M1").stdout.split(), ["T-04"])
 
+    def test_size_limits_and_hotspots(self):
+        # home-cookbook run: 10 tasks in 3 milestones, factor 1.25, six tasks editing web/api.py
+        text = "## M1 · a\n\n" + task("T-01", files="src/app.py") + "## M2 · b\n\n" + "".join(
+            task(f"T-{n:02d}", "T-01", f"src/api.py, src/f{n}.py") for n in range(2, 6))
+        g = self.graph(text, "--size", "small")
+        self.assertIn("2 milestones is over the small limit of 1", " ".join(g["warnings"]))
+        self.assertIn("src/api.py (T-02, T-03, T-04, T-05)", g["warnings"][0])
+        self.assertEqual(g["hotspots"][0], ["src/api.py", ["T-02", "T-03", "T-04", "T-05"]])
+        self.assertEqual(self.graph(text, "--size", "medium")["warnings"][1:], [])
+        nine = "".join(task(f"T-{n:02d}") for n in range(1, 10))
+        self.assertIn("9 tasks is over the small cap of 8", " ".join(self.graph(nine, "--size", "small")["warnings"]))
+        self.assertNotEqual(self.run_tg(text, "--size", "tiny").returncode, 0)
+
     def test_undeclared_files_are_reported(self):
         r = self.run_tg(RECIPE_BOX, "--undeclared", "T-03",
                         stdin="src/search/index.py\nweb/search.js\nweb/favourite-toggle.js\n")

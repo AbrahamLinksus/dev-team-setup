@@ -51,6 +51,16 @@ gate and life after handover. Backlog M0–M7 (PRs #134–#142), merged through 
   features through the change-request flow with a fresh size.
 - **Evals:** `cards-plain-language`, `critic-recipe-box`, `fix-routes-to-maintenance`.
 - **CI:** the test jobs install Pillow (the GIF test).
+- **Fixes from the first test run (home-cookbook, ~$70 at API prices):**
+  - risk signals count only real risk, so a home-only app with SQLite sizes small;
+  - milestone limits (small 1, medium 2, large 4) and `taskgraph.py --size`;
+  - a plan with a parallel factor under 1.5 goes back for a re-plan, with the files 3+ tasks
+    share named; the architect gives each feature its own route, template and script files;
+  - the handover lint fails on a missing `OWNER.md`, an open or missing production gate, and
+    unsized or small known minors, and runs last before the card;
+  - `approve` reminds when TASKS.md wasn't updated; run taskgit from the base folder;
+  - Balanced cost mode offered on small and medium projects;
+  - `taskgit.sh version`, recorded in STATE.md and checked on resume.
 
 ## 0.7.0
 
