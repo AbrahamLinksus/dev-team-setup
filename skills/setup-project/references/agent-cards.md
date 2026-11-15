@@ -29,6 +29,7 @@ its line in the progress note so the owner sees what it may and may not touch. A
 - researcher · may change: `docs/research.md`, its own reports · can't: anything else, git internals, .env files · shell: no shell
 - reviewer · may change: its own reports · can't: anything else, git internals, .env files · shell: no shell
 - statistician · may change: its own reports · can't: anything else, git internals, .env files · shell: read-only shell
+- task-runner · may change: its own reports · can't: anything else, git internals, .env files · shell: only the plugin's task scripts (no approvals)
 - tester · may change: tests, its own reports · can't: anything else, git internals, .env files · shell: runs code and tests (no git writes, no installs)
 - trainer · may change: any project file · can't: the task and state files, the design docs, raw data, the quality gates (check.sh, lint/test configs, CI), tests, git internals, .env files · shell: runs code and tests (no git writes, no installs)
 - visualizer · may change: `src/viz/**`, `dashboards/**`, `streamlit_app.py`, `reports/**`, `notebooks/**`, its own reports · can't: anything else, git internals, .env files · shell: runs code and tests (no git writes, no installs)

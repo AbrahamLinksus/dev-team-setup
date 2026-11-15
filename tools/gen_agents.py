@@ -7,6 +7,7 @@ from pathlib import Path
 OUT = Path(__file__).resolve().parent.parent / "agents"
 
 R, W, E, B, G, GL = "Read", "Write", "Edit", "Bash", "Grep", "Glob"
+AG = "Agent"
 WS, WF = "WebSearch", "WebFetch"
 # G3: MCP tool names include the server's name, so these only exist when the user's Google Drive
 # server is called exactly DRIVE_SERVER. Drive access is optional (see the data-acquisition duty);
@@ -181,6 +182,16 @@ AGENTS = [
              "Secrets go in the platform's secret manager or GitHub secrets, never in files.",
              "**Phone preview** (only when the brief says the owner opted in): write `deploy/preview.sh`, which starts the app on `$PORT` and opens a temporary tunnel to it (`cloudflared tunnel --url http://localhost:$PORT`, or `npx localtunnel --port $PORT`), prints the public URL on a line starting `PREVIEW:`, and stops both when it ends. The caller runs it under `timeout`; never start it yourself and leave it running.",
              "Visuals: `$CAPTURE term` of `gh run list` / `gh run view`, and `$CAPTURE web` of the deployed URL.",
+         ]),
+    dict(name="task-runner", model="sonnet", color="purple", tools=[AG, B, R, W, GL],
+         when="a started task must be run from implement to sync, with its agent steps spawned in order, and returned as one card",
+         ex=("T-07 is started in its worktree and ready", "Spawn task-runner in the background with T-07's run brief"),
+         role="You are the Task Runner. The Orchestrator hands you one task, already started in its worktree. You run its agent steps from implement to sync, starting each agent yourself, and hand back one result: a card ready for the owner, a decision only the owner can make, or a blocker. You never talk to the owner, never approve or reject, and never change TASKS.md, STATE.md or DECISIONS.md.",
+         duties=[
+             "Read your brief, then `${CLAUDE_PLUGIN_ROOT}/skills/setup-project/references/task-run.md`: it is your procedure, and it names the sections of the build loop you follow.",
+             "Start each agent the way the Orchestrator would: `subagent_type: \"dev-team-setup:<agent>\"` (the guard allows only this team's agents, never another task-runner), `description: \"<task id> · <step>\"`, a brief from `brief-template.md` with absolute paths, and `$TASKGIT step` before and after each one. Agents that may run together (tester and reviewer) go in one message.",
+             "If you have no Agent tool (nested agents are switched off in this Claude Code), do nothing else and return `NO NESTING`: the Orchestrator then runs the steps itself.",
+             "Return exactly one of the formats in `task-run.md`; keep the details in the card and the agents' reports, not in your answer.",
          ]),
     dict(name="git-pr", model="haiku", color="yellow", tools=[B, R, W],
          when="the Orchestrator wants a summarised commit message for a large approved task, or asks it to run an approve/reject it would rather not do itself (normally it runs taskgit.sh directly)",
@@ -363,7 +374,7 @@ SHORT = {
     "backend-coder": "Server, API, CLI and library code.", "frontend-coder": "UI code.",
     "tester": "Tests a task against its criteria.", "reviewer": "Read-only code review.",
     "debugger": "Fixes failing tests and errors.", "docs": "README and docs.", "devops": "CI, Docker, deployment.",
-    "git-pr": "Drafts squash commit messages.", "trainer": "Trains or fine-tunes models.",
+    "git-pr": "Drafts squash commit messages.", "task-runner": "Runs one task's agent steps.", "trainer": "Trains or fine-tunes models.",
     "evaluator": "Measures models and LLM output.", "rag-engineer": "Retrieval pipelines.",
     "prompt-engineer": "Prompts and structured outputs.", "agent-engineer": "LLM agents and MCP servers.",
     "mlops": "Serves and monitors models.", "data-acquisition": "Pulls raw data in.",
@@ -435,6 +446,7 @@ PICK = {
     "docs": ("core", "Always (README, architecture notes)"),
     "devops": ("core", "CI needed, Docker, or deployment (GCP, Vercel, Render)"),
     "git-pr": ("core", "Optional: drafts the squash commit message for a large task"),
+    "task-runner": ("core", "Always when nested agents work: runs one task's steps and returns its card"),
     "trainer": ("ai", "Deep learning, fine-tuning (LoRA/PEFT)"),
     "evaluator": ("ai", "Any model or LLM output to measure; includes LLM-as-judge"),
     "rag-engineer": ("ai", "Retrieval over documents: chunking, embeddings, vector DB, reranking"),
@@ -482,7 +494,8 @@ GROUP_WORDS = {"main_owned": "the task and state files", "design": "the design d
 GLOB_WORDS = {"**": "any project file", ".results/**": "its own reports", "**/.env": ".env files",
               ".env": ".env files"}
 BASH_WORDS = {"none": "no shell", "readonly": "read-only shell", "code": "runs code and tests (no git writes, no installs)",
-              "full": "runs code and installs packages", "git": "only the plugin's git script"}
+              "full": "runs code and installs packages", "git": "only the plugin's git script",
+              "runner": "only the plugin's task scripts (no approvals)"}
 
 
 def words(globs: list[str]) -> list[str]:

@@ -150,6 +150,32 @@ class GuardTest(unittest.TestCase):
             tasks.unlink()
         self.assertIsNone(self.write("backend-coder", "src/fav/star.py"))   # no TASKS.md: no claims
 
+    def test_task_runner_runs_one_tasks_steps_only(self):
+        # a task-runner starts the team's agents and runs taskgit's per-task commands; approvals,
+        # records and other agent types stay out of its reach
+        runner = lambda cmd: self.bash("task-runner", cmd)
+        for ok in (f"{TG} step {self.main} T-1 implement started",
+                   f"bash {TG} sync {self.main} T-1",
+                   f"{TG} diff {self.main} T-1 {self.repo}/.results/T-1/changes.diff",
+                   f"{TG} changed {self.main} T-1 | python3 {SCRIPTS}/taskgraph.py {self.main}/TASKS.md --undeclared T-1",
+                   "git log --oneline -3"):
+            with self.subTest(cmd=ok, expect="allow"):
+                self.assertIsNone(runner(ok))
+        for bad in (f"{TG} approve {self.main} T-1 'feat: x'", f"{TG} reject {self.main} T-1",
+                    f"{TG} record {self.main} 'x'", f"{TG} undo {self.main} T-1", f"{TG} catchup {self.main}",
+                    f"{TG} start {self.main} T-2", "git commit -m x", "rm -rf src",
+                    f"{TG} diff {self.main} T-1 > /tmp/x.diff"):
+            with self.subTest(cmd=bad, expect="deny"):
+                self.assertIsNotNone(runner(bad))
+        self.assertIsNotNone(self.write("task-runner", "src/app.py"))
+        self.assertIsNone(self.write("task-runner", ".results/T-1/card.md"))
+        spawn = lambda agent, st: hook(f"dev-team-setup:{agent}", "Agent",
+                                       {"subagent_type": st, "description": "T-1 · implement", "prompt": "BRIEF"}, str(self.repo))
+        self.assertIsNone(spawn("task-runner", "dev-team-setup:backend-coder"))
+        for st in ("general-purpose", "Explore", "dev-team-setup:task-runner", "other-plugin:coder", None):
+            with self.subTest(subagent_type=st, expect="deny"):
+                self.assertIsNotNone(spawn("task-runner", st))
+
     def test_writes_only_in_task_worktree(self):
         # S8: a write anywhere in a git repo used to pass; the main checkout is off limits
         self.assertIsNotNone(hook("dev-team-setup:backend-coder", "Write",

@@ -28,7 +28,7 @@ def skill_text() -> str:
 
 AGENTS = sorted((ROOT / "agents").glob("*.md"))
 KNOWN_TOOLS = {"Read", "Write", "Edit", "Bash", "Grep", "Glob", "WebSearch", "WebFetch",
-               "TaskCreate", "NotebookEdit"}
+               "TaskCreate", "NotebookEdit", "Agent"}
 
 
 def frontmatter(path: Path) -> dict:
@@ -66,7 +66,7 @@ class StructureTest(unittest.TestCase):
         self.assertIn("scope_guard.py", (ROOT / "hooks" / "scope_guard.sh").read_text())
 
     def test_agents_frontmatter(self):
-        self.assertEqual(len(AGENTS), 27)
+        self.assertEqual(len(AGENTS), 28)
         for path in AGENTS:
             with self.subTest(agent=path.name):
                 fm = frontmatter(path)
@@ -93,7 +93,7 @@ class StructureTest(unittest.TestCase):
         self.assertEqual(names, set(scopes["agents"]))
         for name, spec in scopes["agents"].items():
             with self.subTest(agent=name):
-                self.assertIn(spec.get("bash", "none"), {"none", "readonly", "code", "full", "git"})
+                self.assertIn(spec.get("bash", "none"), {"none", "readonly", "code", "full", "git", "runner"})
                 for g in spec.get("write", []) + spec.get("deny", []):
                     if g.startswith("@"):
                         self.assertIn(g[1:], scopes["groups"])
@@ -473,11 +473,14 @@ class StructureTest(unittest.TestCase):
                         "always-on text grew; shorten SHORT descriptions in tools/gen_agents.py")
 
     def test_long_sessions_are_cut_between_tasks(self):
-        # D15 (H1): the Orchestrator's own context is the biggest cost on long builds; subagents
-        # can't spawn subagents, so it is cut by fresh sessions, not by a task-runner agent.
+        # D15 (H1): the Orchestrator's own context is the biggest cost on long builds. Subagents can
+        # now start subagents (up to 3 levels), so a task-runner per task keeps it small and the
+        # project stays in one session; fresh sessions remain only when nesting is off.
         build = (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8")
         self.assertIn("**Long session check (between tasks).**", build)
         self.assertIn("6 or more tasks", build)
+        self.assertIn("type `/compact`", build)
+        self.assertIn("no new chat", build)
         self.assertIn("SESSION DONE", (SKILL / "references" / "unattended.md").read_text(encoding="utf-8"))
 
     def test_tester_and_reviewer_run_in_parallel(self):
@@ -847,6 +850,32 @@ class StructureTest(unittest.TestCase):
         self.assertIn("**Stop: I'll\n   restart with <old> (Recommended)**", resume)
         self.assertIn("| Plugin |", (SKILL / "templates" / "STATE.md").read_text(encoding="utf-8"))
         self.assertIn("`Plugin: dev-team-setup <$TASKGIT version>`", (SKILL / "references" / "stage-0-intake.md").read_text(encoding="utf-8"))
+
+    def test_task_runners_keep_the_project_in_one_session(self):
+        # the owner wants one session, and time over cost: each ready task goes to a background
+        # task-runner that starts the task's agents itself (nested agents), returning one card
+        runner = (ROOT / "agents" / "task-runner.md").read_text(encoding="utf-8")
+        fm = frontmatter(ROOT / "agents" / "task-runner.md")
+        self.assertIn("Agent", fm["tools"])
+        self.assertEqual(fm["model"], "sonnet")
+        self.assertIn("return `NO NESTING`", runner)
+        self.assertIn("never another task-runner", runner)
+        run = (SKILL / "references" / "task-run.md").read_text(encoding="utf-8")
+        for fmt in ("TASK READY <id>", "DECISION NEEDED", "NEEDS FILE <id>", "BLOCKED <id>", "NO NESTING"):
+            self.assertIn(fmt, run)
+        self.assertIn("never ask the owner anything", run)
+        build = (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8")
+        self.assertIn("**Task runners (the default: one session for the whole project).**", build)
+        self.assertIn("**in the\nbackground**, all ready tasks in one message", build)
+        self.assertIn("set STATE.md `Runners: off`", build)
+        self.assertIn("**Approve and continue (Recommended)**", build)
+        card = (SKILL / "references" / "result-card.md").read_text(encoding="utf-8")
+        self.assertIn("- **Approve and continue (Recommended)**", card)
+        self.assertIn("`TASK READY`, `DECISION NEEDED`, `NEEDS FILE`, `BLOCKED` or\n`NO NESTING`",
+                      (SKILL / "references" / "team-rules.md").read_text(encoding="utf-8"))
+        scopes = json.loads((SKILL / "scopes.json").read_text(encoding="utf-8"))
+        self.assertEqual(scopes["agents"]["task-runner"], {"write": [".results/**"], "bash": "runner"})
+        self.assertIn("Agent", json.loads((ROOT / "hooks" / "hooks.json").read_text(encoding="utf-8"))["hooks"]["PreToolUse"][0]["matcher"])
 
     def test_files_are_claims_and_shared_code_is_frozen(self):
         planner = (ROOT / "agents" / "planner.md").read_text(encoding="utf-8")

@@ -61,6 +61,14 @@ gate and life after handover. Backlog M0–M7 (PRs #134–#142), merged through 
   - `approve` reminds when TASKS.md wasn't updated; run taskgit from the base folder;
   - Balanced cost mode offered on small and medium projects;
   - `taskgit.sh version`, recorded in STATE.md and checked on resume.
+- **One session, real parallelism:**
+  - `task-runner` agent: each ready task runs in its own background runner, which starts the
+    task's agents itself (nested agents) and returns one card; the main session only schedules,
+    shows cards and approves, so the project stays in one session (`/compact` suggested every 12
+    tasks instead of a new chat); without nested agents it falls back to the old flow;
+  - a task's `Files:` is an enforced claim: no other running task may write those files, and
+    shared code is frozen after the foundation; registries are one file per entry, and work that
+    touches every feature is one wire-up task.
 
 ## 0.7.0
 

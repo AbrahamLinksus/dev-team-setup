@@ -90,5 +90,6 @@ Assumptions: <list of (assumed) lines>
 Screens: <list> (or "no UI")
 Size: <small|medium|large> · signals: <the risk signals present, or none> · <n> stories
 ```
-Every other step, the planner returns a REPORT or DECISION NEEDED like everyone else. These
-three are the only formats the Orchestrator accepts.
+Every other step, the planner returns a REPORT or DECISION NEEDED like everyone else.
+**The task-runner** returns `TASK READY`, `DECISION NEEDED`, `NEEDS FILE`, `BLOCKED` or
+`NO NESTING` (layouts in `task-run.md`). These are the only formats the Orchestrator accepts.

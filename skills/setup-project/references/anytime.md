@@ -8,8 +8,8 @@ When the owner changes **what** is built or **how** it's designed (not a fix to 
 follow `change-requests.md`: pause new tasks and hold approvals → `CR-<n>` branch → planner/architect update
 SPEC/HLD/LLD → "what changes" card ⏸ → planner re-plans TASKS.md → merge
 (`$TASKGIT approve <repo> CR-<n> "docs: CR-<n> …"`) → sync affected task branches → offer
-**Continue in a fresh session (Recommended)** / Continue here (fresh session: same steps as at
-milestone end) → resume.
+**Continue here (Recommended)** / Continue in a fresh session (fresh session: same steps as at
+milestone end; Recommended instead only with STATE.md `Runners: off`) → resume.
 Design docs change only through this flow, the milestone as-built sync, or handover.
 
 ## Pause or abandon (anytime)

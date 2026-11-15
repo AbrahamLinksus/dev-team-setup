@@ -20,6 +20,22 @@ task's REPORT as it comes back and carry on with that task alone; when one finis
 card, run `--ready` again and start what it prints the same way. More than 3 at once makes the
 checks compete for the machine and the owner's cards pile up.
 
+**Task runners (the default: one session for the whole project).** Hand each ready task to a
+**task-runner** instead of running its agent steps yourself. Per task: step 1 below (`$TASKGIT start`,
+TASK_PROGRESS.md, `Status: In progress`), then spawn `dev-team-setup:task-runner` **in the
+background**, all ready tasks in one message, `description: "<id> · run"`, with the run brief from
+`task-run.md` (`Resume at: implement`), and start `$TASKGIT watch <repo> <id> implement` in the
+background. While runners work, you answer cards. When one answers:
+- `TASK READY` → steps 5 and 6 from its card (add the Cost line; its Plan vs actual paths go into
+  the task's `Files:`), then `--ready` again.
+- `DECISION NEEDED` → ask the owner, then a fresh runner with `Decision:` and its `Resume at`.
+- `NEEDS FILE` → the **Needs file** rule below, then a fresh runner with `Needs file granted:`.
+- `BLOCKED` → a decision card (the debugger rounds ran out), as in step 3.
+- Request changes on its card → a fresh runner with `Rework:` and `Resume at: implement`.
+- `NO NESTING` → this Claude Code can't nest agents: set STATE.md `Runners: off` and run steps 2–4
+  yourself for the rest of the project (the per-milestone fresh sessions below then apply).
+With runners on you do only steps 1, 5 and 6; steps 2–4 are the runner's (`task-run.md`).
+
 **Don't let the team idle while a card waits.** Waiting for the owner is most of a build's
 wall-clock time, and a question blocks your turn until it's answered. So before you ask a
 task's approval question (any approval mode), when another task is independent of it (no
@@ -144,8 +160,9 @@ Write the milestone's changed files to `<wt>/.results/M<n>-docs/changed-files.tx
 (`git -C <repo> diff --name-only <last milestone's commit> main`, without opening it) and put it in
 the architect's `Read:`: the sync edits only the LLD sections for those paths. **Skip the sync**
 (mark it `⏭ no design changes`) when no changed path outside `docs/`, tests and the shared files
-appears in `docs/LLD.md` (`grep -c -F -f` on the list's top folders finds nothing). Milestone card (includes the LLD changes): **Approve + continue in a fresh
-session (Recommended)** / Approve and continue here / Request changes.
+appears in `docs/LLD.md` (`grep -c -F -f` on the list's top folders finds nothing). Milestone card (includes the LLD changes): **Approve and continue (Recommended)** / Approve +
+continue in a fresh session / Request changes. With `Runners: off`, the fresh session is the
+Recommended one (your context holds every agent step).
 **No idle gap while the milestone card waits:** before asking, run
 `python3 $TASKGRAPH <repo>/TASKS.md --ready --avoid M<n>` and start what it prints: next-milestone
 tasks that share no file with milestone M<n>, so "Request changes" there never redoes their work.
@@ -158,7 +175,10 @@ Each milestone costs a docs task and a session restart, so the planner places th
 checkpoints (first end-to-end flow, data model locked, first integration, before deploy).
 
 **Long session check (between tasks).** Your own context grows with every task, and every call
-re-reads all of it, so a long session costs more per task the longer it runs. After you
+re-reads all of it, so a long session costs more per task the longer it runs. **With runners on**,
+it grows by one result per task: after every **12** approved tasks, when no runner is working, say
+once: "To keep this session quick, type `/compact` (it keeps the project; everything is in the
+repo's files)", and carry on either way: no new chat. **With `Runners: off`**, after you
 approve a task, if **6 or more tasks** have been approved in this session, no task
 is mid-step (every open `TASK_PROGRESS.md` has no ⏳) and the milestone isn't about to end
 (its last task isn't next), ask once: **Continue in a fresh session (Recommended)** / Continue
