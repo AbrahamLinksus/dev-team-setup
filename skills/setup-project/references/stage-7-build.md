@@ -40,6 +40,12 @@ Then don't keep waiting: look at the agent's status row (`⚠️ stalled?` after
 either start one more watch (the agent is clearly progressing) or stop the agent and spawn the
 step fresh (its partial files are on the branch). Without background Bash, skip the watch.
 
+**`Needs file: <path>` in a REPORT** (the guard blocked a file outside the task's claim): no running
+task claims it and it isn't frozen → add it to the task's `Files:` in TASKS.md and continue the
+agent with "you may now change <path>". Another running task claims it → keep this task waiting
+until that one is approved, then do the same. Frozen → a small shared-change task (`T-xxs`, the
+owner agent, claiming just that path), run when nothing else claims it, then continue.
+
 **Run every `$TASKGIT` command from `<base>`** (the folder that holds the repo), never from inside a
 worktree: `approve` and `reject` delete the worktree, and a shell left inside a deleted folder
 makes the next command fail (an `approve` that merged fine then "exits 1" on `pwd`).
