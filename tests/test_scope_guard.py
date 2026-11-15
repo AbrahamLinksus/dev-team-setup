@@ -118,6 +118,38 @@ class GuardTest(unittest.TestCase):
                               "tests/test_a.py", "scripts/check.sh"], capture_output=True, text=True, check=True).stdout
         self.assertEqual(out.split(), ["scripts/check.sh"])   # taskgit's scope check agrees
 
+    def test_running_tasks_never_write_the_same_file(self):
+        # home-cookbook run: six tasks planned edits to web/api.py; a file claimed by a running task
+        # (TASKS.md Files) is closed to every other task, and the foundation's shared code is frozen
+        tasks = self.main / "TASKS.md"
+        tasks.write_text(
+            "# TASKS\n\nFrozen: src/core/*, `src/base.html`\n\n## M1 · m\n\n"
+            "### T-1 · me\n- Owner: backend-coder\n- Depends on: —\n- Files: src/search/*, `src/core/rules.py`\n- Status: In progress\n\n"
+            "### T-2 · other, running\n- Owner: backend-coder\n- Depends on: —\n- Files: src/fav/*, tests/test_fav.py\n- Status: Needs you\n\n"
+            "### T-3 · other, done\n- Owner: backend-coder\n- Depends on: —\n- Files: src/old.py\n- Status: Done\n",
+            encoding="utf-8")
+        try:
+            for rel in ("src/search/index.py", "src/core/rules.py", "src/new_helper.py", "src/old.py",
+                        ".results/T-1/x.md"):
+                with self.subTest(path=rel, expect="allow"):
+                    self.assertIsNone(self.write("backend-coder", rel))
+            for rel, why in (("src/fav/star.py", "T-2 is running and claims it"),
+                             ("tests/test_fav.py", "T-2 is running"),
+                             ("src/core/db.py", "frozen after the foundation task"),
+                             ("src/base.html", "frozen")):
+                with self.subTest(path=rel, expect="deny"):
+                    reason = self.write("backend-coder" if not rel.startswith("tests") else "tester", rel)
+                    self.assertIsNotNone(reason)
+                    self.assertIn(why, reason)
+                    self.assertIn(f"Needs file: {rel}", reason)
+            out = subprocess.run([sys.executable, str(GUARD), "--check", "backend-coder", str(self.repo),
+                                  "src/search/a.py", "src/fav/star.py", "src/core/db.py"],
+                                 capture_output=True, text=True, check=True).stdout
+            self.assertEqual(out.split(), ["src/fav/star.py", "src/core/db.py"])   # taskgit's scope check agrees
+        finally:
+            tasks.unlink()
+        self.assertIsNone(self.write("backend-coder", "src/fav/star.py"))   # no TASKS.md: no claims
+
     def test_writes_only_in_task_worktree(self):
         # S8: a write anywhere in a git repo used to pass; the main checkout is off limits
         self.assertIsNotNone(hook("dev-team-setup:backend-coder", "Write",

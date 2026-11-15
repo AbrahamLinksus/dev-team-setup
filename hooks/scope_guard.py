@@ -255,6 +255,90 @@ def other_worktree_reason(name: str, pinned: Path, target: Path) -> str:
             f"another task's worktree. Each agent changes only its own task.")
 
 
+# ---- file claims: a task's `Files:` in TASKS.md is its claim ------------------------------------
+# Parallel tasks must never edit the same file. Each task lists the paths it will change; while it
+# is running (In progress / Review / Needs you), no other task's agent may write them. Paths under
+# `Frozen:` (the shared code the foundation task built) may be written only by a task that claims
+# them itself. A path no running task claims stays open: the plan-vs-actual check reports it.
+RUNNING_STATUSES = ("in progress", "review", "needs you")
+_TASK_HEAD = re.compile(r"^#{2,4}\s+(T-\d+[A-Za-z0-9]*)\b")
+_CLAIM_FIELD = re.compile(r"^\s*-\s*(Files|Status):\s*(.*?)\s*$", re.I)
+_FROZEN = re.compile(r"^Frozen:\s*(.*?)\s*$", re.I)
+
+
+def _claim_list(text: str) -> list[str]:
+    out = []
+    for p in text.replace("`", "").split(","):
+        p = re.sub(r"\s*\(.*?\)\s*$", "", p.strip())   # "pyproject.toml (scripts entry only)"
+        if p:
+            out.append(p[2:] if p.startswith("./") else p)
+    return out
+
+
+def task_claims(main: Path) -> tuple[dict[str, tuple[str, list[str]]], list[str]]:
+    """{task id: (status, files)} and the frozen paths, from the main checkout's TASKS.md."""
+    try:
+        text = (main / "TASKS.md").read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return {}, []
+    tasks: dict[str, list] = {}
+    frozen: list[str] = []
+    cur = None
+    for line in text.splitlines():
+        m = _TASK_HEAD.match(line)
+        if m:
+            cur = tasks.setdefault(m.group(1), ["", []])
+            continue
+        if line.startswith("#"):
+            cur = None
+            continue
+        f = _FROZEN.match(line)
+        if f and cur is None:
+            frozen += _claim_list(f.group(1))
+            continue
+        f = _CLAIM_FIELD.match(line)
+        if f and cur is not None:
+            if f.group(1).lower() == "files":
+                cur[1] = _claim_list(f.group(2))
+            else:
+                cur[0] = f.group(2).split("·")[0].strip().lower()
+    return {t: (s, fl) for t, (s, fl) in tasks.items()}, frozen
+
+
+def claims_overlap(a: str, b: str) -> bool:
+    import fnmatch
+    a, b = a.rstrip("/"), b.rstrip("/")
+    return (a == b or fnmatch.fnmatch(a, b) or fnmatch.fnmatch(b, a)
+            or b.startswith(a + "/") or a.startswith(b + "/"))
+
+
+def main_checkout_of(worktree: Path) -> Path | None:
+    pin = pin_file(worktree, "x")   # <main>/.git/devteam-agents/x
+    return pin.parent.parent.parent if pin else None
+
+
+def claim_violation(name: str, rel: str, worktree: Path) -> str | None:
+    """Return a reason if `rel` is claimed by another running task, or frozen and not claimed by
+    this one. Task worktrees are named after their task (<repo>-wt/T-07)."""
+    if rel.startswith(".results/") or rel == "TASK_PROGRESS.md":
+        return None
+    main = main_checkout_of(worktree)
+    if main is None:
+        return None
+    tasks, frozen = task_claims(main)
+    me = worktree.name
+    if any(claims_overlap(rel, f) for f in tasks.get(me, ("", []))[1]):
+        return None
+    ask = (f"Don't work around it: finish what you can and put `Needs file: {rel} (why)` under Issues; "
+           f"the Orchestrator extends your claim or queues the change.")
+    for tid, (status, files) in sorted(tasks.items()):
+        if tid != me and status.startswith(RUNNING_STATUSES) and any(claims_overlap(rel, f) for f in files):
+            return f"{name} may not change {rel}: {tid} is running and claims it (TASKS.md Files). {ask}"
+    if any(claims_overlap(rel, g) for g in frozen):
+        return f"{name} may not change {rel}: it is shared code, frozen after the foundation task (TASKS.md Frozen). {ask}"
+    return None
+
+
 def abs_violation(name: str, file_path: str, cwd: str, scopes: dict) -> str | None:
     p = Path(file_path if os.path.isabs(file_path) else os.path.join(cwd or ".", file_path)).resolve()
     try:
@@ -266,7 +350,8 @@ def abs_violation(name: str, file_path: str, cwd: str, scopes: dict) -> str | No
         if not is_task_worktree(root):
             return (f"{name} may only write inside its task's worktree (<repo>-wt/<id>, the Worktree: path in its "
                     f"brief); {root} is not one (the main checkout?). Blocked: {p}")
-        return path_violation(name, p.relative_to(root).as_posix(), load_scopes(root))
+        rel = p.relative_to(root).as_posix()
+        return path_violation(name, rel, load_scopes(root)) or claim_violation(name, rel, root)
     if in_scratch(p, scopes.get("scratch", [])):
         return None
     return f"{name} may only write inside the project worktree or scratch dirs ({', '.join(scopes.get('scratch', []))}). Blocked: {p}"
@@ -935,8 +1020,10 @@ def check_main(argv: list[str]) -> None:
     scopes = load_scopes(root)
     if name not in scopes["agents"]:
         sys.exit(f"unknown agent: {name}")
+    claims = is_task_worktree(root)
     for rel in paths:
-        if path_violation(name, rel.rstrip("/"), scopes):
+        r = rel.rstrip("/")
+        if path_violation(name, r, scopes) or (claims and claim_violation(name, r, root)):
             print(rel)
 
 
