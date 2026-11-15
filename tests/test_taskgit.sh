@@ -497,6 +497,7 @@ if scenario approve_folds_the_record; then
   sedi 's/T-01: In progress/T-01: Done/' "$R/TASKS.md"; echo "- D-01 from T-01" >> "$R/DECISIONS.md"
   before=$(git -C "$R" rev-list --count origin/main)
   check "approve with shared-file updates pending" expect_exit 0 tg approve "$R" T-01 "feat: a [T-01]"
+
   check "one commit on main for the task" test "$(git -C "$R" rev-list --count origin/main)" = $((before + 1))
   check "the commit holds the code" contains "$(on_main a.py)" "a = 1"
   check "and the TASKS.md update" contains "$(on_main TASKS.md)" "T-01: Done"
@@ -618,6 +619,21 @@ if scenario lint_before_handover; then
   # with an id, project files come from that task's worktree (the handover branch)
   H=$(tg start "$R" handover); git -C "$H" rm -q OWNER.md; tgq checkpoint "$R" handover "drop owner page"
   check "lint <repo> handover reads the handover worktree" contains "$(tg lint "$R" handover 2>&1)" "OWNER.md is missing"
+fi
+
+if scenario approve_reminds_about_tasks_md; then
+  # home-cookbook run: every task got a separate 'record' commit because TASKS.md was updated after approve
+  new_repo remind
+  T=$(tg start "$R" T-01); echo "a = 1" > "$T/a.py"; tgq checkpoint "$R" T-01 "implement done"
+  out=$(tg approve "$R" T-01 "feat: a [T-01]" 2>&1)
+  check "approve without a TASKS.md update says so" contains "$out" "note: TASKS.md wasn't updated before this approve"
+  T=$(tg start "$R" T-02); echo "b = 1" > "$T/b.py"; tgq checkpoint "$R" T-02 "implement done"
+  sedi 's/T-02: Backlog/T-02: Done/' "$R/TASKS.md"
+  out=$(tg approve "$R" T-02 "feat: b [T-02]" 2>&1)
+  check "and stays quiet when it was" bash -c "! grep -q \"TASKS.md wasn't updated\" <<<\"\$1\"" _ "$out"
+  T=$(tg start "$R" T-03); echo "c = 1" > "$T/c.py"; tgq checkpoint "$R" T-03 "implement done"
+  out=$(cd "$T" && bash "$TG" approve "$R" T-03 "feat: c [T-03]" 2>&1)
+  check "a shell inside the removed worktree gets told where to go" contains "$out" "your shell was inside the worktree"
 fi
 
 if scenario step_command; then

@@ -40,6 +40,10 @@ Then don't keep waiting: look at the agent's status row (`⚠️ stalled?` after
 either start one more watch (the agent is clearly progressing) or stop the agent and spawn the
 step fresh (its partial files are on the branch). Without background Bash, skip the watch.
 
+**Run every `$TASKGIT` command from `<base>`** (the folder that holds the repo), never from inside a
+worktree: `approve` and `reject` delete the worktree, and a shell left inside a deleted folder
+makes the next command fail (an `approve` that merged fine then "exits 1" on `pwd`).
+
 Per task `T-xx`:
 
 1. `$TASKGIT start <repo> T-xx` (a new worktree gets the locked dependencies installed: `uv sync`,

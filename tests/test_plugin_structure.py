@@ -832,6 +832,11 @@ class StructureTest(unittest.TestCase):
         self.assertIn("--ready --avoid M<n>", build)
         self.assertIn("let each finish its current step (checkpointed), then restart", build)
 
+    def test_taskgit_runs_from_the_base_folder(self):
+        # home-cookbook run: approve merged fine, then "exited 1" on pwd from inside the removed worktree
+        build = (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8")
+        self.assertIn("**Run every `$TASKGIT` command from `<base>`**", build)
+
     def test_open_tasks_catch_up_after_each_approve(self):
         # B-46: conflicts surfaced only at the final sync, after the whole task was done
         build = (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8")

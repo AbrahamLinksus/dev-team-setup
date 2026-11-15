@@ -598,6 +598,11 @@ PY
     g push -q origin --delete "$br" 2>/dev/null || true
     g worktree prune
     echo "approved: $(g log --oneline -1)"
+    tasks_updated=0; for f in ${pending[@]+"${pending[@]}"}; do [[ "$f" == TASKS.md ]] && tasks_updated=1; done
+    if [[ "$id" == T-* || "$id" == FIX-* ]] && (( ! tasks_updated )); then
+      echo "note: TASKS.md wasn't updated before this approve, so $id's status and Result line aren't in its commit. Update them in the main checkout before the next approve (it commits them), or run 'record' now." >&2
+    fi
+    case "$PWD/" in "$wt"/*) echo "note: your shell was inside the worktree this approve removed; cd to $(dirname "$repo") (run taskgit from there)" >&2 ;; esac
     ;;
 
   record)
