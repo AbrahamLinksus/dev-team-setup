@@ -636,6 +636,13 @@ if scenario approve_reminds_about_tasks_md; then
   check "a shell inside the removed worktree gets told where to go" contains "$out" "your shell was inside the worktree"
 fi
 
+if scenario version_matches_the_plugin; then
+  # resume compares STATE.md "Plugin" with this (the home-cookbook run mixed 0.7 and 0.8 sessions)
+  want=$(sed -n 's/^ *"version": *"\([^"]*\)".*/\1/p' "$(dirname "$TG")/../../../.claude-plugin/plugin.json" | head -n 1)
+  check "taskgit.sh version prints plugin.json's version" test "$(bash "$TG" version)" = "$want"
+  check "and needs no repo" expect_exit 0 bash "$TG" version
+fi
+
 if scenario step_command; then
   # O9: one call per agent step (scope + mark TASK_PROGRESS.md + checkpoint) instead of 3–4 turns
   new_repo step

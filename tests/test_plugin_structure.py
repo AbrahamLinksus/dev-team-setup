@@ -839,10 +839,9 @@ class StructureTest(unittest.TestCase):
 
     def test_resume_checks_the_plugin_version(self):
         # home-cookbook run: sessions alternated between 0.8 (--plugin-dir) and the installed 0.7
-        version = json.loads((ROOT / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))["version"]
-        out = subprocess.run(["bash", str(SKILL / "scripts" / "taskgit.sh"), "version"], capture_output=True,
-                             text=True, encoding="utf-8").stdout.strip()
-        self.assertEqual(out, version)
+        # `taskgit.sh version` itself is checked in tests/test_taskgit.sh (Windows runs it under Git
+        # Bash; a bare "bash" from Python finds WSL's bash.exe there)
+        self.assertIn('"$cmd" == version', (SKILL / "scripts" / "taskgit.sh").read_text(encoding="utf-8"))
         resume = (SKILL / "references" / "resume.md").read_text(encoding="utf-8")
         self.assertIn("**Version check:**", resume)
         self.assertIn("**Stop: I'll\n   restart with <old> (Recommended)**", resume)
