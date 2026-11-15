@@ -548,6 +548,15 @@ if scenario watch_flags_a_stalled_step; then
   check "no history: stalls at the cap" expect_exit 9 env TASKGIT_STALL_SECONDS=1 TASKGIT_WATCH_POLL=1 bash "$TG" watch "$R" T-01 docs
 fi
 
+if scenario diff_to_a_results_file; then
+  # the task-runner can't redirect output, so diff writes the reviewer's file itself
+  new_repo difffile
+  T=$(tg start "$R" T-01); echo "a = 1" > "$T/a.py"; tgq checkpoint "$R" T-01 "implement done"
+  check "diff writes a .results file" expect_exit 0 tg diff "$R" T-01 "$T/.results/T-01/changes.diff"
+  check "with the change in it" grep -q "+a = 1" "$T/.results/T-01/changes.diff"
+  check "anywhere else is refused" expect_exit 1 tg diff "$R" T-01 "$WORK/elsewhere.diff"
+fi
+
 if scenario changed_lists_the_task_paths; then
   # plan vs actual: the task's changed paths, without the Orchestrator's progress file
   new_repo changed

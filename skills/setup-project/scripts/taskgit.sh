@@ -31,7 +31,7 @@
 #   taskgit.sh sync       <repo> <id>                    merge origin/main into wip/<id>, run check.sh, push
 #   taskgit.sh catchup    <repo> [<id>...]               after an approve: merge the new main into the other
 #                                                        open task branches (no checks; exit 4 lists conflicts)
-#   taskgit.sh diff       <repo> <id>                    full diff vs main (for the reviewer)
+#   taskgit.sh diff       <repo> <id> [<file>]           full diff vs main (for the reviewer); to a .results/ file
 #   taskgit.sh diffstat   <repo> <id>                    diff --stat vs main (for the result card)
 #   taskgit.sh changed    <repo> <id>                    changed paths vs main, one per line
 #   taskgit.sh approve    <repo> <id> "<msg>"            sync, squash into main (with any TASKS/STATE/
@@ -505,8 +505,16 @@ PY
     ;;
 
   diff)
-    id=${3:?id}; g fetch -q origin "$main" 2>/dev/null || true
-    g diff "origin/$main...wip/$id" -- . ":(exclude)$PROGRESS" ;;
+    # diff <repo> <id> [<out file>]: with a file, write it there (roles that can't redirect output)
+    id=${3:?id}; out=${4:-}; g fetch -q origin "$main" 2>/dev/null || true
+    if [[ -n "$out" ]]; then
+      case "$out" in */.results/*|.results/*) ;; *) die 1 "diff: the output file must be under a .results/ folder: $out" ;; esac
+      mkdir -p "$(dirname "$out")"
+      g diff "origin/$main...wip/$id" -- . ":(exclude)$PROGRESS" > "$out" || die 1 "diff failed"
+      echo "diff: $(wc -l < "$out" | tr -d ' ') lines -> $out"
+    else
+      g diff "origin/$main...wip/$id" -- . ":(exclude)$PROGRESS"
+    fi ;;
 
   changed)
     # the task's changed paths, one per line (plan vs actual: taskgraph.py --undeclared reads them)

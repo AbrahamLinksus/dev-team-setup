@@ -615,8 +615,18 @@ def is_plugin_script(arg: str, name: str, cwd: str | None) -> bool:
         return False
 
 
-def git_mode_violation(command: str, depth: int = 0, cwd: str | None = None) -> str | None:
-    """git-pr: every simple command must be on the allowlist."""
+# task-runner: one task's steps, never the Orchestrator's approvals or main-branch records
+RUNNER_TASKGIT = {"step", "checkpoint", "scope", "coder-tests", "sync", "diff", "diffstat", "changed", "watch",
+                  "list", "version"}
+
+
+def taskgit_subcommand(tok: list[str]) -> str:
+    rest = tok[1:] if os.path.basename(tok[0]) == "taskgit.sh" else tok[2:]
+    return rest[0] if rest else ""
+
+
+def git_mode_violation(command: str, depth: int = 0, cwd: str | None = None, runner: bool = False) -> str | None:
+    """git-pr and task-runner: every simple command must be on the allowlist."""
     if "$(" in command or "`" in command:
         return "git-pr may not use command substitution ($(...) or backticks)"
     segs = segments(command)
@@ -634,16 +644,22 @@ def git_mode_violation(command: str, depth: int = 0, cwd: str | None = None) -> 
             ok = True
         elif is_plugin_script(tok[0], "taskgit.sh", cwd) or (
                 name in ("bash", "sh") and len(tok) > 1 and is_plugin_script(tok[1], "taskgit.sh", cwd)):
+            if runner and taskgit_subcommand(tok) not in RUNNER_TASKGIT:
+                return (f"task-runner runs one task's steps; taskgit {taskgit_subcommand(tok) or '(no command)'} is the "
+                        f"Orchestrator's (approve, reject, record, undo, catchup, start, lint). Allowed: "
+                        f"{', '.join(sorted(RUNNER_TASKGIT))}")
             ok = True
         elif name in ("python3", "python") and len(tok) > 1 and is_plugin_script(tok[1], "capture.py", cwd):
             if INSTALL.search(shlex.join(tok)):
                 return "git-pr may not install the capture dependencies (capture.py doctor --install is the Orchestrator's)"
             # capture.py term --cmd runs its argument through a shell: it must pass the same allowlist
             for inner in capture_cmds(tok):
-                why = git_mode_violation(inner, depth + 1, cwd) if depth < 3 else "nested too deep"
+                why = git_mode_violation(inner, depth + 1, cwd, runner) if depth < 3 else "nested too deep"
                 if why:
                     return f"capture.py --cmd would run a blocked command: {why}"
             ok = True
+        elif runner and name in ("python3", "python") and len(tok) > 1 and is_plugin_script(tok[1], "taskgraph.py", cwd):
+            ok = True   # reads TASKS.md only (plan vs actual)
         elif name in ("taskgit.sh", "capture.py") or (len(tok) > 1 and os.path.basename(tok[1]) in ("taskgit.sh", "capture.py")):
             return f"git-pr may only run the plugin's own scripts in {SCRIPTS}. Blocked: {' '.join(tok)[:80]}"
         elif name == "git":
@@ -755,7 +771,7 @@ def bash_violation(name: str, command: str, scopes: dict, depth: int = 0, cwd: s
     scratch = scopes.get("scratch", [])
     if mode == "none":
         return f"{name} has no shell access in this team. Use Read/Grep/Glob."
-    if mode != "git" and depth < 4:
+    if mode not in ("git", "runner") and depth < 4:
         # check the command around $(...)/`...` and each substitution on its own, instead of a
         # text scan of the whole string (which denied `grep -r "git commit" $(ls docs)`)
         split = split_substitutions(command)
@@ -771,10 +787,10 @@ def bash_violation(name: str, command: str, scopes: dict, depth: int = 0, cwd: s
     why = destructive(command, cwd, scratch)
     if why:
         return why
-    if mode != "git" and unbounded_background(command):
+    if mode not in ("git", "runner") and unbounded_background(command):
         return UNBOUNDED_BACKGROUND
-    if mode == "git":
-        return git_mode_violation(command, cwd=cwd)
+    if mode in ("git", "runner"):
+        return git_mode_violation(command, cwd=cwd, runner=mode == "runner")
     # commands nested in bash -c / eval / capture.py --cmd get the same checks as top-level ones
     for inner in embedded_commands(command):
         why = bash_violation(name, inner, scopes, depth + 1, cwd) if depth < 3 else "commands nested too deep"
@@ -881,6 +897,15 @@ def evaluate(name: str, event: dict, scopes: dict) -> str | None:
     def abs_path(p: str) -> Path:
         return Path(p if os.path.isabs(p) else os.path.join(cwd, p)).resolve()
 
+    if tool in ("Agent", "Task"):
+        # a task-runner starts the team's agents for its task; any other agent type (general-purpose,
+        # another plugin's) would run outside this guard, and a runner must not start another runner
+        st = inp.get("subagent_type")
+        team = agent_name(st, scopes) if isinstance(st, str) else None
+        if not team or team == "task-runner":
+            return (f"{name} may start only this team's agents, with subagent_type \"{PLUGIN}:<agent>\" "
+                    f"(not task-runner). Blocked: {st!r}")
+        return None
     if tool in ("Read", "Grep"):
         fp = inp.get("file_path") or inp.get("path") or ""
         if isinstance(fp, str) and is_secret_file(fp):
