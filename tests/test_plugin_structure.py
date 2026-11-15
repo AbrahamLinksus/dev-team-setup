@@ -805,12 +805,20 @@ class StructureTest(unittest.TestCase):
         self.assertIn("**The task graph goes on the planning card:**", planning)
         self.assertIn("--mermaid", planning)
         self.assertIn("`--summary` lines", planning)
-        self.assertIn("exit 2 (a cycle, an unknown ID, a task missing", planning)
+        self.assertIn("exit 2 (a cycle, an unknown\nID, a task missing", planning)
         self.assertIn("## Planning card (stage 6)", (SKILL / "references" / "result-card.md").read_text(encoding="utf-8"))
         planner = (ROOT / "agents" / "planner.md").read_text(encoding="utf-8")
         self.assertIn("first and alone in the plan", planner)
         self.assertIn("touches only its own screen or module", planner)
         self.assertIn("aim for a parallel factor of 2 or more", planner)
+        # home-cookbook run: factor 1.25, every feature edited web/api.py; a warning alone didn't stop it
+        self.assertIn("under 1.5, re-plan before you return", planner)
+        self.assertIn("(editing doesn't need deleting)", planner)
+        architect = (ROOT / "agents" / "architect.md").read_text(encoding="utf-8")
+        self.assertIn("**Design for parallel work: one folder or file set per feature.**", architect)
+        self.assertIn("A file every feature must edit is a design bug", architect)
+        self.assertIn("**Any warning sends the plan back once**", planning)
+        self.assertIn("--size <STATE.md Size>", planning)
         self.assertIn("Name the **shared modules** in the LLD", (ROOT / "agents" / "architect.md").read_text(encoding="utf-8"))
 
     def test_stages_overlap_and_milestone_cards_leave_no_gap(self):
@@ -865,7 +873,8 @@ class StructureTest(unittest.TestCase):
         planner = (ROOT / "agents" / "planner.md").read_text(encoding="utf-8")
         self.assertIn("milestones only at risk checkpoints (first end-to-end flow working, data model locked, "
                       "first external integration, before deploy)", planner)
-        self.assertIn("never just to group tasks; a small project has 1", planner)
+        # home-cookbook run: Recipe Box got 3 milestones, each a docs task and a fresh session
+        self.assertIn("**at most: small 1, medium 2, large 4**", planner)
         self.assertNotIn("milestones (3–6", planner)
         build = (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8")
         self.assertIn("(every milestone but the last)", build)

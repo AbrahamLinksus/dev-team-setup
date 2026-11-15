@@ -4,6 +4,8 @@
     taskgraph.py TASKS.md                     waves, critical path, parallel factor, warnings
     taskgraph.py TASKS.md --json              the same as JSON (the build loop schedules from it)
     taskgraph.py TASKS.md --summary           plain words for the planning card
+    taskgraph.py TASKS.md --size small        also warn over the size's task cap (8/15/30) or
+                                              milestone limit (1/2/4)
     taskgraph.py TASKS.md --mermaid           a flowchart (critical path highlighted) for capture.py
     taskgraph.py TASKS.md --ready [--json]    tasks to start now, from the earliest unfinished milestone:
                                               dependencies Done, no shared files with running tasks,
@@ -147,11 +149,42 @@ def build(tasks: dict[str, dict], cap: int) -> dict:
         path.append(sorted(nxt, key=lambda t: (-chain[t], t))[0])
     factor = round(len(tasks) / len(waves), 2)
     warnings = []
+    spots = hotspots(tasks)
     if len(tasks) >= 4 and factor < 1.5:
-        warnings.append(f"parallel factor {factor} is under 1.5: say why on the planning card, or move shared "
-                        f"helpers into the foundation task so feature tasks stop sharing files")
+        where = "; ".join(f"{f} ({', '.join(ts)})" for f, ts in spots[:5])
+        warnings.append(f"parallel factor {factor} is under 1.5: re-plan so feature tasks stop sharing files"
+                        + (f"; shared by 3+ tasks: {where}" if where else ""))
     return {"tasks": [tasks[t] for t in sorted(tasks, key=lambda t: (level[t], t))], "waves": waves,
-            "critical_path": path, "parallel_factor": factor, "warnings": warnings}
+            "critical_path": path, "parallel_factor": factor, "hotspots": [[f, ts] for f, ts in spots],
+            "warnings": warnings}
+
+
+def hotspots(tasks: dict[str, dict]) -> list[tuple[str, list[str]]]:
+    """Files entries that 3 or more tasks plan to change (after the foundation task): the files
+    that keep tasks out of the same wave. Most-shared first."""
+    roots = {t for t, d in tasks.items() if not d["depends"]}
+    found: dict[str, set[str]] = {}
+    ids = sorted(t for t in tasks if t not in roots or len(roots) > 1)
+    for t in ids:
+        for f in tasks[t]["files"]:
+            users = {o for o in ids if any(overlaps(f, g) for g in tasks[o]["files"])}
+            if len(users) >= 3:
+                found.setdefault(f, set()).update(users)
+    return sorted(((f, sorted(ts)) for f, ts in found.items()), key=lambda x: (-len(x[1]), x[0]))
+
+
+SIZE_LIMITS = {"small": (8, 1), "medium": (15, 2), "large": (30, 4)}   # task cap, most milestones
+
+
+def size_warnings(tasks: dict[str, dict], size: str) -> list[str]:
+    cap, most = SIZE_LIMITS[size]
+    milestones = {d["milestone"] for d in tasks.values()}
+    out = []
+    if len(tasks) > cap:
+        out.append(f"{len(tasks)} tasks is over the {size} cap of {cap}: merge tasks or give each extra one a 'Why separate:' line")
+    if len(milestones) > most:
+        out.append(f"{len(milestones)} milestones is over the {size} limit of {most}: merge milestones whose checkpoints fall close together")
+    return out
 
 
 def ready(tasks: dict[str, dict], cap: int, avoid: str = "") -> list[str]:
@@ -230,6 +263,7 @@ def main(argv: list[str] | None = None) -> int:
     mode.add_argument("--mermaid", action="store_true")
     mode.add_argument("--ready", action="store_true")
     mode.add_argument("--undeclared", metavar="ID")
+    ap.add_argument("--size", choices=sorted(SIZE_LIMITS), help="check the task cap and milestone limit for this size")
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--avoid", metavar="M<n>", help="with --ready: skip tasks sharing files with this milestone")
     a = ap.parse_args(argv)
@@ -238,6 +272,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         tasks = parse(Path(a.tasks_md).read_text(encoding="utf-8"))
         graph = build(tasks, a.max)
+        if a.size:
+            graph["warnings"] += size_warnings(tasks, a.size)
     except OSError as e:
         print(f"taskgraph: {e}", file=sys.stderr)
         return 1

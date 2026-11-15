@@ -90,8 +90,12 @@ check with terminal images.
 ## 6 · Tasks + plan merge ⏸
 
 **planner** → `TASKS.md`: one task per user-visible feature slice, plus at most one foundation task.
-Check it with `python3 $TASKGRAPH <wt>/TASKS.md`: exit 2 (a cycle, an unknown ID, a task missing
-`Owner`, `Depends on` or `Files`) → back to the planner with the error line.
+Check it with `python3 $TASKGRAPH <wt>/TASKS.md --size <STATE.md Size>`: exit 2 (a cycle, an unknown
+ID, a task missing `Owner`, `Depends on` or `Files`) → back to the planner with the error line.
+**Any warning sends the plan back once** (over the task cap or milestone limit, or a parallel factor
+under 1.5 with 4+ tasks): the planner merges tasks and milestones, and for files shared by 3+
+tasks the **architect** splits them per feature in the LLD first, then the planner re-plans. A
+warning that survives the second plan goes on the planning card with the planner's reason.
 **The task graph goes on the planning card:** `python3 $TASKGRAPH <wt>/TASKS.md --mermaid >
 <wt>/.results/plan/tasks.mmd`, then `python3 $CAPTURE mermaid <wt>/.results/plan/tasks.mmd
 <wt>/.results/plan/tasks.png` (the critical path is highlighted), and the `--summary` lines under
