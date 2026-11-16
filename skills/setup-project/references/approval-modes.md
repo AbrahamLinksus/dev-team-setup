@@ -60,6 +60,8 @@ keep moving while a card waits (`stage-7-build.md`, "Don't let the team idle").
   The final classification can still turn it high-risk; then re-review with Opus.
 - Debugger max 2 rounds before a decision card.
 - Researcher is skipped when the LLD already pins every needed package.
+- Handover documents (the architect's ARCHITECTURE.md and WALKTHROUGH.md) on `model: "sonnet"`:
+  they describe what the synced LLD already says.
 
 **fast** (quickest wall-clock time; Sonnet writes faster than Opus):
 - Spawn with `model: "sonnet"` every agent whose definition says Opus, **except planner and

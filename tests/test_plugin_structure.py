@@ -707,6 +707,16 @@ class StructureTest(unittest.TestCase):
         self.assertIn("`(≈2 min)`", (ROOT / "agents" / "reviewer.md").read_text(encoding="utf-8"))
         self.assertIn('added to STATE.md "Known minors"', (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8"))
 
+    def test_handover_doc_check_is_a_script(self):
+        # habit-test run: the handover was ~590k of the session's ~1.02M agent tokens; an Opus
+        # reviewer reading every doc (76k) only checked that names exist
+        handover = (SKILL / "references" / "stage-8-handover.md").read_text(encoding="utf-8")
+        self.assertIn("**Doc check, a script, not an agent:** `$TASKGIT docrefs <repo> handover`", handover)
+        self.assertNotIn("checks that every path and function named in the three docs exists", handover)
+        self.assertIn("start from the as-built `docs/LLD.md`", (ROOT / "agents" / "architect.md").read_text(encoding="utf-8"))
+        self.assertIn("Handover documents (the architect's ARCHITECTURE.md and WALKTHROUGH.md) on `model: \"sonnet\"`",
+                      (SKILL / "references" / "approval-modes.md").read_text(encoding="utf-8"))
+
     def test_handover_lint_runs_before_the_card(self):
         # B-22: a hook without +x and a 'uv sync' leftover in STATE.md reached the Recipe Box handover
         handover = (SKILL / "references" / "stage-8-handover.md").read_text(encoding="utf-8")
