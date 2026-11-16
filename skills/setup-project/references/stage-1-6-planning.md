@@ -38,7 +38,8 @@ trims 6:
   sections the tasks will read (the brief says "quick track: keep it short"). The **researcher**
   runs only if a needed package isn't pinned by the spec's stack.
 - **Default team, no team-pick card:** the coders the HLD's modules need (backend-coder and/or
-  frontend-coder), plus tester, reviewer, debugger and docs, with their catalog models.
+  frontend-coder), plus tester, reviewer, debugger and docs, with their catalog models (never a
+  bigger one unless the owner picks it on the design card).
 - **One design card ⏸:** the data-flow diagram, the team line, the package table and every
   Tier 1 item from the architect → Approve design / Request changes. Still on the default
   `quality` cost mode → the same **Cost mode** question as the team-pick card, Balanced first. Real trade-offs still get
@@ -58,7 +59,9 @@ Reject; loop until approved.
 ## 3 · Team pick ⏸
 
 From the HLD modules and `agent-catalog.md`, propose the build team: a table of module →
-agent(s) · model · one-line reason. AskUserQuestion: "Approve this team?" (Approve /
+agent(s) · model · one-line reason. **Models are the catalog's**: never move an agent to a bigger
+model on your own (an Opus coder costs about twice a Sonnet one). If you think a role needs one,
+offer it as an option on the card with its cost, and record the owner's answer in DECISIONS.md. AskUserQuestion: "Approve this team?" (Approve /
 Remove some) plus up to 3 multiSelect questions of optional agents (max 4 each, with
 reasons). Mention the approval and cost modes; the owner can type a change.
 **Small and medium projects still on the default `quality`:** add a question **Cost mode** with
@@ -97,7 +100,8 @@ check with terminal images.
 **planner** → `TASKS.md`: one task per user-visible feature slice, plus at most one foundation task.
 Check it with `python3 $TASKGRAPH <wt>/TASKS.md --size <STATE.md Size>`: exit 2 (a cycle, an unknown
 ID, a task missing `Owner`, `Depends on` or `Files`) → back to the planner with the error line.
-**Any warning sends the plan back once** (over the task cap or milestone limit, or a parallel factor
+**A feature task claiming frozen code is never accepted**: the planner moves that piece into the
+foundation (or a shared-change task) and narrows `Frozen:` to the shared files. **Any other warning sends the plan back once** (over the task cap or milestone limit, or a parallel factor
 under 1.5 with 4+ tasks): the planner merges tasks and milestones, and for files shared by 3+
 tasks the **architect** splits them per feature in the LLD first, then the planner re-plans. A
 warning that survives the second plan goes on the planning card with the planner's reason.

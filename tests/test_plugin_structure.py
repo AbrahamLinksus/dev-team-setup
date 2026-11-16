@@ -707,6 +707,17 @@ class StructureTest(unittest.TestCase):
         self.assertIn("`(≈2 min)`", (ROOT / "agents" / "reviewer.md").read_text(encoding="utf-8"))
         self.assertIn('added to STATE.md "Known minors"', (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8"))
 
+    def test_models_stay_the_catalogs_and_frozen_code_stays_narrow(self):
+        # habit-test run: the frontend-coder ran on Opus with no decision recorded; Frozen covered
+        # src/ui/** so feature tasks T-02 and T-08 had to claim frozen code
+        planning = (SKILL / "references" / "stage-1-6-planning.md").read_text(encoding="utf-8")
+        self.assertIn("**Models are the catalog's**", planning)
+        self.assertIn("record the owner's answer in DECISIONS.md", planning)
+        self.assertIn("**A feature task claiming frozen code is never accepted**", planning)
+        planner = (ROOT / "agents" / "planner.md").read_text(encoding="utf-8")
+        self.assertIn("never a whole layer that feature code lives in (`src/ui/**`)", planner)
+        self.assertIn("is built by the foundation, not by a feature task", planner)
+
     def test_handover_doc_check_is_a_script(self):
         # habit-test run: the handover was ~590k of the session's ~1.02M agent tokens; an Opus
         # reviewer reading every doc (76k) only checked that names exist
@@ -833,7 +844,7 @@ class StructureTest(unittest.TestCase):
         architect = (ROOT / "agents" / "architect.md").read_text(encoding="utf-8")
         self.assertIn("**Design for parallel work: one folder or file set per feature.**", architect)
         self.assertIn("A file every feature must edit is a design bug", architect)
-        self.assertIn("**Any warning sends the plan back once**", planning)
+        self.assertIn("**Any other warning sends the plan back once**", planning)
         self.assertIn("--size <STATE.md Size>", planning)
         self.assertIn("Name the **shared modules** in the LLD", (ROOT / "agents" / "architect.md").read_text(encoding="utf-8"))
 
