@@ -864,10 +864,17 @@ class StructureTest(unittest.TestCase):
         for fmt in ("TASK READY <id>", "DECISION NEEDED", "NEEDS FILE <id>", "BLOCKED <id>", "NO NESTING"):
             self.assertIn(fmt, run)
         self.assertIn("never ask the owner anything", run)
+        # habit-test run: the runner's coder ran in the background, the runner answered early, and
+        # one failure switched runners off for the whole project
+        self.assertIn("Every Agent call sets `run_in_background: false`", run)
+        self.assertIn("**Every Agent call sets `run_in_background: false`**", runner)
+        self.assertIn("never while an agent of yours is still running", runner)
         build = (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8")
         self.assertIn("**Task runners (the default: one session for the whole project).**", build)
         self.assertIn("**in the\nbackground**, all ready tasks in one message", build)
         self.assertIn("set STATE.md `Runners: off`", build)
+        self.assertIn("**one fresh runner** with `Resume at:`", build)
+        self.assertIn("one bad run never switches them off", build)
         self.assertIn("**Approve and continue (Recommended)**", build)
         card = (SKILL / "references" / "result-card.md").read_text(encoding="utf-8")
         self.assertIn("- **Approve and continue (Recommended)**", card)

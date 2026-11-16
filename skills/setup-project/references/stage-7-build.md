@@ -34,6 +34,10 @@ background. While runners work, you answer cards. When one answers:
 - Request changes on its card → a fresh runner with `Rework:` and `Resume at: implement`.
 - `NO NESTING` → this Claude Code can't nest agents: set STATE.md `Runners: off` and run steps 2–4
   yourself for the rest of the project (the per-milestone fresh sessions below then apply).
+- **Anything else** (no format, or an answer while TASK_PROGRESS.md still shows a step ⏳: the runner
+  stopped before its agents finished) → wait for that step's agent to finish (`$TASKGIT watch`),
+  then **one fresh runner** with `Resume at:` the first step that isn't ✅. Only a second such answer
+  in this project sets `Runners: off`; one bad run never switches them off.
 With runners on you do only steps 1, 5 and 6; steps 2–4 are the runner's (`task-run.md`).
 
 **Don't let the team idle while a card waits.** Waiting for the owner is most of a build's
