@@ -557,6 +557,22 @@ if scenario diff_to_a_results_file; then
   check "anywhere else is refused" expect_exit 1 tg diff "$R" T-01 "$WORK/elsewhere.diff"
 fi
 
+if scenario docrefs_checks_what_the_docs_name; then
+  new_repo docrefs
+  T=$(tg start "$R" handover); mkdir -p "$T/src" "$T/docs"
+  printf 'def save_recipe(r):\n    return r\n' > "$T/src/store.py"
+  printf '# App\nRun `src/store.py`; it calls `save_recipe()` and `store.save_recipe()`.\nSee `src/store.py:2` and `https://x.y/a.py` and `--flag` and `npm run dev`.\n' > "$T/README.md"
+  printf '# Arch\n`src/gone.py` holds `load_all()`.\n' > "$T/docs/ARCHITECTURE.md"
+  tgq checkpoint "$R" handover "docs"
+  out=$(tg docrefs "$R" handover 2>&1); code=$?
+  check "a missing name exits 11" test "$code" = 11
+  check "names the missing path" contains "$out" "docs/ARCHITECTURE.md:2: path src/gone.py doesn't exist"
+  check "and the missing function" contains "$out" "function load_all() isn't in the code"
+  check "existing ones pass" bash -c "! grep -q 'README.md' <<<\"\$1\"" _ "$out"
+  printf '# Arch\n`src/store.py` holds `save_recipe()`.\n' > "$T/docs/ARCHITECTURE.md"; tgq checkpoint "$R" handover "fixed"
+  check "clean docs exit 0" expect_exit 0 tg docrefs "$R" handover
+fi
+
 if scenario changed_lists_the_task_paths; then
   # plan vs actual: the task's changed paths, without the Orchestrator's progress file
   new_repo changed

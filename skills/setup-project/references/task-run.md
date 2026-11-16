@@ -25,6 +25,11 @@ continuation**; `references/stage-7-build.md` steps **2, 3 and 4** of "Per task"
 
 ## What you do
 
+**Wait for every agent you start.** Every Agent call sets `run_in_background: false`: agents
+started by an agent run in the background by default, and a runner that answers while its coder is
+still working loses the task (the first test run switched runners off because of exactly this).
+Tester and reviewer go in one message, both in the foreground; you continue when both have reported.
+
 1. From `Resume at`: **implement** (step 2; two owners → one step each, in order), **test + review**
    (step 3, tester and reviewer in one message, or `Tests: coder` as step 3 describes; debugger
    rounds per cost mode, continuing the same debugger by its ID), then **sync** (step 4: exit 4 or

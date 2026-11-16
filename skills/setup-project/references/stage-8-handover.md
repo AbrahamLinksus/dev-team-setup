@@ -22,7 +22,9 @@ review** of the last milestone's tasks when any had theirs batched (`stage-7-bui
 3. **docs**: README "How to run / How to test / How to extend" with the screenshots in `docs/images/`,
    and `OWNER.md` (one screen for the owner, from `templates/OWNER.md`: what it does, how to start
    it, what it can't do, what could lose data, what to do when something breaks, running costs).
-4. **reviewer** (read-only): checks that every path and function named in the three docs exists.
+4. **Doc check, a script, not an agent:** `$TASKGIT docrefs <repo> handover` lists every path and
+   function that README.md, OWNER.md, ARCHITECTURE.md or WALKTHROUGH.md names but the code doesn't
+   have (exit 11); send those lines back to the docs agent or architect that wrote them.
    **tester** (it has Bash): runs every command in the README's "How to run" and "How to test"
    in a fresh clone of the handover branch, each under `timeout`, captures the run with
    `$CAPTURE term`, and reports any command that fails or doesn't exist.

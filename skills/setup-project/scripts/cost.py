@@ -87,6 +87,11 @@ def report(base: Path, since: datetime | None, task: str | None, budget: float |
     sessions = usage.sessions_in(log_dir, since) if log_dir.is_dir() else []
     m = usage.measure(log_dir, sessions) if sessions else {"cost_usd": 0.0, "by_agent": {}}
     total = float(m["cost_usd"])
+    # On a Pro or Max subscription Claude Code logs no dollar figure: price the logged tokens at
+    # API list prices instead, so the card, the rework flag and the budget cap still work.
+    estimated = not total and float(m.get("api_cost_usd") or 0) > 0
+    if estimated:
+        total = float(m["api_cost_usd"])
     all_weight = sum(usage.weighted(u) for u in m["by_agent"].values()) or 0.0
     task_cost = None
     breakdown = task_breakdown(log_dir, sessions) if (task or milestone) else {}
@@ -104,10 +109,12 @@ def report(base: Path, since: datetime | None, task: str | None, budget: float |
     parts = []
     if task_cost is not None:
         parts.append(f"≈${task_cost:.2f} this task")
-    parts.append(f"${total:.2f} so far")
+    parts.append(f"≈${total:.2f} so far at API prices (not billed on a subscription)" if estimated
+                 else f"${total:.2f} so far")
     if budget:
         parts.append(f"budget ${budget:g} ({100 * total / budget:.0f}%)")
-    out = {"total_usd": round(total, 2), "task_usd": task_cost, "budget_usd": budget, "over_budget": over,
+    out = {"total_usd": round(total, 2), "estimated_at_api_prices": estimated,
+           "task_usd": task_cost, "budget_usd": budget, "over_budget": over,
            "line": "Cost: " + " · ".join(parts)}
     if task:
         out["roles_usd"] = roles

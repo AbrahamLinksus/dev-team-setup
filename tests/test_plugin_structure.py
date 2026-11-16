@@ -707,6 +707,27 @@ class StructureTest(unittest.TestCase):
         self.assertIn("`(≈2 min)`", (ROOT / "agents" / "reviewer.md").read_text(encoding="utf-8"))
         self.assertIn('added to STATE.md "Known minors"', (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8"))
 
+    def test_models_stay_the_catalogs_and_frozen_code_stays_narrow(self):
+        # habit-test run: the frontend-coder ran on Opus with no decision recorded; Frozen covered
+        # src/ui/** so feature tasks T-02 and T-08 had to claim frozen code
+        planning = (SKILL / "references" / "stage-1-6-planning.md").read_text(encoding="utf-8")
+        self.assertIn("**Models are the catalog's**", planning)
+        self.assertIn("record the owner's answer in DECISIONS.md", planning)
+        self.assertIn("**A feature task claiming frozen code is never accepted**", planning)
+        planner = (ROOT / "agents" / "planner.md").read_text(encoding="utf-8")
+        self.assertIn("never a whole layer that feature code lives in (`src/ui/**`)", planner)
+        self.assertIn("is built by the foundation, not by a feature task", planner)
+
+    def test_handover_doc_check_is_a_script(self):
+        # habit-test run: the handover was ~590k of the session's ~1.02M agent tokens; an Opus
+        # reviewer reading every doc (76k) only checked that names exist
+        handover = (SKILL / "references" / "stage-8-handover.md").read_text(encoding="utf-8")
+        self.assertIn("**Doc check, a script, not an agent:** `$TASKGIT docrefs <repo> handover`", handover)
+        self.assertNotIn("checks that every path and function named in the three docs exists", handover)
+        self.assertIn("start from the as-built `docs/LLD.md`", (ROOT / "agents" / "architect.md").read_text(encoding="utf-8"))
+        self.assertIn("Handover documents (the architect's ARCHITECTURE.md and WALKTHROUGH.md) on `model: \"sonnet\"`",
+                      (SKILL / "references" / "approval-modes.md").read_text(encoding="utf-8"))
+
     def test_handover_lint_runs_before_the_card(self):
         # B-22: a hook without +x and a 'uv sync' leftover in STATE.md reached the Recipe Box handover
         handover = (SKILL / "references" / "stage-8-handover.md").read_text(encoding="utf-8")
@@ -823,7 +844,7 @@ class StructureTest(unittest.TestCase):
         architect = (ROOT / "agents" / "architect.md").read_text(encoding="utf-8")
         self.assertIn("**Design for parallel work: one folder or file set per feature.**", architect)
         self.assertIn("A file every feature must edit is a design bug", architect)
-        self.assertIn("**Any warning sends the plan back once**", planning)
+        self.assertIn("**Any other warning sends the plan back once**", planning)
         self.assertIn("--size <STATE.md Size>", planning)
         self.assertIn("Name the **shared modules** in the LLD", (ROOT / "agents" / "architect.md").read_text(encoding="utf-8"))
 
@@ -864,10 +885,17 @@ class StructureTest(unittest.TestCase):
         for fmt in ("TASK READY <id>", "DECISION NEEDED", "NEEDS FILE <id>", "BLOCKED <id>", "NO NESTING"):
             self.assertIn(fmt, run)
         self.assertIn("never ask the owner anything", run)
+        # habit-test run: the runner's coder ran in the background, the runner answered early, and
+        # one failure switched runners off for the whole project
+        self.assertIn("Every Agent call sets `run_in_background: false`", run)
+        self.assertIn("**Every Agent call sets `run_in_background: false`**", runner)
+        self.assertIn("never while an agent of yours is still running", runner)
         build = (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8")
         self.assertIn("**Task runners (the default: one session for the whole project).**", build)
         self.assertIn("**in the\nbackground**, all ready tasks in one message", build)
         self.assertIn("set STATE.md `Runners: off`", build)
+        self.assertIn("**one fresh runner** with `Resume at:`", build)
+        self.assertIn("one bad run never switches them off", build)
         self.assertIn("**Approve and continue (Recommended)**", build)
         card = (SKILL / "references" / "result-card.md").read_text(encoding="utf-8")
         self.assertIn("- **Approve and continue (Recommended)**", card)

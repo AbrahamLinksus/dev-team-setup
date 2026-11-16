@@ -40,13 +40,14 @@
 #   taskgit.sh reject     <repo> <id>                    drop wip/<id> (local + remote) and its worktree
 #   taskgit.sh undo       <repo> <id>                    revert an approved task's commit on main and push
 #   taskgit.sh list       <repo>                         open wip/* branches on origin + last step
+#   taskgit.sh docrefs    <repo> <id>                    handover: paths/functions the docs name must exist (exit 11)
 #   taskgit.sh lint       <repo> [<id>]                  handover lint: executable bits, OWNER.md, an open
 #                                                        production gate, unsized or small known minors,
 #                                                        STATE.md leftovers, merged wip/* branches (exit 10)
 # Exit codes: 0 ok · 1 usage · 2 blocked files · 3 main not clean/diverged · 4 merge conflict
 #             5 check.sh failed after sync · 6 squash failed · 7 committed locally but not pushed
 #             8 approval held: a change request is open · 9 watch: the step looks stalled
-#             10 lint found something
+#             10 lint found something · 11 docrefs: a doc names something that doesn't exist
 set -uo pipefail
 
 SHARED=(TASKS.md STATE.md DECISIONS.md)
@@ -685,6 +686,44 @@ PY
     g branch -q -D "$br" 2>/dev/null || true
     g push -q origin --delete "$br" 2>/dev/null || true
     echo "rejected: removed $br"
+    ;;
+
+  docrefs)
+    # Handover doc check, instead of a reviewer reading every doc: each `path` and `function()` that
+    # README.md, OWNER.md, docs/ARCHITECTURE.md or docs/WALKTHROUGH.md names in backticks must exist
+    # in the worktree (paths) or in its tracked files (functions). Prints what's missing; exit 11.
+    id=${3:?id}; ensure_wt
+    git -C "$wt" ls-files > "$(gw rev-parse --absolute-git-dir)/devteam-files" 2>/dev/null || true
+    PYTHONIOENCODING=utf-8 python3 - "$wt" "$(gw rev-parse --absolute-git-dir)/devteam-files" <<'PY'
+import re, sys
+from pathlib import Path
+wt, listing = Path(sys.argv[1]), Path(sys.argv[2])
+tracked = [wt / p for p in listing.read_text(encoding="utf-8").split("\n") if p] if listing.exists() else []
+docs = [d for d in ("README.md", "OWNER.md", "docs/ARCHITECTURE.md", "docs/WALKTHROUGH.md") if (wt / d).is_file()]
+corpus = None
+missing = []
+for doc in docs:
+    for n, line in enumerate((wt / doc).read_text(encoding="utf-8").splitlines(), 1):
+        for tok in re.findall(r"`([^`\n]+)`", line):
+            tok = tok.strip()
+            if any(c in tok for c in " <>*{}$") or "://" in tok or tok.startswith(("-", "/", "~")):
+                continue
+            fn = re.fullmatch(r"(?:[\w.]+\.)?([A-Za-z_]\w*)\(\)", tok)
+            if fn:
+                if corpus is None:
+                    corpus = "\n".join(p.read_text(encoding="utf-8", errors="ignore") for p in tracked
+                                       if p.is_file() and p.suffix not in (".md", ".png", ".jpg", ".gif", ".lock"))
+                if not re.search(rf"\b{re.escape(fn.group(1))}\b", corpus):
+                    missing.append(f"{doc}:{n}: function {tok} isn't in the code")
+                continue
+            path = re.sub(r"(:\d+(-\d+)?|#[\w-]+)$", "", tok)
+            if ("/" in path or re.search(r"\.[A-Za-z]{1,5}$", path)) and not re.fullmatch(r"[\d.]+", path):
+                if not (wt / path).exists():
+                    missing.append(f"{doc}:{n}: path {path} doesn't exist")
+print("\n".join(missing) if missing else f"docrefs: every path and function named in {len(docs)} docs exists")
+sys.exit(11 if missing else 0)
+PY
+    exit $?
     ;;
 
   lint)
