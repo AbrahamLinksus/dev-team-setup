@@ -69,6 +69,14 @@ gate and life after handover. Backlog M0–M7 (PRs #134–#142), merged through 
   - a task's `Files:` is an enforced claim: no other running task may write those files, and
     shared code is frozen after the foundation; registries are one file per entry, and work that
     touches every feature is one wire-up task.
+- **Fixes from the second test run (habit-test):**
+  - the cost line prices tokens at API list prices when a subscription logs no dollar figure
+    (it said $0.00); the budget cap works on Pro again;
+  - task-runners wait for every agent they start, and one bad run no longer switches them off;
+  - handover: `taskgit.sh docrefs` checks the docs' paths and functions instead of a reviewer;
+    handover docs start from the synced LLD and run on Sonnet in balanced mode;
+  - agents keep their catalog model unless the owner picks a bigger one; frozen shared code
+    names files and narrow folders, never whole layers.
 
 ## 0.7.0
 
