@@ -3,10 +3,12 @@
 Every release raises `version` in `.claude-plugin/plugin.json`, and the top entry here must
 match it (a test checks). Claude Code only offers an update when the version changes.
 
-## 0.8.0
+## 1.0.0
 
-Right-sized builds that run in parallel, plain-language decisions, a spec critic, a production
-gate and life after handover. Backlog M0–M7 (PRs #134–#142), merged through `backlog/v0.8`.
+**First public release.** Everything below was built as the 0.8 backlog and tested on two real
+projects before release: right-sized builds that run in parallel, plain-language decisions, a spec
+critic, a production gate and life after handover. Backlog M0–M7 and the fixes from both test runs
+(PRs #133–#147), merged through `backlog/v0.8`. Earlier versions (0.6, 0.7) were pre-releases.
 
 - **Right-sizing:**
   - project size from the spec's risk signals (backend, auth, database, multi-user, external
