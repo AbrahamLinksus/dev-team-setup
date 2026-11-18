@@ -84,5 +84,5 @@ session to Sonnet (`/model sonnet`) to roughly halve its cost. Switch back for a
 Say it once, never switch it yourself, and never in `quality`: the session's model is the owner's.
 
 ## Things that never batch or downgrade
-Tier 1 decision cards, the HLD/LLD/install checkpoints, milestone cards, any reject, and
+Tier 1 decision cards, the design and install checkpoints, milestone cards, any reject, and
 anything the owner asked to see individually.

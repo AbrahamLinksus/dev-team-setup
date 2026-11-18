@@ -53,11 +53,11 @@ The paths below are relative to the worktree: write them into the brief as `<wt>
 | tester | acceptance criteria, the LLD interface sections (`§n.1`, `§n.2`) for the task |
 | reviewer | `.results/<id>/changes.diff`, `docs/CONVENTIONS.md`, the task's LLD sections |
 | debugger | the failure output file, the changed files, the task's LLD sections |
-| evaluator | acceptance criteria, the metric section of SPEC/HLD, `evals/` files |
+| evaluator | acceptance criteria, the metric section of SPEC/HLD (or LLD §0.0), `evals/` files |
 | statistician, explainer, insights-reporter | the task, its SPEC stories / HLD success-metrics section, the result files the task names |
 | devops | `docs/LLD.md` §0, `docs/CONVENTIONS.md` §6, `scripts/check.sh` |
 | env-setup | `docs/LLD.md` §0, `docs/CONVENTIONS.md` §6 (+ `.results/env/plan.md` in phase 2) |
-| researcher | the HLD sections / decision points named in the brief |
+| researcher | the HLD sections (or SPEC sections) / decision points named in the brief |
 | git-pr | nothing beyond the brief |
 | planner, architect, docs | full docs (they own them) |
 

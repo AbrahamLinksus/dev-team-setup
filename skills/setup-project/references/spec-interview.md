@@ -1,11 +1,11 @@
 # Spec interview
 
-Goal: turn a one-line idea into `docs/SPEC.md` complete enough that the HLD needs no
+Goal: turn a one-line idea into `docs/SPEC.md` complete enough that the design needs no
 guesses. Interview in rounds until the checklist is complete, for **at most 6 rounds**: every
 round an Opus planner re-reads the growing SPEC, so an open-ended interview gets expensive and
 tiring. After round 6 the planner writes each still-open item into SPEC.md as an explicit
 assumption (marked "(assumed)") and returns SPEC COMPLETE; the spec card lists those assumptions
-so the owner can correct any of them before the HLD.
+so the owner can correct any of them before the design.
 
 ## Loop
 
@@ -76,11 +76,12 @@ SPEC COMPLETE
 Assumptions: <list of (assumed) lines>
 Screens: <list> (or "no UI")
 Size: <small|medium|large> · signals: <the risk signals present, or none> · <n> stories
+Parts: <the parts that run separately, e.g. web app + API, or one> · external services: <list or none>
 ```
 
 Rules for good questions: one decision per question; options must be concrete and
 mutually exclusive; ask about behaviour and outcomes, never about implementation
-(that's the HLD/LLD's job); ask the question whose answer removes the most guessing first.
+(that's the design's job); ask the question whose answer removes the most guessing first.
 
 ## Wireframes (projects with a UI)
 

@@ -15,7 +15,7 @@
   | Term | Gloss |
   |---|---|
   | spec | what the app must do, in your words |
-  | HLD | the big-picture plan: the parts of the app and how they talk |
+  | HLD | the big-picture plan: the parts of the app and how they talk (most projects keep it as the first section of the LLD) |
   | LLD | the detailed plan: files, data, interfaces, packages |
   | milestone | a group of tasks that ends in something you can try |
   | worktree | a separate copy of the code where one task is built without touching the rest |

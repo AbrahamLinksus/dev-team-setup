@@ -589,7 +589,8 @@ class StructureTest(unittest.TestCase):
     def test_forced_tooling_choices_come_as_one_toolkit_card(self):
         # B-03: a medium app asked the owner about ruff, mypy and pytest one card at a time
         planning = (SKILL / "references" / "stage-1-6-planning.md").read_text(encoding="utf-8")
-        self.assertIn("**Standard toolkit card** (medium and large projects in builder mode", planning)
+        self.assertIn("**Standard toolkit card** (separate system design in builder mode", planning)
+        self.assertIn("groups the same items as one \"standard toolkit\" line", " ".join(planning.split()))
         self.assertIn("**Approve toolkit** / **Show me each**", planning)
         self.assertIn("keep their own cards:\n   Tier 1 still reaches the owner", planning)
         self.assertIn("`toolkit` for a forced dev-tooling choice", (ROOT / "agents" / "architect.md").read_text(encoding="utf-8"))
@@ -1068,13 +1069,32 @@ class StructureTest(unittest.TestCase):
         # O7: runs B and C (9 and 7 stories, 5 tasks) missed it on the story count alone; offer it
         # by size, and keep its one design pass short
         self.assertIn("When the size is **small**", planning)
-        self.assertIn("**short**: HLD about one screen", quick)
+        self.assertIn("**short**: the big picture about one screen", quick)
         self.assertIn("only the sections the tasks will read", (ROOT / "agents" / "architect.md").read_text(encoding="utf-8"))
         self.assertIn("**One design card ⏸:**", quick)
         self.assertIn("Tier 1 never shrinks", quick)
         self.assertIn("installing is Tier 1", quick)
         self.assertIn("**batch-low-risk**", quick)
         self.assertIn("quick track", (SKILL / "SKILL.md").read_text(encoding="utf-8"))
+
+    def test_hld_only_when_the_project_needs_one(self):
+        # an HLD is about how separately running parts talk; a one-app project gets the big picture
+        # as LLD §0.0 and one design card (recipe box's 119-line HLD mostly restated the spec)
+        planning = (SKILL / "references" / "stage-1-6-planning.md").read_text(encoding="utf-8")
+        self.assertIn("**Design path**", planning)
+        self.assertIn("**2 or more parts that\nrun separately**", planning)
+        self.assertIn("**Every other project takes the one design step below**", planning)
+        self.assertIn("## 2 · High-level breakdown ⏸ (separate system design only)", planning)
+        self.assertIn("**§0.0 Big picture**", (ROOT / "agents" / "architect.md").read_text(encoding="utf-8"))
+        self.assertIn("### §0.0 Big picture", (SKILL / "templates" / "LLD.md").read_text(encoding="utf-8"))
+        planner = (ROOT / "agents" / "planner.md").read_text(encoding="utf-8")
+        self.assertIn("only on the separate system design path", planner)
+        self.assertIn("add a `Parts:` line", planner)
+        for f in ("spec-interview.md", "team-rules.md"):
+            self.assertIn("Parts: <the parts that run separately", (SKILL / "references" / f).read_text(encoding="utf-8"))
+        self.assertIn("| Design |", (SKILL / "templates" / "STATE.md").read_text(encoding="utf-8"))
+        self.assertIn("`HLD.md` only if stage 2 runs", (SKILL / "references" / "stage-0-intake.md").read_text(encoding="utf-8"))
+        self.assertIn("one design step and card", (SKILL / "SKILL.md").read_text(encoding="utf-8"))
 
     def test_intake_opens_with_what_happens_next(self):
         # D31: three lines before the first question; no unmeasured cost claims
