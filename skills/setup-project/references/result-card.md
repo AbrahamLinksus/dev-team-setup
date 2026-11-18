@@ -6,6 +6,9 @@
   `Stage 4 LLD · planning 4/6`). The owner always knows where the project is.
 - **Fixed order:** what happened → what it means for you → what you decide. Images go with
   "what happened"; the question is always last.
+- **Owner mode** (STATE.md): in *builder* mode, no package, tool or file name without a plain
+  gloss; put technical detail on one last line, `Technical detail: …`, which the owner can skip.
+  In *developer* mode, technical terms are fine and the glossary below is skipped.
 - **Plain words.** The first time a card in this project uses one of these terms, add its gloss
   once, in brackets, and never again:
 
@@ -18,6 +21,12 @@
   | worktree | a separate copy of the code where one task is built without touching the rest |
   | check.sh | the project's automatic quality checks (tests, lint, types) |
   | Tier 1 | a decision only you make |
+
+## Planning card (stage 6)
+
+Images: the task graph (`tasks.png`: rounds left to right, critical path highlighted), then the
+`taskgraph.py --summary` lines as text: one line per round, the longest chain, the parallel
+factor and any warning. The owner sees what runs together before anything is built.
 
 ## Per-task card
 
@@ -52,6 +61,12 @@ Reviewer: 1 minor — hardcoded token expiry (auth.py:41)
 Agent decisions: bcrypt for hashing (D-12)
 Cost: ≈$0.42 this task · $3.10 so far · budget $25 (12%)
 Guard: stopped tester once (tried to edit app code) · reverted 0 files
+Plan vs actual: 1 file outside the plan (src/shared/tokens.py), added to T-07's Files
+
+Try this (≈2 min):
+1. Run `uv run app` and open http://localhost:8007 → you should see the login page
+2. Sign in as demo@example.com / demo1234 → you should land on "My recipes"
+3. Type a wrong password 6 times → you should see "Too many tries, wait a minute"
 ```
 
 Rules:
@@ -68,6 +83,12 @@ Rules:
   (tab-separated: time, task id, agent, tool, target, reason; `grep -c $'	T-07	'`) plus the files
   `$TASKGIT scope` reverted, and say in plain words what was stopped ("tried to edit app code",
   "tried to read .env"). Nothing blocked or reverted → `Guard: nothing blocked`.
+- **Try this** comes from `.results/<id>/try-this.md` (the tester's, or the coder's with
+  `Tests: yours`), verbatim. Every task with something a person can use has it; a task with
+  nothing to try (a pure refactor) says `Try this: nothing new to try; it changes how the code is
+  organised`. It is how the owner approves by using, not by reading.
+- The Plan vs actual line appears only when `taskgraph.py --undeclared` found files; a file in
+  another task's `Files:` is worth a word ("T-09 also plans to change it; it waits for this one").
 - The Cost line is `python3 $COST` output, verbatim (task share is an estimate, hence ≈). If it
   can't read the logs, leave the line out rather than guess.
 
@@ -99,19 +120,33 @@ Next milestone: M3 · RAG pipeline (6 tasks)
 Visual: before/after of the whole project (e.g. app screenshot then vs now, or a
 metrics chart vs baseline, or an updated architecture diagram).
 Ask (AskUserQuestion, header `M<n>`):
-- **Approve + continue in a fresh session (Recommended)**: update STATE.md "Next step",
-  `$TASKGIT record`, then tell the owner: "Start a new chat and run
-  `/setup-project resume <repo>`". A fresh session starts with an empty context, which keeps
-  later milestones as cheap as the first.
-- **Approve and continue here**
+- **Approve and continue (Recommended)**: the same session carries on (task runners keep it
+  small, `stage-7-build.md`).
+- **Approve + continue in a fresh session**: update STATE.md "Next step", `$TASKGIT record`, then
+  tell the owner: "Start a new chat and run `/setup-project resume <repo>`". Recommended instead
+  of the first only when STATE.md says `Runners: off`.
 - **Request changes**
 
 Send the LLD "Changes since last milestone" section rendered as an image when there are
 changes. Offer the same fresh-session choice after a change request merges.
 
+Milestone cards also carry the **rework flag** from `cost.py --rework` (tasks over 2× the
+milestone's median cost and their debugger rounds), so the owner sees where money went to fixes.
+
 ## Handover card (project end)
 
 Images: running app (or main output) screenshot, the as-built system diagram, README
-"How to run" rendered. Then a list of what was delivered: `docs/ARCHITECTURE.md`,
+"How to run" rendered, and `OWNER.md` rendered (`$CAPTURE md OWNER.md …`): the page the owner
+keeps. Then a list of what was delivered: `docs/ARCHITECTURE.md`,
 `docs/WALKTHROUGH.md`, README sections, CI status, final coverage, open issues / tech debt.
-Ask: Approve handover / Request changes.
+Then the **production gate table** (≤5 columns: ID · item in plain words · status · proof):
+
+```
+Production gate · 11 items · 9 built + tested · 1 waived · 1 open
+G-02 Data survives a restart        ✅ test_restart_keeps_recipes
+G-03 Backup / export                ✅ test_export_all_recipes
+G-W2 Others can't see your data     ⛔ open: no test acts as another user
+G-L1 Works offline                  🟡 waived (D-14): needs a connection to sync
+```
+Ask: Approve handover / Request changes, and Approve only when no item is open (see
+`stage-8-handover.md`).

@@ -4,18 +4,41 @@ Part of the /setup-project Orchestrator (SKILL.md). Read this file when the stag
 
 ## 7 · Build loop
 
-Take every `Backlog` task whose dependencies are `Done`; run independent tasks in parallel
-(own worktrees; shared files are only edited on main).
+**Schedule from the graph, never by eye.** `python3 $TASKGRAPH <repo>/TASKS.md --ready` prints the
+tasks to start now: dependencies `Done`, no file in their `Files:` shared with a running task, up to
+3 running in total, longest remaining chain first, from the earliest unfinished milestone. Run it
+whenever a task finishes, is approved or waits on a card, and **as soon as a task's implement step
+ends**: while task A is in test + review, the next ready task's implement step already runs (its
+files don't overlap A's, so neither waits for the other). Tasks run in their own worktrees, and
+shared files are only edited on main.
 
-**Start independent tasks together, really at the same time.** Agents run in parallel only when
+**Start the ready tasks together, really at the same time.** Agents run in parallel only when
 they're spawned in the **same message**; one Agent call per message runs them one after another.
-So pick up to **3** ready tasks that don't depend on each other and don't plan to touch the same
-files (check their `Context:` and the LLD modules in TASKS.md; when unsure, they're not
-independent). `$TASKGIT start` each one, mark each step ⏳ and checkpoint, then send **one message
+`$TASKGIT start` each task `--ready` printed, mark each step ⏳ and checkpoint, then send **one message
 with one Agent call per task** (each with its own brief, worktree path and port). Handle each
 task's REPORT as it comes back and carry on with that task alone; when one finishes or waits on a
-card, start the next ready task the same way. More than 3 at once makes the checks compete for the
-machine and the owner's cards pile up.
+card, run `--ready` again and start what it prints the same way. More than 3 at once makes the
+checks compete for the machine and the owner's cards pile up.
+
+**Task runners (the default: one session for the whole project).** Hand each ready task to a
+**task-runner** instead of running its agent steps yourself. Per task: step 1 below (`$TASKGIT start`,
+TASK_PROGRESS.md, `Status: In progress`), then spawn `dev-team-setup:task-runner` **in the
+background**, all ready tasks in one message, `description: "<id> · run"`, with the run brief from
+`task-run.md` (`Resume at: implement`), and start `$TASKGIT watch <repo> <id> implement` in the
+background. While runners work, you answer cards. When one answers:
+- `TASK READY` → steps 5 and 6 from its card (add the Cost line; its Plan vs actual paths go into
+  the task's `Files:`), then `--ready` again.
+- `DECISION NEEDED` → ask the owner, then a fresh runner with `Decision:` and its `Resume at`.
+- `NEEDS FILE` → the **Needs file** rule below, then a fresh runner with `Needs file granted:`.
+- `BLOCKED` → a decision card (the debugger rounds ran out), as in step 3.
+- Request changes on its card → a fresh runner with `Rework:` and `Resume at: implement`.
+- `NO NESTING` → this Claude Code can't nest agents: set STATE.md `Runners: off` and run steps 2–4
+  yourself for the rest of the project (the per-milestone fresh sessions below then apply).
+- **Anything else** (no format, or an answer while TASK_PROGRESS.md still shows a step ⏳: the runner
+  stopped before its agents finished) → wait for that step's agent to finish (`$TASKGIT watch`),
+  then **one fresh runner** with `Resume at:` the first step that isn't ✅. Only a second such answer
+  in this project sets `Runners: off`; one bad run never switches them off.
+With runners on you do only steps 1, 5 and 6; steps 2–4 are the runner's (`task-run.md`).
 
 **Don't let the team idle while a card waits.** Waiting for the owner is most of a build's
 wall-clock time, and a question blocks your turn until it's answered. So before you ask a
@@ -28,12 +51,33 @@ dependency, no shared files in their planned scope):
   AskUserQuestion call (at most 4 questions): one interruption instead of two.
 A rejection costs nothing extra: the other task never depended on it.
 
+**Stall watchdog.** Whenever you mark an agent step started, also start
+`$TASKGIT watch <repo> <id> <step>` with the Bash tool in the background (`run_in_background`).
+It ends by itself when the step is marked done or failed (exit 0: nothing to do). **Exit 9**
+prints a `STALLED:` line: the step has run over 3× its usual time on earlier tasks, or 20 minutes.
+Then don't keep waiting: look at the agent's status row (`⚠️ stalled?` after 20 minutes) and
+`git -C <wt> log -1`, send a push notification with the STALLED line if the tool exists, and
+either start one more watch (the agent is clearly progressing) or stop the agent and spawn the
+step fresh (its partial files are on the branch). Without background Bash, skip the watch.
+
+**`Needs file: <path>` in a REPORT** (the guard blocked a file outside the task's claim): no running
+task claims it and it isn't frozen → add it to the task's `Files:` in TASKS.md and continue the
+agent with "you may now change <path>". Another running task claims it → keep this task waiting
+until that one is approved, then do the same. Frozen → a small shared-change task (`T-xxs`, the
+owner agent, claiming just that path), run when nothing else claims it, then continue.
+
+**Run every `$TASKGIT` command from `<base>`** (the folder that holds the repo), never from inside a
+worktree: `approve` and `reject` delete the worktree, and a shell left inside a deleted folder
+makes the next command fail (an `approve` that merged fine then "exits 1" on `pwd`).
+
 Per task `T-xx`:
 
 1. `$TASKGIT start <repo> T-xx` (a new worktree gets the locked dependencies installed: `uv sync`,
    `npm ci`, …; a warning names the log if that fails, then give it to env-setup before any code step);
-   write `TASK_PROGRESS.md`; widget → in progress.
-2. Owner agent (step protocol). `DECISION NEEDED` → record it in TASK_PROGRESS.md, checkpoint,
+   write `TASK_PROGRESS.md`; widget → in progress; set its `Status: In progress` in TASKS.md in the
+   main checkout (`--ready` reads it there; the next approve or record commits it).
+2. Owner agent (step protocol). A task with two owners (`Owner: backend-coder, frontend-coder`)
+   gets one implement step per owner, in the listed order, in the same worktree. `DECISION NEEDED` → record it in TASK_PROGRESS.md, checkpoint,
    ask the owner, resume with the answer.
 3. **tester and reviewer in parallel.** Write the owner agent's diff to a file without opening it
    (`$TASKGIT diff <repo> T-xx > <wt>/.results/T-xx/changes.diff`), run
@@ -55,23 +99,44 @@ Per task `T-xx`:
    (in parallel, with a fresh `changes.diff`);
    rounds exhausted → decision card.
    ML/DS tasks: also **evaluator** where metrics apply.
-   **Batched review (small and medium projects, STATE.md "Size").** A task that is low-risk by its
-   planned scope (none of the high-risk file kinds in `approval-modes.md`) runs the **tester
-   alone** in this step: mark its review step `⏭ batched` in TASK_PROGRESS.md and TASKS.md, and put
-   "Review: batched at milestone end" on its card. Its review comes once per milestone (below), one
-   reviewer for all such tasks instead of one each. Large projects, and every task whose scope is
-   high-risk, keep the per-task reviewer.
+   **Small and medium projects (STATE.md "Size"): one agent per low-risk task.** A task that is
+   low-risk by its planned scope (none of the high-risk file kinds in `approval-modes.md`) gets
+   `$TASKGIT coder-tests <repo> T-xx` right after `start`, `Tests: coder` in TASK_PROGRESS.md and
+   `Tests: yours` in the owner agent's brief: the coder writes the tests to the tester's standard
+   and runs plain `scripts/check.sh` (coverage included) until it passes. Its REPORT carries the
+   check result, so this step is skipped: mark the test and review steps `⏭ coder` and
+   `⏭ batched`, and put "Tests by the coder · review batched at milestone end" on its card. Its
+   review comes once per milestone (below), one reviewer for all such tasks instead of one each.
+   The **tester spawns only on failure**: if the coder's REPORT shows coverage still short, spawn
+   the tester for that task (no new review); any other failing check goes to the **debugger** as
+   above, which makes the task high-risk.
+   The gates (`check.sh`, coverage and lint configs) stay closed to the coder. Large projects,
+   and every task whose scope is high-risk, keep the separate tester and per-task reviewer; a
+   debugger round or a Major finding turns the task high-risk, and its next round has both.
 4. `$TASKGIT sync <repo> T-xx`. Exit 4 (conflict) / 5 (checks fail; output path in the error)
    → debugger, back to step 3.
-5. Classify risk (`approval-modes.md`); produce visuals (`visual-capture.md`, screenshots first).
+5. **Plan vs actual:** `$TASKGIT changed <repo> T-xx | python3 $TASKGRAPH <repo>/TASKS.md --undeclared T-xx`
+   lists the files the task changed outside its `Files:`. Any → add them to its `Files:` in TASKS.md
+   in the main checkout straight away (so `--ready` keeps tasks that touch them waiting), put a
+   `Plan vs actual:` line on the card, and run `--ready` again: the schedule for the remaining
+   tasks now reflects them.
+   Classify risk (`approval-modes.md`); produce visuals (`visual-capture.md`, screenshots first).
    Run `python3 $COST …` for the card's Cost line. **Exit 3 (over budget)** → before the card, a
    decision card ⏸: "Spent $X of your $B budget" → **Raise the budget to …** (suggest 1.5×; record it
    in STATE.md and use it from now on) / **Pause** (`anytime.md`). Never continue over budget unasked.
 6. Result card now, queued for a batch, or (autopilot, low-risk with every goal ✅) approved first
    and sent afterwards with Undo, per approval mode (`approval-modes.md`). Then:
-   - **Approve** → run `$TASKGIT approve <repo> T-xx "<msg>"` yourself, with a conventional-commit
-     message built from the card (`feat(auth): add login endpoint [T-07]`); then update `TASKS.md`,
-     `DECISIONS.md`, `STATE.md` in the main checkout and `$TASKGIT record <repo> "chore: record T-xx"`.
+   - **Approve** → first update `TASKS.md` (status `Done`, Result line ending with the cost by role:
+     `python3 $COST <base> --since "<start>" --task T-xx --result` → `≈$0.42 · backend-coder 55% ·
+     tester 30% · reviewer 15%`), `DECISIONS.md` and
+     `STATE.md` in the main checkout, then run `$TASKGIT approve <repo> T-xx "<msg>"` yourself, with
+     a conventional-commit message built from the card (`feat(auth): add login endpoint [T-07]`).
+     approve commits those updates in the task's own commit: one commit per task, no `record`.
+     If approve fails, the updates stay in the main checkout; fix the cause and approve again.
+     **Early sync:** right after it, `$TASKGIT catchup <repo> <ids of the other open tasks between
+     steps>` merges the new main into them (no checks). Exit 4 names the branches that conflict:
+     give each to its owner agent before its next step, so the conflict is fixed during the task,
+     not found at its card.
    - **Request changes** that stays within the task's acceptance criteria → back to step 2,
      continuing the owner agent (see **Rework continuation** in SKILL.md). Anything wider is a
      **change request** (`references/anytime.md`).
@@ -83,23 +148,42 @@ Per task `T-xx`:
 milestone's last worktree (`M<n>-docs`, or `handover` for the last milestone), write those tasks'
 approved diffs to one file without opening it:
 `for id in T-03 T-05; do git -C <repo> show "$(git -C <repo> log -n 1 --format=%H --grep="^Task: $id\$" main)"; done > <wt>/.results/<task>/changes.diff`
-and spawn one **reviewer** on it (brief: the task IDs and their acceptance criteria). Critical or
+and spawn one **reviewer** on it (brief: the task IDs and their acceptance criteria; for tasks
+with `Tests: coder`, also check that the tests really exercise each criterion). Critical or
 Major findings → a fix task per affected task (`T-03r`, its owner agent, high-risk, normal flow)
-before the milestone card; Minor findings go on the milestone card.
+before the milestone card; Minor findings go on the milestone card. Every Minor finding a card
+shows (task or milestone) is also added to STATE.md "Known minors" with its size in minutes
+(`≈2 min`, from the reviewer), for the handover.
 
 **Milestone end ⏸** (every milestone but the last): task `M<n>-docs` with two steps: **architect** as-built sync of
 `docs/LLD.md` (changes since last milestone, section numbers kept stable), then **docs**
-README pass. Milestone card (includes the LLD changes): **Approve + continue in a fresh
-session (Recommended)** / Approve and continue here / Request changes.
+README pass. On the milestone card, the **rework flag**: `python3 $COST <base> --since "<start>"
+--rework <the milestone's task IDs>` lists tasks that cost over 2× the milestone's median, with their
+debugger rounds (one line each, or "no task over 2x"). Then the **phone preview** if the owner opted in (`visual-capture.md`).
+Write the milestone's changed files to `<wt>/.results/M<n>-docs/changed-files.txt`
+(`git -C <repo> diff --name-only <last milestone's commit> main`, without opening it) and put it in
+the architect's `Read:`: the sync edits only the LLD sections for those paths. **Skip the sync**
+(mark it `⏭ no design changes`) when no changed path outside `docs/`, tests and the shared files
+appears in `docs/LLD.md` (`grep -c -F -f` on the list's top folders finds nothing). Milestone card (includes the LLD changes): **Approve and continue (Recommended)** / Approve +
+continue in a fresh session / Request changes. With `Runners: off`, the fresh session is the
+Recommended one (your context holds every agent step).
+**No idle gap while the milestone card waits:** before asking, run
+`python3 $TASKGRAPH <repo>/TASKS.md --ready --avoid M<n>` and start what it prints: next-milestone
+tasks that share no file with milestone M<n>, so "Request changes" there never redoes their work.
+Fresh session with such tasks running → let each finish its current step (checkpointed), then restart.
 Fresh session → update STATE.md "Next step", `$TASKGIT record <repo> "chore: milestone M<n>"`,
 then tell the owner: "Start a new chat and run `/setup-project resume <repo>`", and stop.
 **The last milestone** has no docs task and no milestone card: its last approved task leads
 straight into the handover (stage 8), whose architect and docs steps cover the same ground.
-Each milestone costs a docs task and a session restart, so the planner sizes them to the project.
+Each milestone costs a docs task and a session restart, so the planner places them only at risk
+checkpoints (first end-to-end flow, data model locked, first integration, before deploy).
 
 **Long session check (between tasks).** Your own context grows with every task, and every call
-re-reads all of it, so a long session costs more per task the longer it runs. After you
-`record` an approved task, if **6 or more tasks** have been approved in this session, no task
+re-reads all of it, so a long session costs more per task the longer it runs. **With runners on**,
+it grows by one result per task: after every **12** approved tasks, when no runner is working, say
+once: "To keep this session quick, type `/compact` (it keeps the project; everything is in the
+repo's files)", and carry on either way: no new chat. **With `Runners: off`**, after you
+approve a task, if **6 or more tasks** have been approved in this session, no task
 is mid-step (every open `TASK_PROGRESS.md` has no ⏳) and the milestone isn't about to end
 (its last task isn't next), ask once: **Continue in a fresh session (Recommended)** / Continue
 here. Fresh session: the same steps as at milestone end (STATE.md "Next step", `record`, tell

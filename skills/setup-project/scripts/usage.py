@@ -22,10 +22,47 @@ FIELDS = ("input_tokens", "cache_creation_input_tokens", "cache_read_input_token
 CAMEL = {"inputTokens": "input_tokens", "cacheCreationInputTokens": "cache_creation_input_tokens",
          "cacheReadInputTokens": "cache_read_input_tokens", "outputTokens": "output_tokens"}
 BRIEF_RE = re.compile(r"BRIEF\s*·\s*(\S+)\s*·\s*([a-z][a-z0-9-]+)(?:\s*·\s*([a-z][a-z-]*))?")
-# Price weight of each token type relative to fresh input (cache read 0.1×, cache write
-# 1.25×, output 5×), so shares say where the money goes, not just where the tokens go.
-WEIGHTS = {"input_tokens": 1.0, "cache_creation_input_tokens": 1.25, "cache_read_input_tokens": 0.1,
+# Price weight of each token type relative to fresh input (cache read 0.05× on the current Opus
+# and Sonnet, cache write 1.25×, output 5×), so shares say where the money goes, not just where
+# the tokens go.
+WEIGHTS = {"input_tokens": 1.0, "cache_creation_input_tokens": 1.25, "cache_read_input_tokens": 0.05,
            "output_tokens": 5.0}
+
+# API list prices per million tokens: (input, output, cache read). Cache writes are priced at
+# 1.25x input (the 5-minute cache). Used only when Claude Code's own accounting has no dollar
+# figure, e.g. on a Pro or Max subscription, where nothing is billed per token: the result is
+# what the same tokens would cost on the API. First matching prefix wins.
+API_PRICES = (
+    ("claude-opus-5-5", (4.0, 20.0, 0.20)), ("claude-sonnet-5-5", (2.0, 10.0, 0.10)),
+    ("claude-haiku-5-5", (0.10, 0.50, 0.01)), ("claude-fable-5-2", (8.0, 40.0, 0.20)),
+    ("claude-mythos-5-2", (8.0, 40.0, 0.20)), ("claude-fable-5", (10.0, 50.0, 1.0)),
+    ("claude-mythos-5", (10.0, 50.0, 1.0)), ("claude-opus-5", (5.0, 25.0, 0.50)),
+    ("claude-opus-4", (5.0, 25.0, 0.50)), ("claude-sonnet-5", (2.0, 10.0, 0.20)),
+    ("claude-sonnet-4", (3.0, 15.0, 0.30)), ("claude-haiku-4", (1.0, 5.0, 0.10)),
+)
+
+
+def api_price(model: str) -> tuple[float, float, float] | None:
+    m = model.lower().split("[")[0]
+    for prefix, price in API_PRICES:
+        if m.startswith(prefix):
+            return price
+    return None
+
+
+def api_cost(by_model: dict) -> tuple[float, list[str]]:
+    """What these per-model tokens cost at API list prices, and the models that have no price."""
+    total, unknown = 0.0, []
+    for model, u in by_model.items():
+        p = api_price(model)
+        if p is None:
+            if sum(u.values()):
+                unknown.append(model)
+            continue
+        inp, out, read = p
+        total += (u.get("input_tokens", 0) * inp + u.get("cache_creation_input_tokens", 0) * inp * 1.25
+                  + u.get("cache_read_input_tokens", 0) * read + u.get("output_tokens", 0) * out) / 1e6
+    return total, unknown
 
 
 def weighted(u: dict) -> float:
@@ -112,6 +149,7 @@ def measure(log_dir: Path, sessions: list[str]) -> dict:
     """Totals from Claude Code's own accounting (last cost-state per session = /cost); split by
     agent from logged replies; remainder shown as background calls. Also counts interventions."""
     by_agent = defaultdict(lambda: defaultdict(int))
+    reply_model = defaultdict(lambda: defaultdict(int))   # every reply, main session and subagents
     by_step = defaultdict(lambda: defaultdict(int))
     calls = defaultdict(int)
     auth = defaultdict(lambda: defaultdict(int))
@@ -160,6 +198,7 @@ def measure(log_dir: Path, sessions: list[str]) -> dict:
                     by_step[step if agent != "subagent (sidechain)" else "other"][f] += v
                     s_agent[agent][f] += v
                     s_model[model][f] += v
+                    reply_model[model][f] += v
             if fixed is None:
                 typed += max(0, prompts - 1)      # the first prompt of each session is the launch prompt
                 asked += len(ask_ids)
@@ -199,7 +238,9 @@ def measure(log_dir: Path, sessions: list[str]) -> dict:
         agents[BACKGROUND] = background
     if not minutes and first and last:
         minutes = (last - first).total_seconds() / 60
+    api_usd, unpriced = api_cost(reply_model)
     return {"sessions": sessions, "cost_usd": round(cost, 4), "cost_complete": cost_complete,
+            "api_cost_usd": round(api_usd, 4), "unpriced_models": unpriced,
             "tokens": grand, "all_tokens": sum(grand.values()),
             "subagent_tokens": sum(sum(u.values()) for k, u in by_agent.items() if k != "main session"),
             "calls": sum(calls.values()), "minutes": round(minutes, 1), "background": background,

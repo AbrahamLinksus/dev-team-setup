@@ -489,6 +489,185 @@ if scenario undo_an_approved_task; then
   check "not mid-revert" test ! -f "$R/.git/REVERT_HEAD"
 fi
 
+if scenario approve_folds_the_record; then
+  # TASKS/STATE/DECISIONS updates made in the main checkout before approve land in the task's own
+  # commit: one commit per approved task, and worktrees never touch the shared files.
+  new_repo fold
+  T=$(tg start "$R" T-01); echo "a = 1" > "$T/a.py"; tgq checkpoint "$R" T-01 "implement done"
+  sedi 's/T-01: In progress/T-01: Done/' "$R/TASKS.md"; echo "- D-01 from T-01" >> "$R/DECISIONS.md"
+  before=$(git -C "$R" rev-list --count origin/main)
+  check "approve with shared-file updates pending" expect_exit 0 tg approve "$R" T-01 "feat: a [T-01]"
+
+  check "one commit on main for the task" test "$(git -C "$R" rev-list --count origin/main)" = $((before + 1))
+  check "the commit holds the code" contains "$(on_main a.py)" "a = 1"
+  check "and the TASKS.md update" contains "$(on_main TASKS.md)" "T-01: Done"
+  check "and the DECISIONS.md update" contains "$(on_main DECISIONS.md)" "D-01 from T-01"
+  check "main checkout clean afterwards" clean_main
+  # any other dirty file still stops approve, and the shared-file edits survive the refusal
+  T=$(tg start "$R" T-02); echo "b = 2" > "$T/b.py"; tgq checkpoint "$R" T-02 "implement done"
+  sedi 's/T-02: Backlog/T-02: Done/' "$R/TASKS.md"; echo "y = 2" >> "$R/shared_code.py"
+  check "a dirty non-shared file stops approve (exit 3)" expect_exit 3 tg approve "$R" T-02 "feat: b"
+  check "the TASKS.md edit is still there" grep -q "T-02: Done" "$R/TASKS.md"
+  git -C "$R" checkout -q -- shared_code.py
+  # a failing check after sync: nothing approved, edits kept
+  echo "BROKEN = 1" > "$T/b.py"; tgq checkpoint "$R" T-02 "broken"
+  check "failing checks stop approve (exit 5)" expect_exit 5 tg approve "$R" T-02 "feat: b"
+  check "the TASKS.md edit survived the failed approve" grep -q "T-02: Done" "$R/TASKS.md"
+  check "main not advanced" test -z "$(on_main b.py)"
+  rm -rf "$T/.results"; echo "b = 2" > "$T/b.py"; tgq checkpoint "$R" T-02 "fixed"
+  check "approve after the fix" expect_exit 0 tg approve "$R" T-02 "feat: b [T-02]"
+  check "T-02 Done is on main" contains "$(on_main TASKS.md)" "T-02: Done"
+  # undo reverts the code but leaves the shared files to the Orchestrator
+  check "undo of a folded commit" expect_exit 0 tg undo "$R" T-02
+  check "the code is reverted" test -z "$(on_main b.py)"
+  check "TASKS.md is left as it was" contains "$(on_main TASKS.md)" "T-02: Done"
+  check "main checkout clean after undo" clean_main
+fi
+
+if scenario watch_flags_a_stalled_step; then
+  # A step that hung (T-19 implement sat 1h43m in a replay) is flagged instead of waited on
+  new_repo watch
+  T=$(tg start "$R" T-01)
+  LOG="$R/.git/devteam-timing.log"
+  ago() { python3 -c "import time,sys; print(time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(time.time()-int(sys.argv[1]))))" "$1"; }
+  # earlier tasks took about a minute to implement; this one started 200 s ago: over 3x the median
+  printf '%s\tT-00\timplement started\n%s\tT-00\timplement done\n' "$(ago 1000)" "$(ago 940)" >> "$LOG"
+  printf '%s\tT-01\timplement started\n' "$(ago 200)" >> "$LOG"
+  out=$(TASKGIT_WATCH_POLL=1 tg watch "$R" T-01 implement 2>&1); code=$?
+  check "a step over 3x its usual time exits 9" test "$code" = 9
+  check "and says so with the usual time" contains "$out" "STALLED: T-01 · implement has run 3 min (usual 1 min)"
+  # a step that finishes in time ends the watch quietly
+  tgq step "$R" T-01 review started
+  ( sleep 2; tgq step "$R" T-01 review "done" reviewer "ok" ) &
+  out=$(TASKGIT_STALL_SECONDS=30 TASKGIT_WATCH_POLL=1 tg watch "$R" T-01 review 2>&1); code=$?
+  wait
+  check "a finished step exits 0" test "$code" = 0
+  check "and says it finished" contains "$out" "watch: T-01 review finished"
+  # no earlier runs: the 20-minute cap applies (shortened here)
+  tgq step "$R" T-01 docs started
+  check "no history: stalls at the cap" expect_exit 9 env TASKGIT_STALL_SECONDS=1 TASKGIT_WATCH_POLL=1 bash "$TG" watch "$R" T-01 docs
+fi
+
+if scenario diff_to_a_results_file; then
+  # the task-runner can't redirect output, so diff writes the reviewer's file itself
+  new_repo difffile
+  T=$(tg start "$R" T-01); echo "a = 1" > "$T/a.py"; tgq checkpoint "$R" T-01 "implement done"
+  check "diff writes a .results file" expect_exit 0 tg diff "$R" T-01 "$T/.results/T-01/changes.diff"
+  check "with the change in it" grep -q "+a = 1" "$T/.results/T-01/changes.diff"
+  check "anywhere else is refused" expect_exit 1 tg diff "$R" T-01 "$WORK/elsewhere.diff"
+fi
+
+if scenario docrefs_checks_what_the_docs_name; then
+  new_repo docrefs
+  T=$(tg start "$R" handover); mkdir -p "$T/src" "$T/docs"
+  printf 'def save_recipe(r):\n    return r\n' > "$T/src/store.py"
+  printf '# App\nRun `src/store.py`; it calls `save_recipe()` and `store.save_recipe()`.\nSee `src/store.py:2` and `https://x.y/a.py` and `--flag` and `npm run dev`.\n' > "$T/README.md"
+  printf '# Arch\n`src/gone.py` holds `load_all()`.\n' > "$T/docs/ARCHITECTURE.md"
+  tgq checkpoint "$R" handover "docs"
+  out=$(tg docrefs "$R" handover 2>&1); code=$?
+  check "a missing name exits 11" test "$code" = 11
+  check "names the missing path" contains "$out" "docs/ARCHITECTURE.md:2: path src/gone.py doesn't exist"
+  check "and the missing function" contains "$out" "function load_all() isn't in the code"
+  check "existing ones pass" bash -c "! grep -q 'README.md' <<<\"\$1\"" _ "$out"
+  printf '# Arch\n`src/store.py` holds `save_recipe()`.\n' > "$T/docs/ARCHITECTURE.md"; tgq checkpoint "$R" handover "fixed"
+  check "clean docs exit 0" expect_exit 0 tg docrefs "$R" handover
+fi
+
+if scenario changed_lists_the_task_paths; then
+  # plan vs actual: the task's changed paths, without the Orchestrator's progress file
+  new_repo changed
+  T=$(tg start "$R" T-01); mkdir -p "$T/src"; echo "a = 1" > "$T/src/a.py"; echo "# p" > "$T/TASK_PROGRESS.md"
+  tgq checkpoint "$R" T-01 "implement done"
+  out=$(tg changed "$R" T-01)
+  check "lists the changed path" test "$out" = "src/a.py"
+fi
+
+if scenario catchup_after_approve; then
+  # early sync: once a parallel task merges, the others take the new main straight away
+  new_repo catchup
+  A=$(tg start "$R" T-01); echo "x = 2" > "$A/shared_code.py"; tgq checkpoint "$R" T-01 "implement done"
+  B=$(tg start "$R" T-02); echo "b = 1" > "$B/b.py"; tgq checkpoint "$R" T-02 "implement done"
+  C=$(tg start "$R" T-03); echo "x = 3" > "$C/shared_code.py"; tgq checkpoint "$R" T-03 "implement done"
+  D=$(tg start "$R" T-04); echo "d = 1" > "$D/d.py"   # a step is running here: not checkpointed
+  tgq approve "$R" T-01 "feat: x2 [T-01]"
+  out=$(tg catchup "$R" T-02 T-03 T-04 2>&1); code=$?
+  check "a conflict anywhere exits 4" test "$code" = 4
+  check "T-02 took the new main" git -C "$B" merge-base --is-ancestor origin/main HEAD
+  check "and it is pushed" git -C "$R" merge-base --is-ancestor origin/main origin/wip/T-02
+  check "T-03's conflict is named" contains "$out" "T-03"
+  check "T-03 is not left mid-merge" test ! -f "$R/.git/worktrees/T-03/MERGE_HEAD"
+  check "T-03 keeps its own change" grep -q "x = 3" "$C/shared_code.py"
+  check "a running step is skipped" contains "$out" "catchup: T-04 has uncommitted work"
+  check "and its files are untouched" test -f "$D/d.py"
+  check "no ids: every open worktree" expect_exit 4 tg catchup "$R"
+fi
+
+if scenario lint_before_handover; then
+  # what a fresh clone trips over: a hook without +x, STATE.md template leftovers, merged branches
+  new_repo lint
+  out=$(tg lint "$R" 2>&1)
+  check "the helper's check.sh has no +x: flagged" contains "$out" "not executable: scripts/check.sh"
+  check "a missing OWNER.md is flagged" contains "$out" "OWNER.md is missing"
+  check "a missing production gate is flagged" contains "$out" "docs/PRODUCTION.md is missing"
+  mkdir -p "$R/docs"; echo "# For the owner" > "$R/OWNER.md"
+  printf '| ID | Item | Proven by | Task | Status |\n|---|---|---|---|---|\n| G-01 | Errors in plain words | a test | T-02 | Open |\n| G-02 | Restart keeps data | a test | T-03 | Built + tested (test_restart) |\n' > "$R/docs/PRODUCTION.md"
+  printf '# State\n\n## Known minors\n| Task | Where | Fix | Size |\n|---|---|---|---|\n| T-01 | a.py:3 | rename | S |\n| T-02 | b.js | focus | ≈2 min |\n| T-03 | c.py | split | ≈20 min |\n\n## Context additions\n' > "$R/STATE.md"
+  out=$(tg lint "$R" 2>&1)
+  check "an open gate item is flagged" contains "$out" "production gate item still open: G-01 Errors in plain words"
+  check "a built gate item is not" bash -c "! grep -q 'G-02' <<<'$out'"
+  check "a minor sized 'S' is flagged" contains "$out" "known minor not sized in minutes ('S'): T-01 a.py:3"
+  check "a 2-minute minor left unfixed is flagged" contains "$out" "known minor small enough to fix now (≈2 min): T-02 b.js"
+  check "a 20-minute minor is left for the card" bash -c "! grep -q 'T-03' <<<'$out'"
+  sedi 's/| Open |/| Waived by the owner (D-09: plain errors later) |/' "$R/docs/PRODUCTION.md"
+  printf '# State\n\n## Known minors\n| Task | Where | Fix | Size |\n|---|---|---|---|\n| T-03 | c.py | split | ≈20 min |\n' > "$R/STATE.md"
+  chmod +x "$R/scripts/check.sh"; git -C "$R" add -A; git -C "$R" update-index --chmod=+x scripts/check.sh && git -C "$R" commit -qm "+x" && git -C "$R" push -q origin main 2>/dev/null
+  check "a clean repo lints clean" expect_exit 0 tg lint "$R"
+  mkdir -p "$R/hooks"; printf '#!/bin/sh\necho hi\n' > "$R/hooks/pre-commit"; printf 'echo run\n' > "$R/run.sh"
+  chmod 644 "$R/hooks/pre-commit" "$R/run.sh"
+  printf '# State\n| Repo | {{github_owner}}/x |\nuv sync            # python deps\n' > "$R/STATE.md"
+  git -C "$R" add -A && git -C "$R" -c core.fileMode=true update-index --chmod=-x hooks/pre-commit run.sh \
+    && git -C "$R" commit -qm "add" && git -C "$R" push -q origin main 2>/dev/null
+  git -C "$R" push -q origin main:refs/heads/wip/T-09 2>/dev/null     # a branch already on main
+  out=$(tg lint "$R" 2>&1); code=$?
+  check "findings exit 10" test "$code" = 10
+  check "the hook without +x" contains "$out" "not executable: hooks/pre-commit"
+  check "the .sh without +x" contains "$out" "not executable: run.sh"
+  check "the template placeholder" contains "$out" "template placeholder left in STATE.md line 2"
+  check "the uv leftover" contains "$out" "runs uv, but the repo has no pyproject.toml"
+  check "the merged branch" contains "$out" "merged branch still open: wip/T-09"
+  chmod +x "$R/hooks/pre-commit" "$R/run.sh"; git -C "$R" update-index --chmod=+x hooks/pre-commit run.sh
+  printf '# State\n| Repo | me/x |\n' > "$R/STATE.md"
+  git -C "$R" add -A
+  git -C "$R" add -A && git -C "$R" commit -qm fix && git -C "$R" push -q origin main 2>/dev/null
+  git -C "$R" push -q origin --delete wip/T-09 2>/dev/null
+  check "clean again after the fixes" expect_exit 0 tg lint "$R"
+  # with an id, project files come from that task's worktree (the handover branch)
+  H=$(tg start "$R" handover); git -C "$H" rm -q OWNER.md; tgq checkpoint "$R" handover "drop owner page"
+  check "lint <repo> handover reads the handover worktree" contains "$(tg lint "$R" handover 2>&1)" "OWNER.md is missing"
+fi
+
+if scenario approve_reminds_about_tasks_md; then
+  # home-cookbook run: every task got a separate 'record' commit because TASKS.md was updated after approve
+  new_repo remind
+  T=$(tg start "$R" T-01); echo "a = 1" > "$T/a.py"; tgq checkpoint "$R" T-01 "implement done"
+  out=$(tg approve "$R" T-01 "feat: a [T-01]" 2>&1)
+  check "approve without a TASKS.md update says so" contains "$out" "note: TASKS.md wasn't updated before this approve"
+  T=$(tg start "$R" T-02); echo "b = 1" > "$T/b.py"; tgq checkpoint "$R" T-02 "implement done"
+  sedi 's/T-02: Backlog/T-02: Done/' "$R/TASKS.md"
+  out=$(tg approve "$R" T-02 "feat: b [T-02]" 2>&1)
+  check "and stays quiet when it was" bash -c "! grep -q \"TASKS.md wasn't updated\" <<<\"\$1\"" _ "$out"
+  T=$(tg start "$R" T-03); echo "c = 1" > "$T/c.py"; tgq checkpoint "$R" T-03 "implement done"
+  out=$(cd "$T" && bash "$TG" approve "$R" T-03 "feat: c [T-03]" 2>&1)
+  check "a shell inside the removed worktree gets told where to go" contains "$out" "your shell was inside the worktree"
+fi
+
+if scenario version_matches_the_plugin; then
+  # resume compares STATE.md "Plugin" with this (the home-cookbook run mixed 0.7 and 0.8 sessions)
+  want=$(sed -n 's/^ *"version": *"\([^"]*\)".*/\1/p' "$(dirname "$TG")/../../../.claude-plugin/plugin.json" | head -n 1)
+  check "taskgit.sh version prints plugin.json's version" test "$(bash "$TG" version)" = "$want"
+  check "and needs no repo" expect_exit 0 bash "$TG" version
+fi
+
 if scenario step_command; then
   # O9: one call per agent step (scope + mark TASK_PROGRESS.md + checkpoint) instead of 3–4 turns
   new_repo step
@@ -515,6 +694,25 @@ if scenario step_command; then
   tgq step "$R" T-01 debug started
   check "a step with no row gets one" grep -q '^| debug |  | ⏳ |' "$T/TASK_PROGRESS.md"
   check "an unknown state is refused" expect_exit 1 tg step "$R" T-01 test finished
+fi
+
+if scenario coder_tests; then
+  # O5: the marker opens the tests to this task's coder only, and leaves with the worktree
+  new_repo codertests
+  T=$(tg start "$R" T-01); mkdir -p "$T/tests" "$T/src"
+  echo "def test_a(): pass" > "$T/tests/test_a.py"; echo "a = 1" > "$T/src/a.py"
+  out=$(tg scope "$R" T-01 backend-coder)
+  check "without the marker the coder's test is reverted" test ! -e "$T/tests/test_a.py"
+  tgq coder-tests "$R" T-01
+  check "the marker is in the worktree's private git dir" test -f "$(git -C "$T" rev-parse --absolute-git-dir)/devteam-coder-tests"
+  check "and not in the worktree" test -z "$(git -C "$T" status --porcelain --untracked-files=all | grep coder-tests)"
+  echo "def test_a(): pass" > "$T/tests/test_a.py"; echo "x" > "$T/scripts/check.sh"
+  out=$(tg scope "$R" T-01 backend-coder)
+  check "with it the test stays" test -f "$T/tests/test_a.py"
+  check "the gate is still reverted" contains "$out" "scripts/check.sh"
+  T2=$(tg start "$R" T-02); mkdir -p "$T2/tests"; echo "def test_b(): pass" > "$T2/tests/test_b.py"
+  tgq scope "$R" T-02 backend-coder
+  check "another task's coder is unaffected" test ! -e "$T2/tests/test_b.py"
 fi
 
 # ---- summary ---------------------------------------------------------------------------

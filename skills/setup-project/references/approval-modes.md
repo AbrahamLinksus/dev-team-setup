@@ -36,11 +36,13 @@ keep moving while a card waits (`stage-7-build.md`, "Don't let the team idle").
 
 **autopilot** (fastest: the owner stops the build only for what needs them):
 - **Auto-approved:** a task that is low-risk (above) **and** has every goal ✅ **and** passed `sync`.
-  Run `$TASKGIT approve` yourself straight away, record it, and start the next task. Then send its
+  Update TASKS.md, STATE.md and DECISIONS.md in the main checkout, run `$TASKGIT approve` yourself
+  straight away (it commits those updates with the task), and start the next task. Then send its
   card as usual, headed `✅ Auto-approved T-07 · Undo?`, with AskUserQuestion: **Keep** (default) /
   **Undo**. Don't wait for the answer: carry on, and handle it whenever it comes.
 - **Undo** → `$TASKGIT undo <repo> T-07` (a new commit on main that reverts the task's commit),
-  then TASKS.md: the task back to `Backlog` with "undone by the owner", `record`. Exit 4 = a later
+  then TASKS.md: the task back to `Backlog` with "undone by the owner", `record` (undo
+  leaves the shared files to you). Exit 4 = a later
   task changed the same lines: tell the owner, and offer to undo the later task first or to make
   the change as a new task.
 - **Still stops, exactly as in every-task:** any ⚠️/❌ goal, every high-risk task, every Tier 1
@@ -58,11 +60,13 @@ keep moving while a card waits (`stage-7-build.md`, "Don't let the team idle").
   The final classification can still turn it high-risk; then re-review with Opus.
 - Debugger max 2 rounds before a decision card.
 - Researcher is skipped when the LLD already pins every needed package.
+- Handover documents (the architect's ARCHITECTURE.md and WALKTHROUGH.md) on `model: "sonnet"`:
+  they describe what the synced LLD already says.
 
 **fast** (quickest wall-clock time; Sonnet writes faster than Opus):
 - Spawn with `model: "sonnet"` every agent whose definition says Opus, **except planner and
   architect**: the design everything else follows stays on the strongest model. That covers
-  reviewer, debugger, evaluator, explainer and statistician. Haiku and Sonnet agents keep theirs.
+  product-critic, reviewer, debugger, evaluator, explainer and statistician. Haiku and Sonnet agents keep theirs.
 - **High-risk tasks still get an Opus reviewer.** Classify before the review when the planned scope
   already makes it high-risk; if the final classification turns a task high-risk after a Sonnet
   review, re-review with Opus before its card.

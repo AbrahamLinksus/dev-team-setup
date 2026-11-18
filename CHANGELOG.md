@@ -3,6 +3,81 @@
 Every release raises `version` in `.claude-plugin/plugin.json`, and the top entry here must
 match it (a test checks). Claude Code only offers an update when the version changes.
 
+## 0.8.0
+
+Right-sized builds that run in parallel, plain-language decisions, a spec critic, a production
+gate and life after handover. Backlog M0–M7 (PRs #134–#142), merged through `backlog/v0.8`.
+
+- **Right-sizing:**
+  - project size from the spec's risk signals (backend, auth, database, multi-user, external
+    services, AI/ML, deployment), not a guessed task count;
+  - a task is one user-visible feature slice; one foundation task at most; caps of 8 / 15 / 30;
+  - milestones only at risk checkpoints;
+  - one commit per approved task (approve commits the TASKS/STATE/DECISIONS updates);
+  - an LLD size cap, and an as-built sync that edits only what the milestone changed;
+  - a stall watchdog (`taskgit.sh watch`) and a `stalled?` status row.
+- **Task graph:**
+  - `taskgraph.py`: waves, critical path, parallel factor, `--ready` scheduling and
+    `--undeclared` files; every task declares Owner, Depends on and Files;
+  - the graph on the planning card;
+  - stages overlap, and next-milestone work runs while a milestone card waits;
+  - `taskgit.sh catchup` merges main into open task branches after each approve;
+  - `taskgit.sh changed` lists a task's paths for plan vs actual.
+- **Plain language:**
+  - "Do you write code?" at intake: builder or developer mode;
+  - every decision card says what it means for you and what being wrong costs;
+  - one "standard toolkit" card for forced tooling choices.
+- **Spec critic:**
+  - new `product-critic` agent: usage scenarios and gaps before the spec card;
+  - a data-safety section the owner must answer;
+  - scenarios become acceptance criteria and end-to-end tests.
+- **Production gate:**
+  - `templates/PRODUCTION.md` per project type;
+  - gate items become criteria in the slices;
+  - the handover can't be approved with an open item (build it or waive it).
+- **Approve by using:**
+  - "Try this" steps on every card;
+  - an opt-in phone preview per milestone;
+  - `capture.py flow` records short GIFs.
+- **Cost and docs:**
+  - cost by agent role on each task's Result line;
+  - a rework flag on milestone cards;
+  - `OWNER.md`, a one-screen page for the owner.
+- **Handover hygiene:**
+  - small minors are fixed, not listed;
+  - `taskgit.sh lint` (executable bits, STATE.md leftovers, merged branches);
+  - CI runs what the README claims.
+- **After handover:** `/setup-project fix <bug>` (reproduce with a failing test first) and new
+  features through the change-request flow with a fresh size.
+- **Evals:** `cards-plain-language`, `critic-recipe-box`, `fix-routes-to-maintenance`.
+- **CI:** the test jobs install Pillow (the GIF test).
+- **Fixes from the first test run (home-cookbook, ~$70 at API prices):**
+  - risk signals count only real risk, so a home-only app with SQLite sizes small;
+  - milestone limits (small 1, medium 2, large 4) and `taskgraph.py --size`;
+  - a plan with a parallel factor under 1.5 goes back for a re-plan, with the files 3+ tasks
+    share named; the architect gives each feature its own route, template and script files;
+  - the handover lint fails on a missing `OWNER.md`, an open or missing production gate, and
+    unsized or small known minors, and runs last before the card;
+  - `approve` reminds when TASKS.md wasn't updated; run taskgit from the base folder;
+  - Balanced cost mode offered on small and medium projects;
+  - `taskgit.sh version`, recorded in STATE.md and checked on resume.
+- **One session, real parallelism:**
+  - `task-runner` agent: each ready task runs in its own background runner, which starts the
+    task's agents itself (nested agents) and returns one card; the main session only schedules,
+    shows cards and approves, so the project stays in one session (`/compact` suggested every 12
+    tasks instead of a new chat); without nested agents it falls back to the old flow;
+  - a task's `Files:` is an enforced claim: no other running task may write those files, and
+    shared code is frozen after the foundation; registries are one file per entry, and work that
+    touches every feature is one wire-up task.
+- **Fixes from the second test run (habit-test):**
+  - the cost line prices tokens at API list prices when a subscription logs no dollar figure
+    (it said $0.00); the budget cap works on Pro again;
+  - task-runners wait for every agent they start, and one bad run no longer switches them off;
+  - handover: `taskgit.sh docrefs` checks the docs' paths and functions instead of a reviewer;
+    handover docs start from the synced LLD and run on Sonnet in balanced mode;
+  - agents keep their catalog model unless the owner picks a bigger one; frozen shared code
+    names files and narrow folders, never whole layers.
+
 ## 0.7.0
 
 Faster runs, visible costs and guardrails, and a working benchmark. PRs #80–#115.

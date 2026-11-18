@@ -9,7 +9,10 @@
 | Local folder | {{base}}/{{repo}} (worktrees in {{base}}/{{repo}}-wt/; start sessions in {{base}}) |
 | Status | {{Active · Paused (reason) · Abandoned (reason) · Complete}} |
 | Stage | {{0 Intake · 1 Spec · 2 HLD · 3 Team pick · 4 LLD · 5 Env · 6 Tasks · 7 Build · 8 Handover}} |
-| Size | {{small · medium · large}} (≈{{n}} tasks): sets milestones, design depth, who tests and reviews low-risk tasks |
+| Plugin | dev-team-setup {{version}} (`$TASKGIT version` at intake; resume checks it) |
+| Runners | {{on · off}}: on = task-runner agents run each task, one session for the project; off = this Claude Code can't nest agents |
+| Owner mode | {{builder · developer}}: builder = plain words, technical detail collapsed; developer = technical terms |
+| Size | {{small · medium · large}} · signals: {{risk signals present, or none}}: sets milestones, design depth, the task cap, who tests and reviews low-risk tasks |
 | Milestone | {{M2 · name}} ({{done}}/{{total}} tasks) |
 | Next step | {{T-08 · owner · what}} |
 | Started | {{YYYY-MM-DD HH:MM ±HH:MM}} (cost.py --since) · Budget {{USD, 0 = no cap}} |
@@ -31,6 +34,12 @@ uv sync            # python deps
 # npm ci           # frontend deps
 # uv run ...       # start commands
 ```
+
+## Known minors
+Minor review findings shown on cards and not fixed yet. At handover every one of ≈5 min or less is
+fixed; any left needs the owner's waiver.
+| Task | Where | Fix | Size |
+|---|---|---|---|
 
 ## Context additions
 Context gaps agents reported (`Context gap:` in a REPORT). The Orchestrator adds these to the

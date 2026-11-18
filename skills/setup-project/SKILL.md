@@ -13,7 +13,7 @@ description: >
   (as-built architecture + codebase walkthrough). Every result comes with a visual for the
   owner's approval. Works from a phone.
 metadata:
-  version: "0.7.0"
+  version: "0.8.0"
 ---
 
 # /setup-project — Orchestrator
@@ -40,6 +40,7 @@ it for the whole run: every owner question is answered from that file, never Ask
 - `CAPTURE=<root>/skills/setup-project/scripts/capture.py`
 - `TASKGIT=<root>/skills/setup-project/scripts/taskgit.sh`
 - `COST=<root>/skills/setup-project/scripts/cost.py`: `python3 $COST <base> --since "<project start from STATE.md>" --task <id> --budget <budget>` prints the card's Cost line; exit 3 = over budget
+- `TASKGRAPH=<root>/skills/setup-project/scripts/taskgraph.py`: waves, critical path, `--ready` tasks
 - `TEAM_RULES=<root>/skills/setup-project/references/team-rules.md`
 - Templates: `<root>/skills/setup-project/templates/`
 
@@ -61,8 +62,8 @@ if a PushNotification tool is available (load it with ToolSearch).
 Cards and images go out with SendUserFile / SendUserMessage where they exist; in the terminal
 CLI they don't, so follow the fallback in `result-card.md` (card file + printed image paths).
 
-**Planning crew** (always used, never part of the team pick): planner, researcher,
-architect, env-setup. The **build team** is picked in stage 3 from the HLD. Approve, reject and
+**Planning crew** (always used, never part of the team pick): planner, product-critic,
+researcher, architect, env-setup. The **build team** is picked in stage 3 from the HLD. Approve, reject and
 record are one script call each, so you run `$TASKGIT` yourself rather than spawning an agent
 for them (git-pr stays available for a task whose commit message needs real summarising).
 
@@ -123,7 +124,8 @@ wording. These always apply:
 - Never continue an agent across tasks or worktrees.
 
 Pushing `wip/*` branches is pre-approved. **main changes only through `$TASKGIT approve`
-(after an approved card) and `$TASKGIT record` (shared files).**
+(after an approved card; it also commits that task's shared-file updates) and `$TASKGIT record`
+(shared-file updates with no task to approve).**
 
 ## Start here
 
@@ -143,6 +145,7 @@ Pushing `wip/*` branches is pre-approved. **main changes only through `$TASKGIT 
 | 8 Handover | `references/stage-8-handover.md` |
 | Change request, pause, abandon | `references/anytime.md` |
 | `/setup-project resume <repo>`, or "continue" in a folder with a setup-project STATE.md | `references/resume.md` |
+| `/setup-project fix <bug>` or `add <feature>` on a finished project | `references/maintenance.md` |
 
 ## Rules
 

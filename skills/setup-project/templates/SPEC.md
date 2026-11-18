@@ -48,5 +48,11 @@
 ## 12. Definition of done
 - [ ] {{observable outcome the owner can check}}
 
+## 13. Data safety
+- Backup: {{where a copy lives, or "none"}} · Second device: {{does data follow the user, or stay on one device}}
+- If the device is wiped or the app reinstalled, the user loses: {{…}}
+- Undo: {{which actions can be undone (delete, edit, import), or "none"}}
+- Answered by the owner, never assumed. "No backup" is fine when the owner chose it knowing the consequence.
+
 ## Open questions
 - none

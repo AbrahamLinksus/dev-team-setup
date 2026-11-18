@@ -6,8 +6,9 @@
 #   - each task / planning stage lives on branch wip/<id> in worktree <repo>-wt/<id>;
 #     every step is committed + pushed there (`checkpoint`), so work survives the session ending.
 #   - Shared files (TASKS.md, STATE.md, DECISIONS.md) belong to main: branches never change
-#     them (checkpoint reverts any change); the Orchestrator updates them on main with
-#     `record` after `approve`. Exceptions: `plan` owns all three (nothing runs in parallel
+#     them (checkpoint reverts any change); the Orchestrator edits them in the main checkout
+#     before `approve`, which commits them in the task's own squash commit (`record` is for
+#     updates with no task to approve). Exceptions: `plan` owns all three (nothing runs in parallel
 #     with planning); `CR-<n>` owns only TASKS.md (its re-plan). If TASKS.md changed on main
 #     since the CR branched, sync/approve abort (exit 4) so the planner re-plans on current main.
 #   - While a CR branch is open, task approvals are held (exit 8) so nothing is recorded
@@ -16,6 +17,7 @@
 #     and re-runs scripts/check.sh, so a task is always tested against current main.
 #
 # Usage:
+#   taskgit.sh version                                   the plugin version (recorded in STATE.md at intake)
 #   taskgit.sh start      <repo> <id>                    create/restore worktree, install locked deps
 #                                                        (uv/npm/pnpm/yarn; TASKGIT_SKIP_DEPS=1 skips); prints its path
 #   taskgit.sh checkpoint <repo> <id> "<step msg>"       commit all on wip/<id>, push
@@ -23,17 +25,29 @@
 #   taskgit.sh step       <repo> <id> <step> started|done|failed [<agent> "<note>"]
 #                                                        one call per agent step: (done/failed) scope as
 #                                                        <agent>, mark TASK_PROGRESS.md, checkpoint
+#   taskgit.sh watch      <repo> <id> <step>             (background) exit 0 when the step ends, 9 if it
+#                                                        runs over 3x its usual time or 20 min: stalled
+#   taskgit.sh coder-tests <repo> <id>                   let this task's coder write its own tests
 #   taskgit.sh sync       <repo> <id>                    merge origin/main into wip/<id>, run check.sh, push
-#   taskgit.sh diff       <repo> <id>                    full diff vs main (for the reviewer)
+#   taskgit.sh catchup    <repo> [<id>...]               after an approve: merge the new main into the other
+#                                                        open task branches (no checks; exit 4 lists conflicts)
+#   taskgit.sh diff       <repo> <id> [<file>]           full diff vs main (for the reviewer); to a .results/ file
 #   taskgit.sh diffstat   <repo> <id>                    diff --stat vs main (for the result card)
-#   taskgit.sh approve    <repo> <id> "<msg>"            sync, squash into main, push, clean up
+#   taskgit.sh changed    <repo> <id>                    changed paths vs main, one per line
+#   taskgit.sh approve    <repo> <id> "<msg>"            sync, squash into main (with any TASKS/STATE/
+#                                                        DECISIONS updates in the main checkout), push, clean up
 #   taskgit.sh record     <repo> "<msg>"                 commit + push shared-file updates on main
 #   taskgit.sh reject     <repo> <id>                    drop wip/<id> (local + remote) and its worktree
 #   taskgit.sh undo       <repo> <id>                    revert an approved task's commit on main and push
 #   taskgit.sh list       <repo>                         open wip/* branches on origin + last step
+#   taskgit.sh docrefs    <repo> <id>                    handover: paths/functions the docs name must exist (exit 11)
+#   taskgit.sh lint       <repo> [<id>]                  handover lint: executable bits, OWNER.md, an open
+#                                                        production gate, unsized or small known minors,
+#                                                        STATE.md leftovers, merged wip/* branches (exit 10)
 # Exit codes: 0 ok · 1 usage · 2 blocked files · 3 main not clean/diverged · 4 merge conflict
 #             5 check.sh failed after sync · 6 squash failed · 7 committed locally but not pushed
-#             8 approval held: a change request is open
+#             8 approval held: a change request is open · 9 watch: the step looks stalled
+#             10 lint found something · 11 docrefs: a doc names something that doesn't exist
 set -uo pipefail
 
 SHARED=(TASKS.md STATE.md DECISIONS.md)
@@ -51,6 +65,9 @@ read_lines() {  # read_lines <array-name> < input: one array element per line
 file_size() { wc -c < "$1" | tr -d ' '; }
 
 cmd=${1:-}; [[ -z "$cmd" ]] && usage
+if [[ "$cmd" == version ]]; then   # the plugin's version (STATE.md records it; resume compares)
+  sed -n 's/^ *"version": *"\([^"]*\)".*/\1/p' "$HERE/../../../.claude-plugin/plugin.json" | head -n 1; exit 0
+fi
 repo=${2:-}; [[ -z "$repo" ]] && usage
 [[ -d "$repo/.git" || -f "$repo/.git" ]] || die 1 "$repo is not a git checkout"
 repo=$(cd "$repo" && pwd); wtroot="${repo}-wt"
@@ -125,6 +142,13 @@ unpin_agents() {  # forget the agent pins (scope guard) of the worktree being re
 log_time() {  # one line per event, to measure time per step; never fails the command
   printf '%s\t%s\t%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$id" "$1" \
     >> "$(g rev-parse --absolute-git-dir 2>/dev/null)/devteam-timing.log" 2>/dev/null || true
+}
+
+pending=(); pending_dir=""
+restore_pending() {  # approve: put the parked shared-file updates back into the main checkout
+  [[ -n "$pending_dir" && -d "$pending_dir" ]] || return 0
+  local f; for f in ${pending[@]+"${pending[@]}"}; do cp "$pending_dir/$f" "$repo/$f"; done
+  rm -rf "$pending_dir"; pending_dir=""
 }
 
 ensure_wt() {  # sets wt; fails if the worktree doesn't exist
@@ -382,12 +406,121 @@ case "$cmd" in
     exec bash "${BASH_SOURCE[0]}" checkpoint "$repo" "$id" "$msg"
     ;;
 
+  watch)
+    # Stall watchdog. Run it in the background when an agent step starts: it exits quietly (0) as
+    # soon as the step is marked done or failed, or exits 9 with a STALLED line once the step has
+    # run longer than 3x the median of the same step on earlier tasks (from the timing log), and
+    # never longer than 20 minutes. The Orchestrator is woken by the exit either way, so a stuck
+    # agent is noticed within 20 minutes instead of when someone looks.
+    id=${3:?id}; stp=${4:?step}
+    log="$(g rev-parse --absolute-git-dir)/devteam-timing.log"
+    PYTHONIOENCODING=utf-8 python3 - "$log" "$id" "$stp" "${TASKGIT_STALL_SECONDS:-}" "${TASKGIT_WATCH_POLL:-30}" <<'PY'
+import statistics, sys, time
+from datetime import datetime, timezone
+log, tid, step, override, poll = sys.argv[1:6]
+CAP = 20 * 60
+
+def events():
+    try:
+        with open(log, encoding="utf-8") as f:
+            rows = [line.rstrip("\n").split("\t") for line in f]
+    except OSError:
+        return []
+    out = []
+    for r in rows:
+        if len(r) == 3:
+            try:
+                t = datetime.strptime(r[0], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc).timestamp()
+            except ValueError:
+                continue
+            out.append((t, r[1], r[2]))
+    return out
+
+def durations(ev):  # finished runs of this step on any task: started -> done
+    began, out = {}, []
+    for t, i, msg in ev:
+        if msg == f"{step} started":
+            began[i] = t
+        elif msg == f"{step} done" and i in began and i != tid:
+            out.append(t - began.pop(i))
+    return out
+
+ev = events()
+past = durations(ev)
+usual = statistics.median(past) if past else None
+limit = float(override) if override else (min(3 * usual, CAP) if usual else CAP)
+while True:
+    ev = events()
+    mine = [(t, m) for t, i, m in ev if i == tid and m in (f"{step} started", f"{step} done")]
+    starts = [t for t, m in mine if m.endswith("started")]
+    start = starts[-1] if starts else None
+    if start is None or any(m.endswith("done") and t >= start for t, m in mine):
+        print(f"watch: {tid} {step} finished")
+        sys.exit(0)
+    ran = time.time() - start
+    if ran >= limit:
+        u = f"usual {usual / 60:.0f} min" if usual else "no earlier runs to compare"
+        print(f"STALLED: {tid} · {step} has run {ran / 60:.0f} min ({u}). Check the agent before waiting longer.")
+        sys.exit(9)
+    time.sleep(max(1.0, min(float(poll), limit - ran)))
+PY
+    exit $?
+    ;;
+
+  coder-tests)
+    # O5: let this task's coder write and run its own tests (a low-risk task on a small or medium
+    # project). The marker sits in the worktree's private git dir, which no agent can write; the
+    # scope guard reads it. It goes away with the worktree (approve / reject).
+    id=${3:?id}; ensure_wt
+    : > "$(gw rev-parse --absolute-git-dir)/devteam-coder-tests" || die 1 "could not write the coder-tests marker"
+    echo "coder-tests: the coder writes and runs the tests on wip/$id (gates stay protected)"
+    ;;
+
   sync)
     id=${3:?id}; ensure_wt; do_sync ;;
 
+  catchup)
+    # Early sync: right after a task is approved, merge the new main into the other open task
+    # branches (between their steps), so a conflict shows while the task is still being worked
+    # on, not at its card. No checks here (sync runs them before the card). A worktree with
+    # uncommitted changes has an agent mid-step: it is skipped and caught up next time.
+    shift 2; ids=("$@")
+    if (( ${#ids[@]} == 0 )) && [[ -d "$wtroot" ]]; then
+      for d in "$wtroot"/*/; do [[ -d "$d" ]] && ids+=("$(basename "$d")"); done
+    fi
+    clashing=()
+    for id in ${ids[@]+"${ids[@]}"}; do
+      [[ "$id" == plan || "$id" == CR-* ]] && continue
+      wt="$wtroot/$id"; [[ -d "$wt" ]] || { echo "catchup: $id has no worktree; skipped"; continue; }
+      if [[ -n "$(gw status --porcelain --untracked-files=normal)" ]]; then
+        echo "catchup: $id has uncommitted work (a step is running); skipped"; continue
+      fi
+      if out=$(TASKGIT_SKIP_CHECK=1 bash "${BASH_SOURCE[0]}" sync "$repo" "$id" 2>&1); then
+        printf '%s\n' "$out" | grep -m1 '^sync: ' | sed 's/^sync: /catchup: /'
+      else
+        clashing+=("$id"); printf 'catchup: %s\n' "$(printf '%s\n' "$out" | sed -n 's/^TASKGIT ERROR: //p' | head -n 1)"
+      fi
+    done
+    (( ${#clashing[@]} )) && die 4 "these branches conflict with the new main (merge aborted, branches unchanged): ${clashing[*]}. Give each to its owner agent before its next step."
+    exit 0
+    ;;
+
   diff)
+    # diff <repo> <id> [<out file>]: with a file, write it there (roles that can't redirect output)
+    id=${3:?id}; out=${4:-}; g fetch -q origin "$main" 2>/dev/null || true
+    if [[ -n "$out" ]]; then
+      case "$out" in */.results/*|.results/*) ;; *) die 1 "diff: the output file must be under a .results/ folder: $out" ;; esac
+      mkdir -p "$(dirname "$out")"
+      g diff "origin/$main...wip/$id" -- . ":(exclude)$PROGRESS" > "$out" || die 1 "diff failed"
+      echo "diff: $(wc -l < "$out" | tr -d ' ') lines -> $out"
+    else
+      g diff "origin/$main...wip/$id" -- . ":(exclude)$PROGRESS"
+    fi ;;
+
+  changed)
+    # the task's changed paths, one per line (plan vs actual: taskgraph.py --undeclared reads them)
     id=${3:?id}; g fetch -q origin "$main" 2>/dev/null || true
-    g diff "origin/$main...wip/$id" -- . ":(exclude)$PROGRESS" ;;
+    g -c core.quotepath=off diff --name-only "origin/$main...wip/$id" -- . ":(exclude)$PROGRESS" ;;
 
   diffstat)
     id=${3:?id}; g fetch -q origin "$main" 2>/dev/null || true
@@ -401,12 +534,30 @@ case "$cmd" in
       crs=$(printf '%s' "$crs" | tr '\n' ' ')
       [[ -n "${crs// }" ]] && die 8 "approvals are held while a change request is open ($crs). Merge or cancel it first; $id stays queued."
     fi
-    # 1. main checkout must be clean and on main
+    # 1. main checkout must be clean and on main, except for the shared files the Orchestrator
+    #    updated for this approval (TASKS.md, STATE.md, DECISIONS.md): they go into the task's own
+    #    commit, so an approved task is one commit on main, with no separate record commit.
     clear_leftovers
-    dirty=$(g status --porcelain --untracked-files=no)
-    [[ -n "$dirty" ]] && die 3 "main checkout has uncommitted changes, approve stopped:\n$dirty\n(commit them with 'record' or discard them first)"
+    pending=(); others=""
+    while IFS= read -r f; do
+      [[ -z "$f" ]] && continue
+      if is_shared "$f" && ! is_owned "$f"; then pending+=("$f"); else others+="$f"$'\n'; fi
+    done < <(g -c core.quotepath=off status --porcelain --untracked-files=no | sed -E 's/^.. //')
+    [[ -n "$others" ]] && die 3 "main checkout has uncommitted changes, approve stopped:\n$others(only ${SHARED[*]} may be updated before approve; commit others with 'record' or discard them first)"
+    if (( ${#pending[@]} )); then
+      # Park the updates outside the checkout while main moves; put them back on any exit, so a
+      # failed approve never loses them (the commit below holds the same content on success).
+      pending_dir=$(mktemp -d)
+      for f in "${pending[@]}"; do cp "$repo/$f" "$pending_dir/$f"; done
+      trap restore_pending EXIT
+      g checkout -q HEAD -- "${pending[@]}"
+    fi
     g checkout -q "$main" || die 3 "cannot check out $main"
     g fetch -q origin "$main" || die 3 "fetch failed"
+    for f in ${pending[@]+"${pending[@]}"}; do
+      g diff --quiet HEAD "origin/$main" -- "$f" \
+        || die 4 "$f changed on origin/$main since you edited it; nothing was approved. Your edits are kept in the main checkout: redo them on top of origin/$main (git -C $repo merge --ff-only origin/$main after stashing), then approve again."
+    done
     g merge -q --ff-only "origin/$main" 2>/dev/null || die 3 "local $main has diverged from origin/$main; nothing was approved. Resolve: git -C $repo log --oneline origin/$main..$main"
     if [[ -n "$(g rev-list "origin/$main..$main")" ]]; then   # approved earlier but the push failed
       push_branch "$repo" "$main" || die 7 "local $main still has unpushed approved commits; fix the push first"
@@ -421,6 +572,7 @@ case "$cmd" in
     if g diff --quiet "$main" "$br" -- . "${excl[@]}"; then   # nothing left to merge: already on main
       unpin_agents; g worktree remove --force "$wt" 2>/dev/null || true; g branch -q -D "$br" 2>/dev/null || true
       g push -q origin --delete "$br" 2>/dev/null || true; g worktree prune
+      (( ${#pending[@]} )) && echo "note: ${pending[*]} left uncommitted in the main checkout; commit them with 'record'" >&2
       echo "approved: $id was already on $main ($(g log --oneline -1)); cleaned up"; exit 0
     fi
     # 3. squash into main
@@ -438,6 +590,7 @@ case "$cmd" in
       g reset -q --hard HEAD
       die 6 "the squash of $br into $main is empty (the task only changed files main owns, or nothing at all); main restored. Reject the task, or record the shared-file changes on main with 'record'."
     fi
+    for f in ${pending[@]+"${pending[@]}"}; do cp "$pending_dir/$f" "$repo/$f"; g add -- "$f"; done
     # the Task: trailer lets `undo` find exactly this commit later (autopilot approvals)
     g commit -q -m "$msg" -m "Task: $id" || { g reset -q --hard HEAD; die 6 "commit on $main failed; main restored"; }
     # 4. push. If origin moved in the meantime, a rebased commit would reach main untested:
@@ -446,7 +599,7 @@ case "$cmd" in
     if ! push_branch "$repo" "$main"; then
       g fetch -q origin "$main" 2>/dev/null
       if [[ -n "$(g rev-list "$main..origin/$main" 2>/dev/null)" && "${TASKGIT_APPROVE_RETRY:-0}" != 1 ]]; then
-        g reset -q --hard HEAD~1
+        g reset -q --hard HEAD~1; restore_pending
         echo "note: origin/$main moved during approve; re-syncing $id with it and re-running the checks" >&2
         TASKGIT_APPROVE_RETRY=1 exec bash "$0" approve "$repo" "$id" "$msg"
       fi
@@ -458,6 +611,11 @@ case "$cmd" in
     g push -q origin --delete "$br" 2>/dev/null || true
     g worktree prune
     echo "approved: $(g log --oneline -1)"
+    tasks_updated=0; for f in ${pending[@]+"${pending[@]}"}; do [[ "$f" == TASKS.md ]] && tasks_updated=1; done
+    if [[ "$id" == T-* || "$id" == FIX-* ]] && (( ! tasks_updated )); then
+      echo "note: TASKS.md wasn't updated before this approve, so $id's status and Result line aren't in its commit. Update them in the main checkout before the next approve (it commits them), or run 'record' now." >&2
+    fi
+    case "$PWD/" in "$wt"/*) echo "note: your shell was inside the worktree this approve removed; cd to $(dirname "$repo") (run taskgit from there)" >&2 ;; esac
     ;;
 
   record)
@@ -501,9 +659,18 @@ case "$cmd" in
       die 1 "$id was already undone on $main"
     fi
     if ! g revert --no-commit "$sha" >/dev/null 2>&1; then
-      g revert --abort 2>/dev/null; g reset -q --hard HEAD 2>/dev/null
-      die 4 "can't undo $id cleanly: later approved work changed the same lines. Nothing changed. Undo the later task first, or make the change as a new task."
+      # a conflict only in the shared files is no conflict: they stay as they are (below)
+      conflicted=$(g -c core.quotepath=off diff --name-only --diff-filter=U)
+      only_shared=1
+      while IFS= read -r f; do [[ -z "$f" ]] || is_shared "$f" || only_shared=0; done <<<"$conflicted"
+      if [[ -z "$conflicted" || $only_shared == 0 ]]; then
+        g revert --abort 2>/dev/null; g reset -q --hard HEAD 2>/dev/null
+        die 4 "can't undo $id cleanly: later approved work changed the same lines. Nothing changed. Undo the later task first, or make the change as a new task."
+      fi
     fi
+    # The squash commit also holds that approval's TASKS/STATE/DECISIONS updates; those stay as
+    # they are (the Orchestrator records the undo there itself), so later records don't conflict.
+    for f in "${SHARED[@]}"; do g cat-file -e "HEAD:$f" 2>/dev/null && g checkout -q HEAD -- "$f"; done
     g commit -q -m "Revert \"$(g log -n 1 --format=%s "$sha")\"" -m "This reverts commit $sha." -m "Undone: $id" \
       || { g reset -q --hard HEAD; die 6 "the revert commit for $id failed; main restored"; }
     log_time "undone"
@@ -519,6 +686,113 @@ case "$cmd" in
     g branch -q -D "$br" 2>/dev/null || true
     g push -q origin --delete "$br" 2>/dev/null || true
     echo "rejected: removed $br"
+    ;;
+
+  docrefs)
+    # Handover doc check, instead of a reviewer reading every doc: each `path` and `function()` that
+    # README.md, OWNER.md, docs/ARCHITECTURE.md or docs/WALKTHROUGH.md names in backticks must exist
+    # in the worktree (paths) or in its tracked files (functions). Prints what's missing; exit 11.
+    id=${3:?id}; ensure_wt
+    git -C "$wt" ls-files > "$(gw rev-parse --absolute-git-dir)/devteam-files" 2>/dev/null || true
+    PYTHONIOENCODING=utf-8 python3 - "$wt" "$(gw rev-parse --absolute-git-dir)/devteam-files" <<'PY'
+import re, sys
+from pathlib import Path
+wt, listing = Path(sys.argv[1]), Path(sys.argv[2])
+tracked = [wt / p for p in listing.read_text(encoding="utf-8").split("\n") if p] if listing.exists() else []
+docs = [d for d in ("README.md", "OWNER.md", "docs/ARCHITECTURE.md", "docs/WALKTHROUGH.md") if (wt / d).is_file()]
+corpus = None
+missing = []
+for doc in docs:
+    for n, line in enumerate((wt / doc).read_text(encoding="utf-8").splitlines(), 1):
+        for tok in re.findall(r"`([^`\n]+)`", line):
+            tok = tok.strip()
+            if any(c in tok for c in " <>*{}$") or "://" in tok or tok.startswith(("-", "/", "~")):
+                continue
+            fn = re.fullmatch(r"(?:[\w.]+\.)?([A-Za-z_]\w*)\(\)", tok)
+            if fn:
+                if corpus is None:
+                    corpus = "\n".join(p.read_text(encoding="utf-8", errors="ignore") for p in tracked
+                                       if p.is_file() and p.suffix not in (".md", ".png", ".jpg", ".gif", ".lock"))
+                if not re.search(rf"\b{re.escape(fn.group(1))}\b", corpus):
+                    missing.append(f"{doc}:{n}: function {tok} isn't in the code")
+                continue
+            path = re.sub(r"(:\d+(-\d+)?|#[\w-]+)$", "", tok)
+            if ("/" in path or re.search(r"\.[A-Za-z]{1,5}$", path)) and not re.fullmatch(r"[\d.]+", path):
+                if not (wt / path).exists():
+                    missing.append(f"{doc}:{n}: path {path} doesn't exist")
+print("\n".join(missing) if missing else f"docrefs: every path and function named in {len(docs)} docs exists")
+sys.exit(11 if missing else 0)
+PY
+    exit $?
+    ;;
+
+  lint)
+    # Handover lint: what a fresh clone trips over and no test sees, and the handover steps that
+    # must have happened. Prints one line per finding; exit 10 when there are any, 0 when clean.
+    # Project files are read from the handover worktree when an id is given (lint <repo> handover),
+    # else from the main checkout; STATE.md always from the main checkout, which owns it.
+    lint_hits=(); src="$repo"
+    if [[ -n "${3:-}" ]]; then id=$3; ensure_wt; src="$wt"; fi
+    # 1. scripts and hooks committed without the executable bit (a fresh clone can't run them)
+    while IFS=$'\t' read -r meta path; do
+      [[ "${meta%% *}" == 100644 ]] || continue
+      case "$path" in
+        *.sh) ;;
+        scripts/*|hooks/*|bin/*|.githooks/*) [[ "$(head -c 2 "$src/$path" 2>/dev/null)" == '#!' ]] || continue ;;
+        *) continue ;;
+      esac
+      lint_hits+=("not executable: $path (fix: git update-index --chmod=+x '$path')")
+    done < <(git -C "$src" -c core.quotepath=off ls-files -s)
+    # 2. the handover's own deliverables: the owner's page, and a production gate with nothing open
+    [[ -f "$src/OWNER.md" ]] || lint_hits+=("OWNER.md is missing (the docs agent writes it from templates/OWNER.md)")
+    if [[ ! -f "$src/docs/PRODUCTION.md" ]]; then
+      lint_hits+=("docs/PRODUCTION.md is missing (the planner copies it from templates/PRODUCTION.md at stage 6)")
+    else
+      while IFS= read -r item; do lint_hits+=("production gate item still open: $item (build it or have the owner waive it)"); done \
+        < <(awk -F'|' '/^\| *G-/ { s = $(NF-1); a = $2; b = $3; gsub(/^ +| +$/, "", s); gsub(/^ +| +$/, "", a); gsub(/^ +| +$/, "", b); if (s == "Open") print a " " b }' "$src/docs/PRODUCTION.md")
+    fi
+    # 3. known minors: each sized in minutes; ≈5 min or less must have been fixed at handover
+    if [[ -f "$repo/STATE.md" ]]; then
+      while IFS=$'\t' read -r kind size where; do
+        case "$kind" in
+          small) lint_hits+=("known minor small enough to fix now (≈$size min): $where") ;;
+          unsized) lint_hits+=("known minor not sized in minutes ('$size'): $where") ;;
+        esac
+      done < <(awk -F'|' '
+        /^## Known minors/ { on = 1; next }  /^## / { on = 0 }
+        on && /^\|/ && NF >= 6 {
+          t = $2; w = $3; z = $(NF-1); gsub(/^ +| +$/, "", t); gsub(/^ +| +$/, "", w); gsub(/^ +| +$/, "", z)
+          if (t == "Task" || t ~ /^-+$/ || t == "") next
+          n = z; sub(/^≈ */, "", n)
+          if (n ~ /^[0-9]+ *min/) { sub(/ *min.*/, "", n); if (n + 0 <= 5) printf "small\t%s\t%s %s\n", n, t, w }
+          else printf "unsized\t%s\t%s %s\n", z, t, w
+        }' "$repo/STATE.md")
+    fi
+    # 4. template leftovers in STATE.md: placeholders, and run commands for a stack the repo doesn't use
+    if [[ -f "$repo/STATE.md" ]]; then
+      while IFS= read -r hit; do lint_hits+=("template placeholder left in STATE.md line ${hit%%:*}: ${hit#*:}"); done \
+        < <(grep -n '{{' "$repo/STATE.md" || true)
+      if [[ ! -f "$repo/pyproject.toml" && ! -f "$repo/uv.lock" ]]; then
+        while IFS= read -r hit; do lint_hits+=("STATE.md line ${hit%%:*} runs uv, but the repo has no pyproject.toml: ${hit#*:}"); done \
+          < <(grep -nE '^[[:space:]]*uv ' "$repo/STATE.md" || true)
+      fi
+      if [[ ! -f "$repo/package.json" ]]; then
+        while IFS= read -r hit; do lint_hits+=("STATE.md line ${hit%%:*} runs npm, but the repo has no package.json: ${hit#*:}"); done \
+          < <(grep -nE '^[[:space:]]*npm ' "$repo/STATE.md" || true)
+      fi
+    fi
+    # 5. wip/* branches whose work is already on main (approved, or nothing left to merge)
+    g fetch -q --prune origin 2>/dev/null || true
+    while IFS= read -r ref; do
+      [[ -z "$ref" ]] && continue
+      bid=${ref#origin/wip/}
+      if g merge-base --is-ancestor "$ref" "origin/$main" 2>/dev/null \
+         || [[ -n "$(g log -n 1 --format=%H --grep="^Task: $bid\$" "origin/$main" 2>/dev/null)" ]]; then
+        lint_hits+=("merged branch still open: wip/$bid (ask the owner, then: git push origin --delete wip/$bid)")
+      fi
+    done < <(g for-each-ref --format='%(refname:short)' 'refs/remotes/origin/wip/')
+    if (( ${#lint_hits[@]} )); then printf "lint: %s\\n" "${lint_hits[@]}"; exit 10; fi
+    echo "lint: clean"
     ;;
 
   list)

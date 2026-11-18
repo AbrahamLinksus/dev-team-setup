@@ -18,7 +18,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        # ubuntu-24.04, not -latest: ubuntu-latest moved to 26.04, which has no Python 3.9 (the
+        # minimum this plugin supports, macOS's stock python3), so its 3.9 job failed at setup
+        os: [ubuntu-24.04, macos-latest]
         python: ["3.9", "3.13"]
     runs-on: ${{ matrix.os }}
     steps:
@@ -27,7 +29,7 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - name: Install test dependencies
-        run: python -m pip install pyyaml
+        run: python -m pip install pyyaml pillow
       - name: Plugin structure, agents, capture and scope guard
         run: python -m unittest discover -s tests -v
       - name: taskgit scenarios
@@ -64,7 +66,7 @@ jobs:
           chmod +x "$HOME/bin/python3"
           echo "$HOME/bin" >> "$GITHUB_PATH"
       - name: Install test dependencies
-        run: python -m pip install pyyaml
+        run: python -m pip install pyyaml pillow
       - name: Line endings stayed LF in the checkout
         run: "! grep -l $'\\r' hooks/scope_guard.sh skills/setup-project/scripts/taskgit.sh"
       - name: The hook runs through Git Bash and blocks out-of-scope writes

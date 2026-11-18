@@ -12,6 +12,9 @@ The single source of these rules. Every agent reads this file before starting.
 
 ## Scope is enforced
 - Each role may only change certain paths and run certain shell commands (`skills/setup-project/scopes.json`, plus the project's `.devteam/scopes.json`). A hook blocks out-of-scope writes and commands, and after every step the Orchestrator reverts any out-of-scope file changes. If a block stops you from finishing, report it under Issues; don't try to work around it.
+- Your task's `Files:` in TASKS.md is its **claim**. A file another running task claims, or a
+  shared file the foundation froze, is blocked for you. Don't work around it: finish what you can
+  and put `Needs file: <path> (why)` under Issues.
 - No git write commands (the Orchestrator and git-pr own history). No package installs except env-setup with an approved plan.
 
 ## Decisions
@@ -19,7 +22,7 @@ The single source of these rules. Every agent reads this file before starting.
 - **Tier 2 = you decide and log it.** Names, internal refactors that keep the agreed interfaces, test layout, formatting. List each under "Agent decisions".
 
 ## Quality
-- Follow `docs/CONVENTIONS.md` (layering, SOLID rules, limits). Code you write must keep `CHECK_NO_COVERAGE=1 scripts/check.sh` passing: lint, types, complexity, layers and the existing tests. The coverage threshold belongs to the Tester, the only role that runs plain `scripts/check.sh` and writes tests.
+- Follow `docs/CONVENTIONS.md` (layering, SOLID rules, limits). Code you write must keep `CHECK_NO_COVERAGE=1 scripts/check.sh` passing: lint, types, complexity, layers and the existing tests. The coverage threshold belongs to the Tester, the only role that runs plain `scripts/check.sh` and writes tests, except when your brief says `Tests: yours`: then you write the tests to the Tester's standard (one per acceptance criterion and per error path the task adds, an end-to-end test for each criterion tagged `(S-xx)`, no tests of the framework, and the task's **Try this** steps in `.results/<task-id>/try-this.md` like the Tester's) and run plain `scripts/check.sh` until it passes, coverage included. Never weaken or delete an existing test to get there; report it under Issues instead.
 - Never write secrets into tracked files; use `.env` (git-ignored) and document keys in `.env.example`.
 - Produce visual evidence with the capture script (path in your brief as `CAPTURE`) into `.results/<task-id>/`. Prefer screenshots; then chart → diagram → rendered table.
 - Never leave servers or background processes running when you finish. Start anything that runs in the
@@ -57,7 +60,8 @@ Full report: <path> | none
 If it would exceed 12 lines, keep one line per goal and summarise the rest as
 "Agent decisions: <n>, see full report" / "Issues: <n>, see full report".
 
-Or, when you hit a Tier 1 decision, return this instead (unchanged):
+Or, when you hit a Tier 1 decision, return this instead (the owner may not write code, so
+`For the owner` and `If wrong` use no package or tool names):
 
 ```
 DECISION NEEDED
@@ -66,6 +70,8 @@ Options:
   A) <option> — <trade-off>
   B) <option> — <trade-off>
 Recommended: <A/B> because <reason>
+For the owner: <what the recommended option means for them, in plain words>
+If wrong: <what it costs to change later: an hour, a rework of T-xx, data lost…>
 Affects: <files / tasks / cost>
 ```
 
@@ -82,7 +88,8 @@ or, when every checklist row is answered:
 SPEC COMPLETE
 Assumptions: <list of (assumed) lines>
 Screens: <list> (or "no UI")
-Size: <small|medium|large> · ≈<n> tasks · <one-line reason>
+Size: <small|medium|large> · signals: <the risk signals present, or none> · <n> stories
 ```
-Every other step, the planner returns a REPORT or DECISION NEEDED like everyone else. These
-three are the only formats the Orchestrator accepts.
+Every other step, the planner returns a REPORT or DECISION NEEDED like everyone else.
+**The task-runner** returns `TASK READY`, `DECISION NEEDED`, `NEEDS FILE`, `BLOCKED` or
+`NO NESTING` (layouts in `task-run.md`). These are the only formats the Orchestrator accepts.

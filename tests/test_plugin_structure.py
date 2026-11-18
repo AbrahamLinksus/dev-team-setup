@@ -18,7 +18,7 @@ SKILL = ROOT / "skills" / "setup-project"
 # D11: SKILL.md is a core; each stage's instructions live in references/stage-*.md and are read
 # when the stage starts. Content checks look at the core plus every stage file.
 STAGE_FILES = ("stage-0-intake.md", "stage-1-6-planning.md", "stage-7-build.md", "stage-8-handover.md",
-               "anytime.md", "resume.md")
+               "anytime.md", "resume.md", "maintenance.md")
 
 
 def skill_text() -> str:
@@ -28,7 +28,7 @@ def skill_text() -> str:
 
 AGENTS = sorted((ROOT / "agents").glob("*.md"))
 KNOWN_TOOLS = {"Read", "Write", "Edit", "Bash", "Grep", "Glob", "WebSearch", "WebFetch",
-               "TaskCreate", "NotebookEdit"}
+               "TaskCreate", "NotebookEdit", "Agent"}
 
 
 def frontmatter(path: Path) -> dict:
@@ -66,7 +66,7 @@ class StructureTest(unittest.TestCase):
         self.assertIn("scope_guard.py", (ROOT / "hooks" / "scope_guard.sh").read_text())
 
     def test_agents_frontmatter(self):
-        self.assertEqual(len(AGENTS), 26)
+        self.assertEqual(len(AGENTS), 28)
         for path in AGENTS:
             with self.subTest(agent=path.name):
                 fm = frontmatter(path)
@@ -93,7 +93,7 @@ class StructureTest(unittest.TestCase):
         self.assertEqual(names, set(scopes["agents"]))
         for name, spec in scopes["agents"].items():
             with self.subTest(agent=name):
-                self.assertIn(spec.get("bash", "none"), {"none", "readonly", "code", "full", "git"})
+                self.assertIn(spec.get("bash", "none"), {"none", "readonly", "code", "full", "git", "runner"})
                 for g in spec.get("write", []) + spec.get("deny", []):
                     if g.startswith("@"):
                         self.assertIn(g[1:], scopes["groups"])
@@ -354,7 +354,7 @@ class StructureTest(unittest.TestCase):
         self.assertIn("Paused", (SKILL / "templates" / "STATE.md").read_text(encoding="utf-8"))
 
     def test_agent_descriptions_are_short(self):
-        # K23: all 26 descriptions are loaded into every session, even ones that never use the plugin
+        # K23: all agent descriptions are loaded into every session, even ones that never use the plugin
         total = sum(len(frontmatter(p)["description"]) for p in AGENTS)
         self.assertLess(total, 3500, f"agent descriptions total {total} characters")
 
@@ -473,11 +473,14 @@ class StructureTest(unittest.TestCase):
                         "always-on text grew; shorten SHORT descriptions in tools/gen_agents.py")
 
     def test_long_sessions_are_cut_between_tasks(self):
-        # D15 (H1): the Orchestrator's own context is the biggest cost on long builds; subagents
-        # can't spawn subagents, so it is cut by fresh sessions, not by a task-runner agent.
+        # D15 (H1): the Orchestrator's own context is the biggest cost on long builds. Subagents can
+        # now start subagents (up to 3 levels), so a task-runner per task keeps it small and the
+        # project stays in one session; fresh sessions remain only when nesting is off.
         build = (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8")
         self.assertIn("**Long session check (between tasks).**", build)
         self.assertIn("6 or more tasks", build)
+        self.assertIn("type `/compact`", build)
+        self.assertIn("no new chat", build)
         self.assertIn("SESSION DONE", (SKILL / "references" / "unattended.md").read_text(encoding="utf-8"))
 
     def test_tester_and_reviewer_run_in_parallel(self):
@@ -525,6 +528,12 @@ class StructureTest(unittest.TestCase):
         self.assertEqual(lines[0]["content"], "⏳ tester · T-04 · test · 1m15s · 41k tok · 21% ctx")
         self.assertTrue(lines[1]["content"].startswith("✅ reviewer · T-04 · review"))
         self.assertLessEqual(len(lines[1]["content"]), 60)
+        # B-37: a step running 20 minutes or more is marked on its row
+        slow = {"columns": 80, "tasks": [{"id": "s", "agentType": "dev-team-setup:backend-coder", "status": "running",
+                                          "description": "T-19 · implement", "startTime": now_ms - 21 * 60000}]}
+        out = subprocess.run([sys.executable, str(ROOT / "hooks" / "subagent_status.py")], input=json.dumps(slow),
+                             capture_output=True, text=True, encoding="utf-8").stdout
+        self.assertTrue(json.loads(out)["content"].startswith("⚠️ stalled? backend-coder · T-19 · implement · 21m"))
         bad = subprocess.run([sys.executable, str(ROOT / "hooks" / "subagent_status.py")], input="not json",
                              capture_output=True, text=True)
         self.assertEqual((bad.returncode, bad.stdout), (0, ""))
@@ -554,6 +563,210 @@ class StructureTest(unittest.TestCase):
         for term in ("| spec |", "| HLD |", "| LLD |", "| worktree |", "| Tier 1 |"):
             self.assertIn(term, card)
         self.assertIn("**Why we're asking:**", (SKILL / "references" / "decision-policy.md").read_text(encoding="utf-8"))
+
+    def test_owner_mode_is_asked_once_and_sets_card_wording(self):
+        # B-01: cards were written for a developer whoever the owner was
+        intake = (SKILL / "references" / "stage-0-intake.md").read_text(encoding="utf-8")
+        self.assertIn('**"Do you write code?"**', intake)
+        self.assertIn("Record `Owner mode: builder|developer` in STATE.md", intake)
+        self.assertIn("Both get every\n   Tier 1 decision", intake)
+        self.assertIn("| Owner mode |", (SKILL / "templates" / "STATE.md").read_text(encoding="utf-8"))
+        self.assertIn('"Owner mode" for every card', (SKILL / "references" / "resume.md").read_text(encoding="utf-8"))
+        self.assertIn("`Technical detail: …`", (SKILL / "references" / "result-card.md").read_text(encoding="utf-8"))
+
+    def test_every_decision_card_says_what_it_means_and_what_if_wrong(self):
+        # B-02: decision cards named packages and stopped; a non-coder couldn't weigh them
+        for f in ("team-rules.md", "decision-policy.md"):
+            text = (SKILL / "references" / f).read_text(encoding="utf-8")
+            self.assertIn("For the owner: <what the recommended option means for them, in plain words>", text)
+            self.assertIn("If wrong: <what it costs to change later", text)
+        policy = (SKILL / "references" / "decision-policy.md").read_text(encoding="utf-8")
+        self.assertIn("**What this means for you:**", policy)
+        self.assertIn("**If this is wrong:**", policy)
+        self.assertIn("Means for you · if wrong", (SKILL / "templates" / "DECISIONS.md").read_text(encoding="utf-8"))
+        self.assertIn("what changing it later costs", (ROOT / "agents" / "architect.md").read_text(encoding="utf-8"))
+
+    def test_forced_tooling_choices_come_as_one_toolkit_card(self):
+        # B-03: a medium app asked the owner about ruff, mypy and pytest one card at a time
+        planning = (SKILL / "references" / "stage-1-6-planning.md").read_text(encoding="utf-8")
+        self.assertIn("**Standard toolkit card** (medium and large projects in builder mode", planning)
+        self.assertIn("**Approve toolkit** / **Show me each**", planning)
+        self.assertIn("keep their own cards:\n   Tier 1 still reaches the owner", planning)
+        self.assertIn("`toolkit` for a forced dev-tooling choice", (ROOT / "agents" / "architect.md").read_text(encoding="utf-8"))
+
+    def test_spec_critic_checks_the_spec_before_its_card(self):
+        # B-05: Recipe Box's spec missed range amounts, ⅓ rounding and backups; nobody used it first
+        critic = (ROOT / "agents" / "product-critic.md").read_text(encoding="utf-8")
+        self.assertIn("**8–15 realistic usage scenarios**", critic)
+        self.assertIn("`GAPS: <n> (high <h>, medium <m>, low <l>) · scenarios <s>`", critic)
+        self.assertIn("never implementation", critic)
+        self.assertEqual(frontmatter(ROOT / "agents" / "product-critic.md")["tools"], ["Read", "Write", "Glob"])
+        interview = (SKILL / "references" / "spec-interview.md").read_text(encoding="utf-8")
+        self.assertIn("product-critic (scenarios + gaps) → wireframes (UI projects) → spec card", interview)
+        self.assertIn("**High gaps** become questions", interview)
+        self.assertIn("it doesn't count toward the 6", interview)
+        self.assertIn("planner, product-critic,", (SKILL / "SKILL.md").read_text(encoding="utf-8"))
+
+    def test_data_safety_is_always_asked(self):
+        # B-06: Recipe Box shipped with no backup and nobody had decided that
+        interview = (SKILL / "references" / "spec-interview.md").read_text(encoding="utf-8")
+        self.assertIn("| Data safety | Backup, second device, what a wipe loses, and undo each answered **by the owner**", interview)
+        self.assertIn("never offer \"Decide for me\"", interview)
+        self.assertIn("the card states its consequence in one line", interview)
+        self.assertIn("## 13. Data safety", (SKILL / "templates" / "SPEC.md").read_text(encoding="utf-8"))
+
+    def test_scenarios_become_criteria_and_end_to_end_tests(self):
+        # B-07: the critic's scenarios only help if the build proves them
+        planner = (ROOT / "agents" / "planner.md").read_text(encoding="utf-8")
+        self.assertIn("becomes at least one acceptance criterion on the task that builds that flow, tagged with its ID", planner)
+        self.assertIn("**end-to-end test that plays that scenario**", (ROOT / "agents" / "tester.md").read_text(encoding="utf-8"))
+        self.assertIn("an end-to-end test for each criterion tagged `(S-xx)`", (SKILL / "references" / "team-rules.md").read_text(encoding="utf-8"))
+        self.assertIn("`Scenarios covered: <n>/<n>`", (SKILL / "references" / "stage-1-6-planning.md").read_text(encoding="utf-8"))
+        self.assertIn("numbered `S-01`", (ROOT / "agents" / "product-critic.md").read_text(encoding="utf-8"))
+
+    def test_production_checklist_per_project_type(self):
+        # B-09: "production-ready" meant whatever the last reviewer remembered
+        prod = (SKILL / "templates" / "PRODUCTION.md").read_text(encoding="utf-8")
+        for section in ("## All projects", "## Local app", "## Web app", "## API", "## AI/ML service"):
+            self.assertIn(section, prod)
+        rows = [ln for ln in prod.splitlines() if re.match(r"\| G-", ln)]
+        self.assertGreaterEqual(len(rows), 20)
+        for row in rows:
+            cells = [c.strip() for c in row.strip("|").split("|")]
+            with self.subTest(item=cells[0]):
+                self.assertEqual(len(cells), 5)
+                self.assertTrue(cells[2], "every item says how it is proven")
+                self.assertEqual(cells[4], "Open")
+        self.assertEqual(len({r.split("|")[1] for r in rows}), len(rows), "item IDs are unique")
+        self.assertIn("## Production gate (who proves what)", (SKILL / "references" / "agent-catalog.md").read_text(encoding="utf-8"))
+
+    def test_gate_items_are_criteria_and_block_the_handover(self):
+        # B-10: gate items are built inside the slices; B-11: an open item blocks Approve
+        planner = (ROOT / "agents" / "planner.md").read_text(encoding="utf-8")
+        self.assertIn("**Production gate** (with the task list)", planner)
+        self.assertIn("tagged `(G-03)`", planner)
+        self.assertIn("those count toward the task cap", planner)
+        scopes = json.loads((SKILL / "scopes.json").read_text(encoding="utf-8"))
+        self.assertIn("docs/PRODUCTION.md", scopes["agents"]["planner"]["write"])
+        self.assertIn("`Production gate: <n> items, <n> N/A`", (SKILL / "references" / "stage-1-6-planning.md").read_text(encoding="utf-8"))
+        handover = (SKILL / "references" / "stage-8-handover.md").read_text(encoding="utf-8")
+        self.assertIn("**Approve is offered only\nwhen no gate item is Open**", handover)
+        self.assertIn("**Build it**", handover)
+        self.assertIn("**Waive it** (a\nTier 1 decision: the card states the consequence", handover)
+        self.assertIn("Production gate · 11 items", (SKILL / "references" / "result-card.md").read_text(encoding="utf-8"))
+
+    def test_cards_say_how_to_try_the_task(self):
+        # B-13: owners approved cards they had read but never tried
+        tester = (ROOT / "agents" / "tester.md").read_text(encoding="utf-8")
+        self.assertIn("Write **Try this** to `.results/<task-id>/try-this.md`", tester)
+        self.assertIn("never a test command", tester)
+        self.assertIn("the task's **Try this** steps", (SKILL / "references" / "team-rules.md").read_text(encoding="utf-8"))
+        card = (SKILL / "references" / "result-card.md").read_text(encoding="utf-8")
+        self.assertIn("Try this (≈2 min):", card)
+        self.assertIn("approves by using, not by reading", card)
+
+    def test_phone_preview_is_opt_in_and_bounded(self):
+        # B-14: the owner should try a milestone on their phone, not only see screenshots
+        vc = (SKILL / "references" / "visual-capture.md").read_text(encoding="utf-8")
+        self.assertIn("## Phone preview (milestone end, opt-in)", vc)
+        self.assertIn("**opt-in and Tier 1**", vc)
+        self.assertIn("`timeout 1800 bash deploy/preview.sh`", vc)
+        self.assertIn("**Private first:**", vc)
+        self.assertIn("A public preview link (tunnel)", (SKILL / "references" / "decision-policy.md").read_text(encoding="utf-8"))
+        devops = (ROOT / "agents" / "devops.md").read_text(encoding="utf-8")
+        self.assertIn("**Phone preview** (only when the brief says the owner opted in)", devops)
+        scopes = json.loads((SKILL / "scopes.json").read_text(encoding="utf-8"))
+        self.assertIn("deploy/**", scopes["agents"]["devops"]["write"])
+        self.assertIn("the **phone preview** if the owner opted in", (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8"))
+
+    def test_cost_by_role_and_rework_reach_tasks_and_milestone_cards(self):
+        # B-17, B-18
+        build = (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8")
+        self.assertIn("--task T-xx --result", build)
+        self.assertIn("**rework flag**", build)
+        self.assertIn("--rework <the milestone's task IDs>", build)
+        self.assertIn("cost.py --result", (SKILL / "templates" / "TASKS.md").read_text(encoding="utf-8"))
+
+    def test_handover_delivers_a_one_screen_owner_page(self):
+        # B-19: the README is for developers; the owner needs one page they can keep
+        owner = (SKILL / "templates" / "OWNER.md").read_text(encoding="utf-8")
+        self.assertLessEqual(len(owner.splitlines()), 25)
+        for part in ("What it does", "How to start it", "What it can't do", "What could lose your data",
+                     "If something goes wrong", "What it costs to run"):
+            self.assertIn(part, owner)
+        self.assertIn("**OWNER.md** (handover)", (ROOT / "agents" / "docs.md").read_text(encoding="utf-8"))
+        self.assertIn("`OWNER.md` (one screen for the owner", (SKILL / "references" / "stage-8-handover.md").read_text(encoding="utf-8"))
+
+    def test_small_minors_are_fixed_not_listed_at_handover(self):
+        # B-21: Recipe Box handed over with a list of 5-minute "known minors" nobody fixed
+        handover = (SKILL / "references" / "stage-8-handover.md").read_text(encoding="utf-8")
+        self.assertIn("0. **Fix, don't list.**", handover)
+        self.assertIn("sized ≈5 min or less is fixed now", handover)
+        self.assertIn("The handover never ships an unwaived \"known minor\"", handover)
+        self.assertIn("## Known minors", (SKILL / "templates" / "STATE.md").read_text(encoding="utf-8"))
+        self.assertIn("`(≈2 min)`", (ROOT / "agents" / "reviewer.md").read_text(encoding="utf-8"))
+        self.assertIn('added to STATE.md "Known minors"', (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8"))
+
+    def test_models_stay_the_catalogs_and_frozen_code_stays_narrow(self):
+        # habit-test run: the frontend-coder ran on Opus with no decision recorded; Frozen covered
+        # src/ui/** so feature tasks T-02 and T-08 had to claim frozen code
+        planning = (SKILL / "references" / "stage-1-6-planning.md").read_text(encoding="utf-8")
+        self.assertIn("**Models are the catalog's**", planning)
+        self.assertIn("record the owner's answer in DECISIONS.md", planning)
+        self.assertIn("**A feature task claiming frozen code is never accepted**", planning)
+        planner = (ROOT / "agents" / "planner.md").read_text(encoding="utf-8")
+        self.assertIn("never a whole layer that feature code lives in (`src/ui/**`)", planner)
+        self.assertIn("is built by the foundation, not by a feature task", planner)
+
+    def test_handover_doc_check_is_a_script(self):
+        # habit-test run: the handover was ~590k of the session's ~1.02M agent tokens; an Opus
+        # reviewer reading every doc (76k) only checked that names exist
+        handover = (SKILL / "references" / "stage-8-handover.md").read_text(encoding="utf-8")
+        self.assertIn("**Doc check, a script, not an agent:** `$TASKGIT docrefs <repo> handover`", handover)
+        self.assertNotIn("checks that every path and function named in the three docs exists", handover)
+        self.assertIn("start from the as-built `docs/LLD.md`", (ROOT / "agents" / "architect.md").read_text(encoding="utf-8"))
+        self.assertIn("Handover documents (the architect's ARCHITECTURE.md and WALKTHROUGH.md) on `model: \"sonnet\"`",
+                      (SKILL / "references" / "approval-modes.md").read_text(encoding="utf-8"))
+
+    def test_handover_lint_runs_before_the_card(self):
+        # B-22: a hook without +x and a 'uv sync' leftover in STATE.md reached the Recipe Box handover
+        handover = (SKILL / "references" / "stage-8-handover.md").read_text(encoding="utf-8")
+        self.assertIn("**Handover lint, last, right before the card.** `$TASKGIT lint <repo> handover`", handover)
+        # home-cookbook run: handed over with no OWNER.md, no production gate and 44 unfixed minors
+        self.assertIn("and the lint reports nothing but merged branches", handover)
+        self.assertLess(handover.index("5. **Production gate.**"), handover.index("6. **Handover lint"))
+        self.assertIn("**Delete them (Recommended)** / Keep", handover)
+        self.assertIn("  lint)", (SKILL / "scripts" / "taskgit.sh").read_text(encoding="utf-8"))
+
+    def test_ci_proves_the_readme_claims(self):
+        # B-23: a README said "Python 3.9+" and CI only ever ran 3.12
+        devops = (ROOT / "agents" / "devops.md").read_text(encoding="utf-8")
+        self.assertIn("**CI proves the README's claims**", devops)
+        self.assertIn("the **minimum** stated version plus the latest", devops)
+        self.assertIn('`requires-python = ">=3.11"`', (ROOT / "agents" / "env-setup.md").read_text(encoding="utf-8"))
+        self.assertIn("every README claim (OS, versions) has a matching CI job",
+                      " ".join((SKILL / "references" / "stage-8-handover.md").read_text(encoding="utf-8").split()))
+
+    def test_fixes_after_handover_reproduce_first(self):
+        # B-24: a bug report in plain words ends in a test that failed, a fix, and a card
+        m = (SKILL / "references" / "maintenance.md").read_text(encoding="utf-8")
+        fix = m[m.index("## `/setup-project fix"):m.index("## New feature")]
+        self.assertIn("**Reproduce first: tester.**", fix)
+        self.assertIn("**fails because of the bug**", fix)
+        self.assertLess(fix.index("Reproduce first"), fix.index("**Fix: debugger.**"))
+        self.assertIn("can't reproduce it → no code\n   changes", fix)
+        self.assertIn("`fix(<module>): <what> [FIX-<n>]`", fix)
+        self.assertIn("it's a feature", fix)
+        self.assertIn("`/setup-project fix <bug>` or `add <feature>`", (SKILL / "SKILL.md").read_text(encoding="utf-8"))
+
+    def test_features_after_handover_reuse_the_change_request_flow(self):
+        # B-25: a new feature on a finished project is a CR with its own size and a short handover
+        m = (SKILL / "references" / "maintenance.md").read_text(encoding="utf-8")
+        new = m[m.index("## New feature"):]
+        self.assertIn("Reuse the change-request\nflow (`change-requests.md`)", new)
+        self.assertIn("**fresh size estimate for the change alone**", new)
+        self.assertIn("short **handover**", new)
+        self.assertIn("Status: Active", new)
 
     def test_resume_shows_where_we_are(self):
         # D27: a resumed project opens with a one-screen summary, not one line
@@ -591,21 +804,170 @@ class StructureTest(unittest.TestCase):
 
     def test_project_size_is_set_at_the_spec_and_recorded(self):
         # O3: run B gave a 5-task app the process of a large one; the size decides how much it gets
-        size = "Size: <small|medium|large> · ≈<n> tasks · <one-line reason>"
+        # B-29: a guessed task count sized Recipe Box as medium; risk signals are in the spec itself
+        size = "Size: <small|medium|large> · signals: <the risk signals present, or none> · <n> stories"
         for f in ("spec-interview.md", "team-rules.md"):
             self.assertIn(size, (SKILL / "references" / f).read_text(encoding="utf-8"))
         planner = (ROOT / "agents" / "planner.md").read_text(encoding="utf-8")
-        self.assertIn("**small** ≤6 tasks, **medium** 7–20, **large** more than 20", planner)
+        self.assertIn("never by a task count", planner)
+        signals = "backend, auth, database, multi-user, external services/payments, AI/ML, deployment"
+        self.assertIn(signals, planner)
+        self.assertIn("**0–1 signals = small, 2–3 = medium, 4+ = large**", planner)
+        self.assertIn("more than 15 user stories bumps it up one size", planner)
+        # home-cookbook run: a home-only server, SQLite and "at home" counted as backend, database
+        # and deployment, so Recipe Box sized medium (3 milestones, ~$70); they carry no such risk
+        for not_a_signal in ("an app serving its own pages on this computer or the home network is not one",
+                             "SQLite or files inside the app are not", "running at home is not"):
+            self.assertIn(not_a_signal, planner)
         planning = (SKILL / "references" / "stage-1-6-planning.md").read_text(encoding="utf-8")
+        self.assertIn(signals, " ".join(planning.split()))
         self.assertIn("**Project size.**", planning)
         self.assertIn("High-risk tasks always get the full team", planning)
-        self.assertIn('update STATE.md "Size"', planning)
+        self.assertNotIn("update it from the real task count", planning)
         self.assertIn("| Size |", (SKILL / "templates" / "STATE.md").read_text(encoding="utf-8"))
+
+    def test_task_graph_on_the_planning_card(self):
+        # B-41: the owner sees what runs together before the build; B-42: foundation first, then slices
+        planning = (SKILL / "references" / "stage-1-6-planning.md").read_text(encoding="utf-8")
+        self.assertIn("**The task graph goes on the planning card:**", planning)
+        self.assertIn("--mermaid", planning)
+        self.assertIn("`--summary` lines", planning)
+        self.assertIn("exit 2 (a cycle, an unknown\nID, a task missing", planning)
+        self.assertIn("## Planning card (stage 6)", (SKILL / "references" / "result-card.md").read_text(encoding="utf-8"))
+        planner = (ROOT / "agents" / "planner.md").read_text(encoding="utf-8")
+        self.assertIn("first and alone in the plan", planner)
+        self.assertIn("touches only its own screen or module", planner)
+        self.assertIn("aim for a parallel factor of 2 or more", planner)
+        # home-cookbook run: factor 1.25, every feature edited web/api.py; a warning alone didn't stop it
+        self.assertIn("under 1.5, re-plan before you return", planner)
+        self.assertIn("(editing doesn't need deleting)", planner)
+        architect = (ROOT / "agents" / "architect.md").read_text(encoding="utf-8")
+        self.assertIn("**Design for parallel work: one folder or file set per feature.**", architect)
+        self.assertIn("A file every feature must edit is a design bug", architect)
+        self.assertIn("**Any other warning sends the plan back once**", planning)
+        self.assertIn("--size <STATE.md Size>", planning)
+        self.assertIn("Name the **shared modules** in the LLD", (ROOT / "agents" / "architect.md").read_text(encoding="utf-8"))
+
+    def test_stages_overlap_and_milestone_cards_leave_no_gap(self):
+        # B-44: B's implement starts while A is tested; B-45: next-milestone work while the card waits
+        build = (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8")
+        self.assertIn("**as soon as a task's implement step\nends**", build)
+        self.assertIn("**No idle gap while the milestone card waits:**", build)
+        self.assertIn("--ready --avoid M<n>", build)
+        self.assertIn("let each finish its current step (checkpointed), then restart", build)
+
+    def test_small_projects_are_offered_the_balanced_cost_mode(self):
+        planning = (SKILL / "references" / "stage-1-6-planning.md").read_text(encoding="utf-8")
+        self.assertIn("**Small and medium projects still on the default `quality`:**", planning)
+        self.assertIn("**Balanced (Recommended)**", planning)
+
+    def test_resume_checks_the_plugin_version(self):
+        # home-cookbook run: sessions alternated between 0.8 (--plugin-dir) and the installed 0.7
+        # `taskgit.sh version` itself is checked in tests/test_taskgit.sh (Windows runs it under Git
+        # Bash; a bare "bash" from Python finds WSL's bash.exe there)
+        self.assertIn('"$cmd" == version', (SKILL / "scripts" / "taskgit.sh").read_text(encoding="utf-8"))
+        resume = (SKILL / "references" / "resume.md").read_text(encoding="utf-8")
+        self.assertIn("**Version check:**", resume)
+        self.assertIn("**Stop: I'll\n   restart with <old> (Recommended)**", resume)
+        self.assertIn("| Plugin |", (SKILL / "templates" / "STATE.md").read_text(encoding="utf-8"))
+        self.assertIn("`Plugin: dev-team-setup <$TASKGIT version>`", (SKILL / "references" / "stage-0-intake.md").read_text(encoding="utf-8"))
+
+    def test_task_runners_keep_the_project_in_one_session(self):
+        # the owner wants one session, and time over cost: each ready task goes to a background
+        # task-runner that starts the task's agents itself (nested agents), returning one card
+        runner = (ROOT / "agents" / "task-runner.md").read_text(encoding="utf-8")
+        fm = frontmatter(ROOT / "agents" / "task-runner.md")
+        self.assertIn("Agent", fm["tools"])
+        self.assertEqual(fm["model"], "sonnet")
+        self.assertIn("return `NO NESTING`", runner)
+        self.assertIn("never another task-runner", runner)
+        run = (SKILL / "references" / "task-run.md").read_text(encoding="utf-8")
+        for fmt in ("TASK READY <id>", "DECISION NEEDED", "NEEDS FILE <id>", "BLOCKED <id>", "NO NESTING"):
+            self.assertIn(fmt, run)
+        self.assertIn("never ask the owner anything", run)
+        # habit-test run: the runner's coder ran in the background, the runner answered early, and
+        # one failure switched runners off for the whole project
+        self.assertIn("Every Agent call sets `run_in_background: false`", run)
+        self.assertIn("**Every Agent call sets `run_in_background: false`**", runner)
+        self.assertIn("never while an agent of yours is still running", runner)
+        build = (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8")
+        self.assertIn("**Task runners (the default: one session for the whole project).**", build)
+        self.assertIn("**in the\nbackground**, all ready tasks in one message", build)
+        self.assertIn("set STATE.md `Runners: off`", build)
+        self.assertIn("**one fresh runner** with `Resume at:`", build)
+        self.assertIn("one bad run never switches them off", build)
+        self.assertIn("**Approve and continue (Recommended)**", build)
+        card = (SKILL / "references" / "result-card.md").read_text(encoding="utf-8")
+        self.assertIn("- **Approve and continue (Recommended)**", card)
+        self.assertIn("`TASK READY`, `DECISION NEEDED`, `NEEDS FILE`, `BLOCKED` or\n`NO NESTING`",
+                      (SKILL / "references" / "team-rules.md").read_text(encoding="utf-8"))
+        scopes = json.loads((SKILL / "scopes.json").read_text(encoding="utf-8"))
+        self.assertEqual(scopes["agents"]["task-runner"], {"write": [".results/**"], "bash": "runner"})
+        self.assertIn("Agent", json.loads((ROOT / "hooks" / "hooks.json").read_text(encoding="utf-8"))["hooks"]["PreToolUse"][0]["matcher"])
+
+    def test_files_are_claims_and_shared_code_is_frozen(self):
+        planner = (ROOT / "agents" / "planner.md").read_text(encoding="utf-8")
+        self.assertIn("**Files is a claim**", planner)
+        self.assertIn("one **wire-up task** at the end", planner)
+        self.assertIn("`Frozen:` line at the top of TASKS.md", planner)
+        architect = (ROOT / "agents" / "architect.md").read_text(encoding="utf-8")
+        self.assertIn("**Registries are one file per entry**", architect)
+        self.assertIn("each feature has its own test folder", architect)
+        self.assertIn("Frozen: {{", (SKILL / "templates" / "TASKS.md").read_text(encoding="utf-8"))
+        self.assertIn("`Needs file: <path> (why)`", (SKILL / "references" / "team-rules.md").read_text(encoding="utf-8"))
+        self.assertIn("**`Needs file: <path>` in a REPORT**", (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8"))
+
+    def test_taskgit_runs_from_the_base_folder(self):
+        # home-cookbook run: approve merged fine, then "exited 1" on pwd from inside the removed worktree
+        build = (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8")
+        self.assertIn("**Run every `$TASKGIT` command from `<base>`**", build)
+
+    def test_open_tasks_catch_up_after_each_approve(self):
+        # B-46: conflicts surfaced only at the final sync, after the whole task was done
+        build = (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8")
+        self.assertIn("**Early sync:** right after it, `$TASKGIT catchup <repo>", build)
+        self.assertIn("  catchup)", (SKILL / "scripts" / "taskgit.sh").read_text(encoding="utf-8"))
+
+    def test_plan_vs_actual_files(self):
+        # B-43: a task that edits files it didn't declare would let --ready start a colliding task
+        build = (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8")
+        self.assertIn("`$TASKGIT changed <repo> T-xx | python3 $TASKGRAPH <repo>/TASKS.md --undeclared T-xx`", build)
+        self.assertIn("add them to its `Files:` in TASKS.md", build)
+        self.assertIn("Plan vs actual:", (SKILL / "references" / "result-card.md").read_text(encoding="utf-8"))
+        self.assertIn("  changed)", (SKILL / "scripts" / "taskgit.sh").read_text(encoding="utf-8"))
+
+    def test_lld_has_a_size_cap_and_a_narrow_sync(self):
+        # B-20: the LLD grew past what any brief reads, and every milestone re-synced all of it
+        architect = (ROOT / "agents" / "architect.md").read_text(encoding="utf-8")
+        self.assertIn('**Size cap by STATE.md "Size": small 150 lines, medium 400, large 900**', architect)
+        self.assertIn("Edit **only the sections that describe those paths**", architect)
+        self.assertIn("small 150 lines, medium 400, large 900", (SKILL / "templates" / "LLD.md").read_text(encoding="utf-8"))
+        build = (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8")
+        self.assertIn("changed-files.txt", build)
+        self.assertIn("**Skip the sync**", build)
+
+    def test_tasks_are_feature_slices_under_a_cap(self):
+        # B-30: run B split features by layer (API task, then screen task), doubling the task count
+        planner = (ROOT / "agents" / "planner.md").read_text(encoding="utf-8")
+        self.assertIn("**a task is one user-visible feature slice end to end**", planner)
+        self.assertIn("never split a feature by layer", planner)
+        self.assertIn("which must still be user-visible (the app starts and shows its first screen)", planner)
+        self.assertIn('**Task caps by STATE.md "Size": small 8, medium 15, large 30**', planner)
+        self.assertIn("`Why separate:`", planner)
+        planning = (SKILL / "references" / "stage-1-6-planning.md").read_text(encoding="utf-8")
+        self.assertIn("**small 8, medium 15, large 30**", planning)
+        self.assertIn("never one layer", (SKILL / "templates" / "TASKS.md").read_text(encoding="utf-8"))
+        build = (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8")
+        self.assertIn("one implement step per owner, in the listed order", build)
 
     def test_milestones_follow_the_size_and_the_last_one_is_the_handover(self):
         # O4: run B had 4 milestones for 5 tasks; each cost a docs task and a session restart
+        # B-31: milestones sit at risk checkpoints only; a small project has one
         planner = (ROOT / "agents" / "planner.md").read_text(encoding="utf-8")
-        self.assertIn("small 1; medium about 1 per 4 tasks; large 3–6", planner)
+        self.assertIn("milestones only at risk checkpoints (first end-to-end flow working, data model locked, "
+                      "first external integration, before deploy)", planner)
+        # home-cookbook run: Recipe Box got 3 milestones, each a docs task and a fresh session
+        self.assertIn("**at most: small 1, medium 2, large 4**", planner)
         self.assertNotIn("milestones (3–6", planner)
         build = (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8")
         self.assertIn("(every milestone but the last)", build)
@@ -618,9 +980,20 @@ class StructureTest(unittest.TestCase):
         # still gets a review, and high-risk tasks and large projects keep the per-task reviewer
         build = (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8")
         step3 = build[build.index("3. **tester and reviewer in parallel.**"):build.index("\n4. ")]
-        self.assertIn("**Batched review (small and medium projects", step3)
-        self.assertIn("runs the **tester\n   alone**", step3)
-        self.assertIn("keep the per-task reviewer", step3)
+        self.assertIn('**Small and medium projects (STATE.md "Size"): one agent per low-risk task.**', step3)
+        self.assertIn("keep the separate tester and per-task reviewer", step3)
+        # O5: the coder writes and runs the tests there, opened per task; the gates never open
+        self.assertIn("`$TASKGIT coder-tests <repo> T-xx` right after `start`", step3)
+        self.assertIn("`Tests: yours`", step3)
+        self.assertIn("The gates (`check.sh`, coverage and lint configs) stay closed to the coder", step3)
+        # B-34: the tester only comes in when the coder's own run leaves coverage short
+        self.assertIn("The **tester spawns only on failure**", step3)
+        rules = (SKILL / "references" / "team-rules.md").read_text(encoding="utf-8")
+        self.assertIn("except when your brief says `Tests: yours`", rules)
+        self.assertIn("Never weaken or delete an existing test", rules)
+        self.assertIn("Tests:        <coder only", (SKILL / "references" / "brief-template.md").read_text(encoding="utf-8"))
+        self.assertIn("`Tests: coder` also gets", (SKILL / "references" / "resume.md").read_text(encoding="utf-8"))
+        self.assertIn("**One per-task exception:**", (ROOT / "docs" / "guardrails.md").read_text(encoding="utf-8"))
         batch = build[build.index("**Batched review** (first"):build.index("**Milestone end ⏸**")]
         self.assertIn('--grep="^Task: $id\\$"', batch)   # the trailer approve writes
         self.assertIn("without opening it", batch)
@@ -765,11 +1138,15 @@ class StructureTest(unittest.TestCase):
     def test_independent_tasks_start_in_one_message(self):
         # P2: agents only run concurrently when spawned in the same message
         build = (SKILL / "references" / "stage-7-build.md").read_text(encoding="utf-8")
-        block = build[build.index("**Start independent tasks together"):build.index("**Don't let the team idle")]
+        block = build[build.index("**Schedule from the graph"):build.index("**Don't let the team idle")]
         self.assertIn("same message", block)
-        self.assertIn("up to **3**", block)
         self.assertIn("one Agent call per task", block)
-        self.assertIn("when unsure, they're not\nindependent", block)
+        # B-36: the graph decides what is independent (T-17/T-18 shared a file nobody noticed)
+        self.assertIn("`python3 $TASKGRAPH <repo>/TASKS.md --ready`", block)
+        self.assertIn("up to\n3 running in total, longest remaining chain first", block)
+        self.assertIn("run `--ready` again", block)
+        self.assertIn("`Status: In progress` in TASKS.md", build)
+        self.assertIn("TASKGRAPH=<root>/skills/setup-project/scripts/taskgraph.py", (SKILL / "SKILL.md").read_text(encoding="utf-8"))
 
     def test_fast_mode_keeps_design_and_risky_reviews_strong(self):
         # P3: faster models for mechanical roles, never for the design or high-risk reviews

@@ -33,15 +33,22 @@ A project can only **narrow** these rules (`.devteam/scopes.json`, approved with
 | insights-reporter | `reports/**`, its own reports | anything else, git internals, .env files | no shell |
 | mlops | any project file | the task and state files, the design docs, raw data, frontend code, the quality gates (check.sh, lint/test configs, CI), tests, git internals, .env files | runs code and tests (no git writes, no installs) |
 | modeler | `src/**`, `models/**`, `notebooks/**`, tests, its own reports | anything else, git internals, .env files | runs code and tests (no git writes, no installs) |
-| planner | `docs/SPEC.md`, `docs/wireframes/**`, `docs/HLD.md`, `TASKS.md`, its own reports | anything else, git internals, .env files | no shell |
+| planner | `docs/SPEC.md`, `docs/wireframes/**`, `docs/HLD.md`, `docs/PRODUCTION.md`, `TASKS.md`, its own reports | anything else, git internals, .env files | no shell |
+| product-critic | `docs/scenarios.md`, its own reports | anything else, git internals, .env files | no shell |
 | prompt-engineer | `prompts/**`, `**/prompts/**`, `**/prompts.py`, `**/*_prompt.py`, `**/*_prompts.py`, `**/prompt_*.py`, its own reports | anything else, git internals, .env files | runs code and tests (no git writes, no installs) |
 | rag-engineer | any project file | the task and state files, the design docs, raw data, frontend code, the quality gates (check.sh, lint/test configs, CI), tests, git internals, .env files | runs code and tests (no git writes, no installs) |
 | researcher | `docs/research.md`, its own reports | anything else, git internals, .env files | no shell |
 | reviewer | its own reports | anything else, git internals, .env files | no shell |
 | statistician | its own reports | anything else, git internals, .env files | read-only shell |
+| task-runner | its own reports | anything else, git internals, .env files | only the plugin's task scripts (no approvals) |
 | tester | tests, its own reports | anything else, git internals, .env files | runs code and tests (no git writes, no installs) |
 | trainer | any project file | the task and state files, the design docs, raw data, the quality gates (check.sh, lint/test configs, CI), tests, git internals, .env files | runs code and tests (no git writes, no installs) |
 | visualizer | `src/viz/**`, `dashboards/**`, `streamlit_app.py`, `reports/**`, `notebooks/**`, its own reports | anything else, git internals, .env files | runs code and tests (no git writes, no installs) |
+
+**One per-task exception:** on a low-risk task of a small or medium project, the Orchestrator
+can let that task's coder (backend, frontend, RAG or agent engineer) write the tests too
+(`taskgit.sh coder-tests`, a marker no agent can write). The gates (`scripts/check.sh`, coverage,
+lint and type configs) stay closed, and the milestone's batched review reads the tests.
 
 ## Blocked for every agent
 

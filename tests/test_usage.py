@@ -86,7 +86,8 @@ class MeasureTest(unittest.TestCase):
         self.assertEqual(m["by_step"]["orchestrator"], usage_of(1, 10, 100, 5))
         tester = m["shares"]["tester"]
         self.assertAlmostEqual(tester["cache_write_share"], 40 / 540, places=4)
-        self.assertAlmostEqual(tester["output_cost_share"], 150 / (2 + 50 + 50 + 150), places=4)
+        # weights: input 1, cache write 1.25, cache read 0.05 (Opus/Sonnet 5.5), output 5
+        self.assertAlmostEqual(tester["output_cost_share"], 150 / (2 + 50 + 25 + 150), places=4)
         total = sum(usage.weighted(u) for u in m["by_agent"].values())
         self.assertAlmostEqual(tester["cost_share"], usage.weighted(usage_of(2, 40, 500, 30)) / total, places=4)
 
@@ -120,6 +121,76 @@ class MeasureTest(unittest.TestCase):
         self.assertEqual(r["line"], "Cost: ≈$1.00 this task · $2.00 so far · budget $25 (8%)")
         self.assertEqual(run("--budget", "1.5").returncode, 3)             # over budget
         self.assertIn("$0.00 so far", run("--since", "2026-11-11 00:00 +00:00").stdout)   # before the project
+
+    def test_cost_by_role_and_rework(self):
+        # B-17: the Result line says which roles a task's money went to;
+        # B-18: the milestone card names tasks over 2x the median, with their debugger rounds
+        import re as _re
+        base = self.d / "base"
+        base.mkdir()
+        logs = self.d / "logs"
+        ld = logs / _re.sub(r"[^A-Za-z0-9]", "-", str(base.resolve()))
+        ts = "2026-11-10T10:00:00Z"
+        main = [{"type": "user", "timestamp": ts, "message": {"content": "go"}},
+                {"type": "cost-state", "totalCostUSD": 10.0, "modelUsage": {"opus": {
+                    "inputTokens": 0, "cacheCreationInputTokens": 0, "cacheReadInputTokens": 0, "outputTokens": 0}}}]
+        (ld / "s1" / "subagents").mkdir(parents=True)
+        (ld / "s1.jsonl").write_text("\n".join(json.dumps(x) for x in main) + "\n", encoding="utf-8")
+        n = 0
+
+        def spawn(task, agent, out_tokens):
+            nonlocal n
+            n += 1
+            lines = [{"type": "user", "timestamp": ts, "message": {"content": f"BRIEF · {task} · {agent} · step"}},
+                     {"type": "assistant", "timestamp": ts, "message": {"id": f"m{n}", "model": "opus",
+                                                                         "usage": usage_of(0, 0, 0, out_tokens)}}]
+            (ld / "s1" / "subagents" / f"a{n}.jsonl").write_text(
+                "\n".join(json.dumps(x) for x in lines) + "\n", encoding="utf-8")
+        spawn("T-01", "backend-coder", 600); spawn("T-01", "tester", 300); spawn("T-01", "reviewer", 100)
+        spawn("T-02", "backend-coder", 1000)
+        spawn("T-03", "backend-coder", 1000); spawn("T-03", "debugger", 1500); spawn("T-03", "debugger", 1500)
+        script = SCRIPTS / "cost.py"
+
+        def run(*a):
+            return subprocess.run([sys.executable, str(script), str(base), "--since", "2026-11-10 09:00 +00:00", *a],
+                                  capture_output=True, text=True, encoding="utf-8", env={**os.environ, "DEVTEAM_LOGS": str(logs)})
+        # 6,000 weighted output tokens in all, $10: T-01 is 1,000 of them
+        self.assertEqual(run("--task", "T-01", "--result").stdout.strip(),
+                         "≈$1.67 · backend-coder 60% · tester 30% · reviewer 10%")
+        r = json.loads(run("--task", "T-01", "--json").stdout)
+        self.assertEqual(r["roles_usd"], {"backend-coder": 1.0, "tester": 0.5, "reviewer": 0.17})
+        out = run("--rework", "T-01", "T-02", "T-03").stdout
+        self.assertEqual(out.strip(), "Rework: T-03 $6.67 (4.0x the median $1.67) · 2 debugger rounds")
+        self.assertIn("no task over 2x", run("--rework", "T-01", "T-02").stdout)
+        self.assertNotEqual(run("--result").returncode, 0)   # --result needs --task
+
+    def test_subscription_runs_are_priced_at_api_prices(self):
+        # habit-test run: on a Pro plan Claude Code logs no dollar figure, so every card said $0.00
+        price = usage.api_cost({"claude-opus-5-5": usage_of(1_000_000, 1_000_000, 1_000_000, 1_000_000),
+                                "claude-sonnet-5-5[1m]": usage_of(0, 0, 0, 1_000_000),
+                                "something-new": usage_of(0, 0, 0, 5)})
+        self.assertAlmostEqual(price[0], 4 + 5 + 0.20 + 20 + 10, places=4)   # write = 1.25x input
+        self.assertEqual(price[1], ["something-new"])
+        import re as _re
+        base = self.d / "base"
+        base.mkdir()
+        logs = self.d / "logs"
+        ld = logs / _re.sub(r"[^A-Za-z0-9]", "-", str(base.resolve()))
+        ts = "2026-11-15T10:00:00Z"
+        lines = [{"type": "user", "timestamp": ts, "message": {"content": "go"}},
+                 {"type": "assistant", "timestamp": ts, "message": {"id": "m", "model": "claude-opus-5-5",
+                                                                     "usage": usage_of(0, 0, 0, 100_000)}},
+                 {"type": "cost-state", "totalCostUSD": 0, "modelUsage": {"claude-opus-5-5": {
+                     "inputTokens": 0, "cacheCreationInputTokens": 0, "cacheReadInputTokens": 0, "outputTokens": 100_000}}}]
+        ld.mkdir(parents=True)
+        (ld / "s1.jsonl").write_text("\n".join(json.dumps(x) for x in lines) + "\n", encoding="utf-8")
+        p = subprocess.run([sys.executable, str(SCRIPTS / "cost.py"), str(base), "--budget", "1", "--json"],
+                           capture_output=True, text=True, encoding="utf-8", env={**os.environ, "DEVTEAM_LOGS": str(logs)})
+        r = json.loads(p.stdout)
+        self.assertEqual(r["total_usd"], 2.0)                 # 100k Opus 5.5 output tokens at $20/M
+        self.assertTrue(r["estimated_at_api_prices"])
+        self.assertIn("≈$2.00 so far at API prices (not billed on a subscription)", r["line"])
+        self.assertEqual(p.returncode, 3)                     # and the budget cap works again
 
     def test_text_io_names_its_encoding(self):
         # Without encoding=, Python uses the locale (cp1252 on Windows), which can't read or write

@@ -95,6 +95,87 @@ class GuardTest(unittest.TestCase):
             with self.subTest(agent=agent, path=rel, expect="allow"):
                 self.assertIsNone(self.write(agent, rel))
 
+    def test_coder_tests_open_the_tests_for_one_task_only(self):
+        # O5: `taskgit.sh coder-tests` lets ONE task's coder write its tests; the gates stay closed,
+        # other roles and other tasks are unchanged, and no agent can write the marker
+        git = ["git", "-c", "user.name=t", "-c", "user.email=t@t", "-C", str(self.main)]
+        wt = Path(self.tmp.name) / "proj-wt" / "T-5"
+        subprocess.run(git + ["worktree", "add", "-q", "-b", "wip/T-5", str(wt)], check=True)
+        gitdir = subprocess.run(["git", "-C", str(wt), "rev-parse", "--absolute-git-dir"],
+                                capture_output=True, text=True, check=True).stdout.strip()
+        (Path(gitdir) / "devteam-coder-tests").write_text("")
+        w = lambda agent, rel: hook(f"dev-team-setup:{agent}", "Write", {"file_path": str(wt / rel)}, str(wt))
+        for agent in ("backend-coder", "frontend-coder", "rag-engineer", "agent-engineer"):
+            with self.subTest(agent=agent, expect="allow"):
+                self.assertIsNone(w(agent, "tests/test_a.py" if agent != "frontend-coder" else "frontend/src/App.test.tsx"))
+        for agent, rel in [("backend-coder", "scripts/check.sh"), ("backend-coder", "pyproject.toml"),
+                           ("backend-coder", ".coveragerc"), ("frontend-coder", "frontend/.eslintrc.json"),
+                           ("debugger", "tests/test_a.py"), ("mlops", "tests/test_a.py")]:
+            with self.subTest(agent=agent, path=rel, expect="deny"):
+                self.assertIsNotNone(w(agent, rel))
+        self.assertIsNotNone(self.write("backend-coder", "tests/test_a.py"))   # T-1 has no marker
+        out = subprocess.run([sys.executable, str(GUARD), "--check", "backend-coder", str(wt),
+                              "tests/test_a.py", "scripts/check.sh"], capture_output=True, text=True, check=True).stdout
+        self.assertEqual(out.split(), ["scripts/check.sh"])   # taskgit's scope check agrees
+
+    def test_running_tasks_never_write_the_same_file(self):
+        # home-cookbook run: six tasks planned edits to web/api.py; a file claimed by a running task
+        # (TASKS.md Files) is closed to every other task, and the foundation's shared code is frozen
+        tasks = self.main / "TASKS.md"
+        tasks.write_text(
+            "# TASKS\n\nFrozen: src/core/*, `src/base.html`\n\n## M1 · m\n\n"
+            "### T-1 · me\n- Owner: backend-coder\n- Depends on: —\n- Files: src/search/*, `src/core/rules.py`\n- Status: In progress\n\n"
+            "### T-2 · other, running\n- Owner: backend-coder\n- Depends on: —\n- Files: src/fav/*, tests/test_fav.py\n- Status: Needs you\n\n"
+            "### T-3 · other, done\n- Owner: backend-coder\n- Depends on: —\n- Files: src/old.py\n- Status: Done\n",
+            encoding="utf-8")
+        try:
+            for rel in ("src/search/index.py", "src/core/rules.py", "src/new_helper.py", "src/old.py",
+                        ".results/T-1/x.md"):
+                with self.subTest(path=rel, expect="allow"):
+                    self.assertIsNone(self.write("backend-coder", rel))
+            for rel, why in (("src/fav/star.py", "T-2 is running and claims it"),
+                             ("tests/test_fav.py", "T-2 is running"),
+                             ("src/core/db.py", "frozen after the foundation task"),
+                             ("src/base.html", "frozen")):
+                with self.subTest(path=rel, expect="deny"):
+                    reason = self.write("backend-coder" if not rel.startswith("tests") else "tester", rel)
+                    self.assertIsNotNone(reason)
+                    self.assertIn(why, reason)
+                    self.assertIn(f"Needs file: {rel}", reason)
+            out = subprocess.run([sys.executable, str(GUARD), "--check", "backend-coder", str(self.repo),
+                                  "src/search/a.py", "src/fav/star.py", "src/core/db.py"],
+                                 capture_output=True, text=True, check=True).stdout
+            self.assertEqual(out.split(), ["src/fav/star.py", "src/core/db.py"])   # taskgit's scope check agrees
+        finally:
+            tasks.unlink()
+        self.assertIsNone(self.write("backend-coder", "src/fav/star.py"))   # no TASKS.md: no claims
+
+    def test_task_runner_runs_one_tasks_steps_only(self):
+        # a task-runner starts the team's agents and runs taskgit's per-task commands; approvals,
+        # records and other agent types stay out of its reach
+        runner = lambda cmd: self.bash("task-runner", cmd)
+        for ok in (f"{TG} step {self.main} T-1 implement started",
+                   f"bash {TG} sync {self.main} T-1",
+                   f"{TG} diff {self.main} T-1 {self.repo}/.results/T-1/changes.diff",
+                   f"{TG} changed {self.main} T-1 | python3 {SCRIPTS}/taskgraph.py {self.main}/TASKS.md --undeclared T-1",
+                   "git log --oneline -3"):
+            with self.subTest(cmd=ok, expect="allow"):
+                self.assertIsNone(runner(ok))
+        for bad in (f"{TG} approve {self.main} T-1 'feat: x'", f"{TG} reject {self.main} T-1",
+                    f"{TG} record {self.main} 'x'", f"{TG} undo {self.main} T-1", f"{TG} catchup {self.main}",
+                    f"{TG} start {self.main} T-2", "git commit -m x", "rm -rf src",
+                    f"{TG} diff {self.main} T-1 > /tmp/x.diff"):
+            with self.subTest(cmd=bad, expect="deny"):
+                self.assertIsNotNone(runner(bad))
+        self.assertIsNotNone(self.write("task-runner", "src/app.py"))
+        self.assertIsNone(self.write("task-runner", ".results/T-1/card.md"))
+        spawn = lambda agent, st: hook(f"dev-team-setup:{agent}", "Agent",
+                                       {"subagent_type": st, "description": "T-1 · implement", "prompt": "BRIEF"}, str(self.repo))
+        self.assertIsNone(spawn("task-runner", "dev-team-setup:backend-coder"))
+        for st in ("general-purpose", "Explore", "dev-team-setup:task-runner", "other-plugin:coder", None):
+            with self.subTest(subagent_type=st, expect="deny"):
+                self.assertIsNotNone(spawn("task-runner", st))
+
     def test_writes_only_in_task_worktree(self):
         # S8: a write anywhere in a git repo used to pass; the main checkout is off limits
         self.assertIsNotNone(hook("dev-team-setup:backend-coder", "Write",

@@ -36,7 +36,7 @@ Status: ⬜ pending · ⏳ in progress · ✅ done · ❌ failed. The note is th
 from the agent's short REPORT; the full report's path is `.results/<id>/<step>-<agent>.md`.
 `Agents:` records each agent's ID and how often it was continued (max 2), for rework only.
 
-On `wip/plan`, TASK_PROGRESS.md also records the spec round (`Spec round: 3 · 9/12 complete`)
+On `wip/plan`, TASK_PROGRESS.md also records the spec round (`Spec round: 3 · 9/13 complete`)
 and the last QUESTIONS block that hasn't been answered yet, so a resumed session re-asks
 exactly those questions. On `wip/CR-<n>` it records the CR text verbatim and the CR step (1–8).
 
@@ -54,8 +54,9 @@ exactly those questions. On `wip/CR-<n>` it records the CR text verbatim and the
 4. Only then spawn the next agent.
 
 Shared files (`TASKS.md`, `STATE.md`, `DECISIONS.md`) are never changed on task branches
-(`checkpoint` reverts them). They're updated in the main checkout after `approve`, and
-committed with `$TASKGIT record`. That's what keeps parallel tasks from conflicting.
+(`checkpoint` reverts them). They're updated in the main checkout just before `approve`, which
+commits them in the task's own squash commit (`$TASKGIT record` commits updates that have no task
+to approve: rejects, pauses, milestone notes). That's what keeps parallel tasks from conflicting.
 
 A step marked ⏳ on resume was interrupted: restart it from the beginning (its partial
 files are on the branch; the agent reads them and continues).
