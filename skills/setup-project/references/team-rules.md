@@ -89,6 +89,7 @@ SPEC COMPLETE
 Assumptions: <list of (assumed) lines>
 Screens: <list> (or "no UI")
 Size: <small|medium|large> · signals: <the risk signals present, or none> · <n> stories
+Parts: <the parts that run separately, e.g. web app + API, or one> · external services: <list or none>
 ```
 Every other step, the planner returns a REPORT or DECISION NEEDED like everyone else.
 **The task-runner** returns `TASK READY`, `DECISION NEEDED`, `NEEDS FILE`, `BLOCKED` or

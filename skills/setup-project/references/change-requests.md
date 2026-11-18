@@ -19,6 +19,7 @@ offline", "add login", "drop the export feature", "use Postgres instead".
              already waiting stay queued; tell the owner they'll be shown again after the CR.
 2 Branch     $TASKGIT start <repo> CR-<n>
 3 Update     planner → SPEC.md (+ wireframes if screens change); HLD.md if modules/flows change
+             (no HLD: the architect updates LLD §0.0 Big picture instead)
              architect → LLD.md / CONVENTIONS.md (+ .devteam/scopes.json) if design changes
              researcher first, if a new library/service is needed
 4 Impact     planner writes the impact on tasks to `## Task impact` in its full report (not yet applied):

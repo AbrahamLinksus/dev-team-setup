@@ -12,7 +12,11 @@ has no server of its own and collects nothing.
 - **What leaves your computer** is what Claude Code itself sends to Anthropic's API during your
   session (covered by Anthropic's own terms and privacy policy), plus the actions listed in the
   README's [What this plugin runs and sends](../README.md#what-this-plugin-runs-and-sends):
-  pushes to your repo, package installs from public registries, and web pages fetched by the
-  research-type agents when the plan uses them.
+  pushes to your repo, package installs from public registries, web pages fetched by the
+  research-type agents when the plan uses them, and, only if you opt in at a milestone, a
+  temporary public preview link to the running app through a tunnel service (it closes after
+  30 minutes).
+- **Cost figures** on result cards are read from Claude Code's own session logs on your computer;
+  nothing is sent anywhere to compute them.
 
 Questions: open an issue at https://github.com/AbrahamLinksus/dev-team-setup/issues

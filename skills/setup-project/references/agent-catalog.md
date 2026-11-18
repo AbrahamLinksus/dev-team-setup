@@ -1,11 +1,11 @@
 # Agent catalog
 
 **Planning crew (always used, not part of the team pick):** planner, product-critic, researcher,
-architect, env-setup. They run the spec, HLD, LLD and environment stages. The Orchestrator runs
+architect, env-setup. They run the spec, design (with an HLD only when the project needs one) and environment stages. The Orchestrator runs
 `taskgit.sh approve/reject/record` itself; git-pr is optional (only for a commit message that
 needs real summarising).
 
-**Team pick (after the HLD is approved):** map each HLD module to the agents that build it,
+**Team pick (from the design's modules: the HLD, or LLD §0.0):** map each module to the agents that build it,
 using "Pick when" below. Recommend tester, reviewer, debugger and docs for any project with
 code. Show the module → agent mapping on the team card so the owner sees why each one is there.
 
@@ -14,7 +14,7 @@ code. Show the module → agent mapping on the team card so the owner sees why e
 
 | Agent | Model | Tools | Pick when |
 |---|---|---|---|
-| planner | Opus | Read, Write, Edit, Glob | Planning crew (spec, wireframes, HLD, TASKS.md, change requests) |
+| planner | Opus | Read, Write, Edit, Glob | Planning crew (spec, wireframes, HLD when needed, TASKS.md, change requests) |
 | product-critic | Opus | Read, Write, Glob | Planning crew (usage scenarios and gaps before the spec card) |
 | researcher | Sonnet | WebSearch, WebFetch, Read, Write | Planning crew; also any later library/model choice |
 | architect | Opus | Read, Write, Edit, Glob, Grep | Planning crew (LLD, conventions, as-built sync, handover docs) |

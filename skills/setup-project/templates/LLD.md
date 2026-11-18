@@ -9,6 +9,19 @@
 > only the sections whose paths the milestone changed.
 
 ## §0 Overview
+
+### §0.0 Big picture (one design step only: projects without a docs/HLD.md)
+<!-- about one screen. Modules: responsibility, who they talk to, the user stories each serves
+     (every story mapped). The data flow as a Mermaid flowchart. The milestones, only at risk
+     checkpoints (small 1, medium ≤2, large ≤4). Delete this section when docs/HLD.md exists. -->
+| Module | Responsibility | Talks to | Stories |
+|---|---|---|---|
+
+```mermaid
+flowchart LR
+```
+
+Milestones: {{M1 · visible outcome · the risk checkpoint it closes}}
 ### §0.1 Stack
 | Layer | Choice | Why | Rejected alternative |
 |---|---|---|---|

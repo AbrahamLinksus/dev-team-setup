@@ -46,8 +46,9 @@ enabled. To change them later, run `/plugin configure dev-team-setup@dev-team-se
 /setup-project a habit tracker with daily streaks
 ```
 
-Claude checks the tools above, asks you a few questions, plans the project, picks a team of
-agents, and starts building.
+Claude checks the tools above, asks whether you write code (so it can talk to you in plain
+words), interviews you until the idea is a clear spec, sizes the project, designs it, picks a
+team of agents and builds it, several tasks at a time, in one session.
 
 ---
 
@@ -60,6 +61,17 @@ Mostly tap buttons. After every task you get a result like this:
 *Illustration: each result shows what the task was meant to do, what got done, and a screenshot.*
 
 **Approve** saves it to your repo · **Change** sends it back with your note · **Reject** throws it away.
+
+- **Try it, don't just read it.** Every result says how to try it yourself in a minute or two
+  ("Try this"), with screenshots and, for things like animations, a short GIF.
+- **Decisions come to you, in plain words.** Anything that's really your call (which database,
+  a paid service, what goes online) stops and asks, saying what it means for you and what
+  changing it later would cost. Routine tooling comes as one "standard toolkit" card.
+- **On your phone.** At each milestone you can open the build on your phone through a temporary
+  link (opt-in, closes after 30 minutes).
+- **A finished app, not a demo.** The handover checks a production list for your kind of app
+  (errors in plain words, data that survives a restart, backups, no secrets in the code…) and
+  gives you `OWNER.md`: one page on how to start it, what it can't do and what could lose data.
 
 ---
 
@@ -77,6 +89,7 @@ no telemetry. It sends nothing anywhere except what is listed here.
 | Shows each working agent's task, step, time and tokens in Claude Code's agent panel (`settings.json` → `hooks/subagent_status.sh`) | While agents run | Nowhere: it formats what Claude Code passes it |
 | Starts a headless browser on `localhost` | To screenshot each result | Nowhere: local pages only |
 | Fetches web pages and searches the web | Only the researcher, rag-engineer, agent-engineer and data-acquisition agents, and only when the plan picks them | The sites they read |
+| Opens a temporary public link to the running app (`cloudflared` or `npx localtunnel`) | Only if you say yes at a milestone; closes after 30 minutes | The tunnel service; anyone with the link can use that build while it's open |
 | Reads Google Drive files | Only the data-acquisition agent, only if you connected Google Drive and point it at a file | Read-only |
 
 **The guard.** A hook (`hooks/scope_guard.sh`, which runs `hooks/scope_guard.py`) checks every
@@ -96,7 +109,13 @@ the agent's action rather than letting it through. The full rules are in
   ```
   /setup-project resume <repo-name>
   ```
+- **One session, start to finish.** Each task runs in its own background agent, so the main
+  chat stays small; at most it suggests typing `/compact` now and then. If your Claude Code
+  can't run agents inside agents, it falls back to a fresh chat per milestone.
 - **Changed your mind?** Just say it, e.g. *"make it work offline"*. The plan updates and you approve the change.
+- **After the handover:** `/setup-project fix <what went wrong, in plain words>` reproduces the
+  bug with a failing test before fixing it; `/setup-project add <feature>` plans the new feature
+  with its own size and milestone.
 - **Your code, your repo.** Each project gets its own GitHub repo. You choose private or public.
 - **You own the result.** It ends with docs that walk you through the code.
 
@@ -109,8 +128,8 @@ Pick these when Claude Code asks after you enable the plugin, or change them lat
 | Setting | Default | What it does |
 |---|---|---|
 | `approval_mode` | `every-task` | `batch-low-risk` approves small, safe tasks together. `autopilot` approves them on its own and shows you each one afterwards, with Undo: the fastest way to run |
-| `cost_mode` | `quality` | `balanced` uses cheaper models where it's safe. `fast` uses quicker models for everything but planning and design, for the shortest runs |
-| `budget_usd` | `0` (no cap) | Spend at which it pauses and asks. Every result also shows that task's cost and the total so far |
+| `cost_mode` | `quality` | `balanced` uses cheaper models where it's safe (offered as the recommended choice on small and medium projects). `fast` uses quicker models for everything but planning and design, for the shortest runs |
+| `budget_usd` | `0` (no cap) | Spend at which it pauses and asks. Every result also shows that task's cost and the total so far. On a Pro or Max subscription nothing is billed per token, so it shows what the same work would cost at API prices |
 
 ---
 
@@ -123,6 +142,6 @@ Pick these when Claude Code asks after you enable the plugin, or change them lat
 **Contributing:** run the tests before you push.
 
 ```bash
-python3 -m unittest discover -s tests   # needs pyyaml
+python3 -m unittest discover -s tests   # needs pyyaml (and pillow for the GIF test)
 bash tests/test_taskgit.sh
 ```

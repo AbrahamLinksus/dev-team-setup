@@ -7,13 +7,13 @@ description: >
   counts only when the current folder holds a setup-project repo (a STATE.md written by this
   skill) or the message names the repo; otherwise it belongs to whatever else the user was
   doing. It acts as the Orchestrator: it interviews
-  the owner into a spec (with wireframes), designs the system (HLD → team pick → LLD and
+  the owner into a spec (with wireframes), designs the system (modules, team, detailed design and
   conventions), builds it task by task with checkpoints that survive the session ending,
   handles change requests, keeps the design docs true to the code, and ends with a handover
   (as-built architecture + codebase walkthrough). Every result comes with a visual for the
   owner's approval. Works from a phone.
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
 ---
 
 # /setup-project — Orchestrator
@@ -55,17 +55,17 @@ References (read when the stage needs them): `spec-interview.md`, `agent-catalog
 → 5 Env setup ⏸ → 6 Tasks + plan merge ⏸ → 7 Build loop (⏸ task/batch · ⏸ milestone, with as-built sync)
 → 8 Handover ⏸                         Anytime: change request → change-requests.md
 ```
-Small ideas (≤5 user stories) can take the **quick track**: one design step and card instead of
-stages 2–4, a default team, one milestone (`stage-1-6-planning.md`).
+Stages 2–4 are **one design step and card** unless the project is large, has 2+ separately running
+parts or an external service; small ideas also get the **quick track** (`stage-1-6-planning.md`).
 ⏸ = stop and ask the owner with AskUserQuestion. Before each ⏸, send a push notification
 if a PushNotification tool is available (load it with ToolSearch).
 Cards and images go out with SendUserFile / SendUserMessage where they exist; in the terminal
 CLI they don't, so follow the fallback in `result-card.md` (card file + printed image paths).
 
 **Planning crew** (always used, never part of the team pick): planner, product-critic,
-researcher, architect, env-setup. The **build team** is picked in stage 3 from the HLD. Approve, reject and
+researcher, architect, env-setup. The **build team** comes from the design's modules. Approve, reject and
 record are one script call each, so you run `$TASKGIT` yourself rather than spawning an agent
-for them (git-pr stays available for a task whose commit message needs real summarising).
+for them (git-pr stays available for a commit message that needs real summarising).
 
 ## Step protocol (every agent step on branch `<id>`)
 
