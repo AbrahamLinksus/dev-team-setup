@@ -3,6 +3,20 @@
 Every release raises `version` in `.claude-plugin/plugin.json`, and the top entry here must
 match it (a test checks). Claude Code only offers an update when the version changes.
 
+## 1.1.0
+
+An HLD only when the project needs one, and docs brought up to date.
+
+- **One design step for most projects.** The separate HLD → team pick → LLD stages (three cards)
+  now run only for large projects, projects with 2+ separately running parts, or ones that call
+  an external service. Everything else gets one design step: the big picture (modules, the
+  stories each serves, the data flow, the milestones) is the first section of the LLD, and you
+  approve one design card. The planner's spec summary gains a `Parts:` line that decides it.
+- **Docs:** the README describes "Try this", plain-language decisions, the phone preview, the
+  production gate and OWNER.md, one-session runs, `fix`/`add` after handover and cost on a
+  subscription; `docs/how-it-works.md` is rewritten for 1.x (right-sizing, the task graph, file
+  claims, task-runners, the handover, 28 agents); PRIVACY.md lists the opt-in preview link.
+
 ## 1.0.0
 
 **First public release.** Everything below was built as the 0.8 backlog and tested on two real
