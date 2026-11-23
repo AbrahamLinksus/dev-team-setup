@@ -22,7 +22,7 @@ Idea → repo (you choose: private, public, or try locally) → "Do you write co
 → each milestone (if more than one): design doc synced to the code, README, phone preview (opt-in) ⏸
 → handover: CI, ARCHITECTURE.md, WALKTHROUGH.md, OWNER.md, production gate, lint ⏸
 Anytime: a change request updates the spec and design, shows a "what changes" card ⏸, re-plans, resumes.
-After handover: /setup-project fix <bug> · /setup-project add <feature>
+After handover: /devteam fix <bug> · /devteam add <feature>
 ```
 
 Every result comes with a visual (screenshot first, then chart/diagram, then table), the
@@ -65,7 +65,7 @@ Reject. Approving a task squashes its branch into main as one commit and pushes 
 ## How it stays safe
 
 - **Checkpoints:** every agent step is committed and pushed to the task's own `wip/<id>`
-  branch, so work survives a session ending mid-task (`/setup-project resume <repo>`). Resume
+  branch, so work survives a session ending mid-task (`/devteam resume <repo>`). Resume
   also checks that you're running the same plugin version the project started with.
 - **Shared files:** `TASKS.md`, `STATE.md` and `DECISIONS.md` are only edited on main, by the
   Orchestrator, and land in the approved task's own commit. Before a card is shown, the task is
@@ -80,7 +80,7 @@ Reject. Approving a task squashes its branch into main as one commit and pushes 
   a scope check compares the worktree with the commit the step started from, so it also
   catches files written through scripts and edits the agent committed itself (it undoes those
   commits), and reverts anything out of scope. Limits live in
-  `skills/setup-project/scopes.json`; projects can add to them in `.devteam/scopes.json`
+  `skills/devteam/scopes.json`; projects can add to them in `.devteam/scopes.json`
   (`deny` only ever grows). Every rule is listed in [guardrails](guardrails.md).
 - **Conventions:** the architect writes `docs/CONVENTIONS.md` (layering, SOLID, limits);
   `scripts/check.sh` enforces lint, strict types, complexity, layer rules and coverage; the
@@ -101,7 +101,7 @@ item is open (each one is built and tested, or waived by you with its consequenc
 ## Agents (28)
 
 Generated from one spec: edit `tools/gen_agents.py`, then run `python3 tools/gen_agents.py`.
-Shared rules: `skills/setup-project/references/team-rules.md`.
+Shared rules: `skills/devteam/references/team-rules.md`.
 
 | Pack | Agents |
 |---|---|
@@ -114,9 +114,9 @@ team or design card.
 
 ## Usage
 
-- `/setup-project build a RAG assistant over my lecture notes`
-- `/setup-project resume <repo>` continues from the repo's `STATE.md` on any device
-- `/setup-project fix <what went wrong>` · `/setup-project add <feature>` on a finished project
+- `/devteam build a RAG assistant over my lecture notes`
+- `/devteam resume <repo>` continues from the repo's `STATE.md` on any device
+- `/devteam fix <what went wrong>` · `/devteam add <feature>` on a finished project
 
 ## Files created in each project
 
@@ -158,7 +158,7 @@ When you enable the plugin, it asks for:
 | `budget_usd` | Spend at which it pauses and asks (0 = no cap) |
 
 Other notes:
-- Visual capture uses Playwright + Chromium (`skills/setup-project/scripts/capture.py`): page
+- Visual capture uses Playwright + Chromium (`skills/devteam/scripts/capture.py`): page
   screenshots, terminal images, Mermaid diagrams, and short GIFs of a flow (`capture.py flow`).
 - GPU training runs on Colab/GCP; the trainer prepares the scripts for it.
 

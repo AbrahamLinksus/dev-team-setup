@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Task branches, checkpoints and approvals for /setup-project.
+# Task branches, checkpoints and approvals for /devteam.
 #
 # Model:
 #   - main (the main checkout at <repo>) changes only through `approve` and `record`.

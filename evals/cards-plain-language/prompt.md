@@ -6,4 +6,4 @@ max_turns: 12
 allowed_tools: [Read, Glob, Grep, Skill, Bash]
 ---
 
-/setup-project a shared shopping list my family can tick off from their phones. I don't write code, so please keep it simple.
+/devteam a shared shopping list my family can tick off from their phones. I don't write code, so please keep it simple.

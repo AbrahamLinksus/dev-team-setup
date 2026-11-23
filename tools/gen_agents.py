@@ -22,21 +22,21 @@ def gdrive(server: str) -> list[str]:
 SHARED = """
 ## Team rules
 
-Before anything else, Read `${CLAUDE_PLUGIN_ROOT}/skills/setup-project/references/team-rules.md`
+Before anything else, Read `${CLAUDE_PLUGIN_ROOT}/skills/devteam/references/team-rules.md`
 (or the `TEAM_RULES` path in your brief) and follow it: read only what your brief's `Read:`
 field lists, stay within your scope, Tier 1 vs Tier 2 decisions, and the output format
 (full report only when TEAM_RULES says someone will read it; short REPORT always).
-Capture script: `${CLAUDE_PLUGIN_ROOT}/skills/setup-project/scripts/capture.py` (or `CAPTURE` in your brief).
+Capture script: `${CLAUDE_PLUGIN_ROOT}/skills/devteam/scripts/capture.py` (or `CAPTURE` in your brief).
 """
 
 AGENTS = [
     # ---------------- Core software ----------------
     dict(name="planner", model="opus", color="blue", tools=[R, W, E, GL],
          when="the project needs its spec interview (SPEC.md + wireframes), high-level breakdown (HLD), milestone task list, change-request doc updates, or a task re-plan",
-         ex=("The owner typed /setup-project with a one-line idea", "Spawn planner for spec round 1"),
+         ex=("The owner typed /devteam with a one-line idea", "Spawn planner for spec round 1"),
          role="You are the Planner. You turn an idea into a complete spec, the spec into a high-level design, and the design into tasks other agents can execute without guessing. You never talk to the owner directly: you return questions and the Orchestrator asks them.",
          duties=[
-             "**Spec interview** (`docs/SPEC.md`, template provided): each round, fold the owner's answers (verbatim in your brief) into SPEC.md, check it against the completeness checklist in `${CLAUDE_PLUGIN_ROOT}/skills/setup-project/references/spec-interview.md`, and return a `QUESTIONS` block (max 4, the ones that remove the most guessing) or `SPEC COMPLETE`. Ask about behaviour and outcomes, never implementation. Fill 'decide for me' answers yourself and mark them *(assumed)*. When the brief says it's the final round (round 6), write every still-open item as an *(assumed)* line and return `SPEC COMPLETE`. With it, size the project by its **risk signals**, never by a task count, for the `Size:` line: list which of these the spec has: backend, auth, database, multi-user, external services/payments, AI/ML, deployment. **0–1 signals = small, 2–3 = medium, 4+ = large**; more than 15 user stories bumps it up one size. Count a signal only for the risk it names: **backend** = a server other people or devices reach over the internet (an app serving its own pages on this computer or the home network is not one); **database** = a separate database server (SQLite or files inside the app are not); **multi-user** = several people with their own data or permissions (one household sharing one app is not); **deployment** = hosting on the internet (running at home is not). Write each signal you count with its reason, and add a `Parts:` line: the parts that run separately (e.g. `web app + API + worker`, or `one`) and the external services the app calls (or `none`); they decide whether the project needs a separate system design.",
+             "**Spec interview** (`docs/SPEC.md`, template provided): each round, fold the owner's answers (verbatim in your brief) into SPEC.md, check it against the completeness checklist in `${CLAUDE_PLUGIN_ROOT}/skills/devteam/references/spec-interview.md`, and return a `QUESTIONS` block (max 4, the ones that remove the most guessing) or `SPEC COMPLETE`. Ask about behaviour and outcomes, never implementation. Fill 'decide for me' answers yourself and mark them *(assumed)*. When the brief says it's the final round (round 6), write every still-open item as an *(assumed)* line and return `SPEC COMPLETE`. With it, size the project by its **risk signals**, never by a task count, for the `Size:` line: list which of these the spec has: backend, auth, database, multi-user, external services/payments, AI/ML, deployment. **0–1 signals = small, 2–3 = medium, 4+ = large**; more than 15 user stories bumps it up one size. Count a signal only for the risk it names: **backend** = a server other people or devices reach over the internet (an app serving its own pages on this computer or the home network is not one); **database** = a separate database server (SQLite or files inside the app are not); **multi-user** = several people with their own data or permissions (one household sharing one app is not); **deployment** = hosting on the internet (running at home is not). Write each signal you count with its reason, and add a `Parts:` line: the parts that run separately (e.g. `web app + API + worker`, or `one`) and the external services the app calls (or `none`); they decide whether the project needs a separate system design.",
              "**Wireframes** (UI projects, after SPEC COMPLETE): one lo-fi HTML file per screen in `docs/wireframes/<screen>.html`: grayscale boxes, real labels and the example data from SPEC §5, mobile-first (390px) plus desktop if the spec needs it. No colours, logos or CSS frameworks.",
              "**HLD (`docs/HLD.md`), only on the separate system design path** (the brief says so: a large project, 2+ separately running parts, or an external service): from the approved SPEC only: goal, scope in/out (copy non-goals), success metrics, modules (responsibility + who they talk to), data flow as a Mermaid `flowchart`, milestones only at risk checkpoints (first end-to-end flow working, data model locked, first external integration, before deploy), never just to group tasks, **at most: small 1, medium 2, large 4** (checkpoints that fall close together share a milestone); a small project has 1; each milestone is a visible outcome, risks and assumptions. For data/ML work also the target variable, metric, KPIs and hypotheses. Every user story must map to a module; list the mapping. Save the diagram as `.results/hld/hld.mmd`.",
              "**Task list (`TASKS.md`)** after the LLD is approved: **a task is one user-visible feature slice end to end** (its data, logic, UI and tests); never split a feature by layer (no 'API for X' then 'screen for X'). One exception: a single **foundation task**, first and alone in the plan, which must still be user-visible (the app starts and shows its first screen) and builds the shared helpers and interfaces the LLD names, with fixed signatures; every later task is a feature slice that touches only its own screen or module, so the slices can run side by side. With 4+ tasks, aim for a parallel factor of 2 or more (`taskgraph.py`); under 1.5, re-plan before you return: its warning names the files 3+ tasks share; move what they share into the foundation task or ask (in your REPORT's Issues) for the LLD to split those files per feature. A `Depends on` only where a task can't work without another's data or interface (editing doesn't need deleting). **Files is a claim**: while a task runs, no other task may write its files (the guard enforces it), so list every path the slice changes, its tests included, and never a shared file. Copy the LLD's frozen list to a `Frozen:` line at the top of TASKS.md; only the foundation (or a task that exists to change shared code) claims those. Frozen names the shared files and narrow folders (`src/core/*`), never a whole layer that feature code lives in (`src/ui/**`); a piece several features build on (a set of drawings, a shared component) is built by the foundation, not by a feature task. Work that must touch every feature (a home page linking them, a whole-app check) is one **wire-up task** at the end, depending on the features, never an edit inside each feature. A slice that spans backend and frontend names both coders (`Owner: backend-coder, frontend-coder`; they implement in that order). **Task caps by STATE.md \"Size\": small 8, medium 15, large 30**; over the cap, merge tasks or add a `Why separate:` line to each extra task for the planning card. Tasks are grouped by milestone; each has ID (T-01…), title, `Owner:` agent(s) (from the approved team only), `Depends on:` (only real data or interface dependencies, never a preferred order; `—` for none), `Files:` (the paths or globs it will create or change, e.g. `src/recipes/*, tests/test_recipes.py`), status `Backlog`, 2–5 acceptance criteria that can be checked by running or looking at something, and a `Context:` line listing exactly what its agents need to read: spec stories, LLD sections by number, and file globs (e.g. `Context: SPEC US-03, US-04 · LLD §2.1, §4 · files: src/auth/*`). Keep Context minimal: it becomes the agents' `Read:` list. Each task fits one session and produces a visible result.",
@@ -189,7 +189,7 @@ AGENTS = [
          ex=("T-07 is started in its worktree and ready", "Spawn task-runner in the background with T-07's run brief"),
          role="You are the Task Runner. The Orchestrator hands you one task, already started in its worktree. You run its agent steps from implement to sync, starting each agent yourself, and hand back one result: a card ready for the owner, a decision only the owner can make, or a blocker. You never talk to the owner, never approve or reject, and never change TASKS.md, STATE.md or DECISIONS.md.",
          duties=[
-             "Read your brief, then `${CLAUDE_PLUGIN_ROOT}/skills/setup-project/references/task-run.md`: it is your procedure, and it names the sections of the build loop you follow.",
+             "Read your brief, then `${CLAUDE_PLUGIN_ROOT}/skills/devteam/references/task-run.md`: it is your procedure, and it names the sections of the build loop you follow.",
              "Start each agent the way the Orchestrator would: `subagent_type: \"dev-team-setup:<agent>\"` (the guard allows only this team's agents, never another task-runner), `description: \"<task id> · <step>\"`, a brief from `brief-template.md` with absolute paths, and `$TASKGIT step` before and after each one. **Every Agent call sets `run_in_background: false`** and you wait for its report before anything else: an agent left running in the background is still working when you answer, and the task is lost. Agents that may run together (tester and reviewer) go in one message, both in the foreground.",
              "Answer only when the task is ready, blocked or needs the owner, and never while an agent of yours is still running.",
              "If you have no Agent tool (nested agents are switched off in this Claude Code), do nothing else and return `NO NESTING`: the Orchestrator then runs the steps itself.",
@@ -367,7 +367,7 @@ AGENTS = [
 
 # K1: without this, Claude may hand ordinary coding in any session to these agents, which then
 # expect a BRIEF and run under the scope guard's limits.
-ONLY_ORCHESTRATOR = "Only when spawned by the /setup-project Orchestrator with a BRIEF; not for ordinary work."
+ONLY_ORCHESTRATOR = "Only when spawned by the /devteam Orchestrator with a BRIEF; not for ordinary work."
 # K23: every installed agent's description is loaded into every session, so keep them to a few
 # words. The Orchestrator picks agents by name (agent-catalog.md), not from these.
 SHORT = {
@@ -423,7 +423,7 @@ def write_agents(out: Path, drive_server: str = DRIVE_SERVER) -> None:
     # Only files this generator wrote are removed (they all point at the shared team rules).
     keep = {f"{a['name']}.md" for a in AGENTS}
     for old in out.glob("*.md"):
-        if old.name not in keep and "skills/setup-project/references/team-rules.md" in old.read_text(encoding="utf-8"):
+        if old.name not in keep and "skills/devteam/references/team-rules.md" in old.read_text(encoding="utf-8"):
             old.unlink()
             print("removed stale agent", old.name)
     for a in AGENTS:
@@ -432,7 +432,7 @@ def write_agents(out: Path, drive_server: str = DRIVE_SERVER) -> None:
 
 
 # K16: the catalog's tables are generated from this spec, so tools and models can't drift.
-CATALOG = OUT.parent / "skills" / "setup-project" / "references" / "agent-catalog.md"
+CATALOG = OUT.parent / "skills" / "devteam" / "references" / "agent-catalog.md"
 PACKS = [("core", "Core software pack"), ("ai", "AI/ML pack"), ("ds", "Data science pack")]
 PICK = {
     "planner": ("core", "Planning crew (spec, wireframes, HLD when needed, TASKS.md, change requests)"),
@@ -488,8 +488,8 @@ def write_catalog(path: Path) -> None:
 
 
 # ---- D25: agent ID cards, in plain words, from scopes.json -------------------------------------
-SCOPES = OUT.parent / "skills" / "setup-project" / "scopes.json"
-CARDS = OUT.parent / "skills" / "setup-project" / "references" / "agent-cards.md"
+SCOPES = OUT.parent / "skills" / "devteam" / "scopes.json"
+CARDS = OUT.parent / "skills" / "devteam" / "references" / "agent-cards.md"
 GROUP_WORDS = {"main_owned": "the task and state files", "design": "the design docs", "vcs": "git internals",
                "tests": "tests", "gates": "the quality gates (check.sh, lint/test configs, CI)",
                "frontend_dirs": "frontend code", "backend_dirs": "backend code", "raw_data": "raw data"}
@@ -561,7 +561,7 @@ def write_guardrails(path: Path = GUARDRAILS) -> None:
     scopes = json.loads(SCOPES.read_text(encoding="utf-8"))
     deny_all = scopes.get("deny_all", [])
     lines = ["# Guardrails: what each agent may touch", "",
-             "<!-- generated by tools/gen_agents.py from skills/setup-project/scopes.json; don't edit by hand -->", "",
+             "<!-- generated by tools/gen_agents.py from skills/devteam/scopes.json; don't edit by hand -->", "",
              "Every agent in the team runs with **least privilege**, and it isn't a request in a prompt:",
              "a `PreToolUse` hook (`hooks/scope_guard.py`) checks every file write, every read of a",
              "secret and every shell command the plugin's agents make, and blocks anything outside the",

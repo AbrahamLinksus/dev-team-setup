@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Scenario tests for skills/setup-project/scripts/taskgit.sh against throwaway repos
+# Scenario tests for skills/devteam/scripts/taskgit.sh against throwaway repos
 # with a local bare "origin". Each scenario reproduces a bug found during review.
 #
 # Run: bash tests/test_taskgit.sh            (all)
 #      bash tests/test_taskgit.sh cr_wipe     (scenarios whose name contains "cr_wipe")
 set -uo pipefail
 
-TG="${TASKGIT_UNDER_TEST:-$(cd "$(dirname "$0")/.." && pwd)/skills/setup-project/scripts/taskgit.sh}"
+TG="${TASKGIT_UNDER_TEST:-$(cd "$(dirname "$0")/.." && pwd)/skills/devteam/scripts/taskgit.sh}"
 FILTER=${1:-}
 export GIT_AUTHOR_NAME=t GIT_AUTHOR_EMAIL=t@t GIT_COMMITTER_NAME=t GIT_COMMITTER_EMAIL=t@t
 export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1

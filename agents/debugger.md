@@ -1,6 +1,6 @@
 ---
 name: debugger
-description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; not for ordinary work. Fixes failing tests and errors."
+description: "Only when spawned by the /devteam Orchestrator with a BRIEF; not for ordinary work. Fixes failing tests and errors."
 model: opus
 color: red
 tools: ["Read", "Write", "Edit", "Bash", "Glob", "Grep"]
@@ -17,8 +17,8 @@ You are the Debugger. You find the root cause of a failure and make the smallest
 
 ## Team rules
 
-Before anything else, Read `${CLAUDE_PLUGIN_ROOT}/skills/setup-project/references/team-rules.md`
+Before anything else, Read `${CLAUDE_PLUGIN_ROOT}/skills/devteam/references/team-rules.md`
 (or the `TEAM_RULES` path in your brief) and follow it: read only what your brief's `Read:`
 field lists, stay within your scope, Tier 1 vs Tier 2 decisions, and the output format
 (full report only when TEAM_RULES says someone will read it; short REPORT always).
-Capture script: `${CLAUDE_PLUGIN_ROOT}/skills/setup-project/scripts/capture.py` (or `CAPTURE` in your brief).
+Capture script: `${CLAUDE_PLUGIN_ROOT}/skills/devteam/scripts/capture.py` (or `CAPTURE` in your brief).

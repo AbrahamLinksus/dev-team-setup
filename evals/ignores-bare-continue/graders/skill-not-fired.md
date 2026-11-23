@@ -1,7 +1,7 @@
 ---
 type: tool_used
 tool: Skill
-input_match: '"skill"\s*:\s*"(?:[\w-]+:)?setup-project"'
+input_match: '"skill"\s*:\s*"(?:[\w-]+:)?(?:devteam|setup-project)"'
 min: 0
 max: 0
 ---

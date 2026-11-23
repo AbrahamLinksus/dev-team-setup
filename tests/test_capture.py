@@ -12,7 +12,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-CAP = ROOT / "skills" / "setup-project" / "scripts" / "capture.py"
+CAP = ROOT / "skills" / "devteam" / "scripts" / "capture.py"
 
 
 def run(*args: str, env: dict | None = None) -> subprocess.CompletedProcess:
@@ -183,7 +183,7 @@ class FlowGifTest(unittest.TestCase):
                 cap.parse_step(bad)
 
     def test_flow_is_documented_for_agents(self):
-        vc = (ROOT / "skills" / "setup-project" / "references" / "visual-capture.md").read_text(encoding="utf-8")
+        vc = (ROOT / "skills" / "devteam" / "references" / "visual-capture.md").read_text(encoding="utf-8")
         self.assertIn("$CAPTURE flow", vc)
 
     def test_help_lists_flow(self):

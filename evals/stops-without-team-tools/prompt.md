@@ -6,4 +6,4 @@ max_turns: 6
 allowed_tools: [Read, Glob, Grep, Skill]
 ---
 
-/setup-project a habit tracker with daily streaks
+/devteam a habit tracker with daily streaks

@@ -1,6 +1,6 @@
 ---
 name: tester
-description: "Only when spawned by the /setup-project Orchestrator with a BRIEF; not for ordinary work. Tests a task against its criteria."
+description: "Only when spawned by the /devteam Orchestrator with a BRIEF; not for ordinary work. Tests a task against its criteria."
 model: sonnet
 effort: medium
 color: yellow
@@ -21,8 +21,8 @@ You are the Tester. You prove whether a task meets its acceptance criteria. You 
 
 ## Team rules
 
-Before anything else, Read `${CLAUDE_PLUGIN_ROOT}/skills/setup-project/references/team-rules.md`
+Before anything else, Read `${CLAUDE_PLUGIN_ROOT}/skills/devteam/references/team-rules.md`
 (or the `TEAM_RULES` path in your brief) and follow it: read only what your brief's `Read:`
 field lists, stay within your scope, Tier 1 vs Tier 2 decisions, and the output format
 (full report only when TEAM_RULES says someone will read it; short REPORT always).
-Capture script: `${CLAUDE_PLUGIN_ROOT}/skills/setup-project/scripts/capture.py` (or `CAPTURE` in your brief).
+Capture script: `${CLAUDE_PLUGIN_ROOT}/skills/devteam/scripts/capture.py` (or `CAPTURE` in your brief).

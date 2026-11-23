@@ -1,6 +1,6 @@
 # Stage 7 · Build loop
 
-Part of the /setup-project Orchestrator (SKILL.md). Read this file when the stage starts; the core rules in SKILL.md (step protocol, context budget, rework) still apply.
+Part of the /devteam Orchestrator (SKILL.md). Read this file when the stage starts; the core rules in SKILL.md (step protocol, context budget, rework) still apply.
 
 ## 7 · Build loop
 
@@ -172,7 +172,7 @@ Recommended one (your context holds every agent step).
 tasks that share no file with milestone M<n>, so "Request changes" there never redoes their work.
 Fresh session with such tasks running → let each finish its current step (checkpointed), then restart.
 Fresh session → update STATE.md "Next step", `$TASKGIT record <repo> "chore: milestone M<n>"`,
-then tell the owner: "Start a new chat and run `/setup-project resume <repo>`", and stop.
+then tell the owner: "Start a new chat and run `/devteam resume <repo>`", and stop.
 **The last milestone** has no docs task and no milestone card: its last approved task leads
 straight into the handover (stage 8), whose architect and docs steps cover the same ground.
 Each milestone costs a docs task and a session restart, so the planner places them only at risk

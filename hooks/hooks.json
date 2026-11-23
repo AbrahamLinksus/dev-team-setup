@@ -1,5 +1,5 @@
 {
-  "description": "dev-team-setup scope guard: enforces each /setup-project agent's file and shell limits. Only acts on this plugin's agents.",
+  "description": "dev-team-setup scope guard: enforces each /devteam agent's file and shell limits. Only acts on this plugin's agents.",
   "hooks": {
     "PreToolUse": [
       {

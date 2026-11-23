@@ -12,7 +12,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-TG = ROOT / "skills" / "setup-project" / "scripts" / "taskgraph.py"
+TG = ROOT / "skills" / "devteam" / "scripts" / "taskgraph.py"
 
 # A Recipe Box-shaped plan: one foundation task, then feature slices that touch their own module.
 RECIPE_BOX = """# TASKS — recipe-box
@@ -215,7 +215,7 @@ class TaskGraphTest(unittest.TestCase):
         self.assertIn("Parallel factor: 2.33 (7 tasks in 3 rounds)", s)
 
     def test_runs_on_the_planning_template(self):
-        tmpl = (ROOT / "skills" / "setup-project" / "templates" / "TASKS.md").read_text(encoding="utf-8")
+        tmpl = (ROOT / "skills" / "devteam" / "templates" / "TASKS.md").read_text(encoding="utf-8")
         self.assertEqual(self.run_tg(tmpl).returncode, 0)
 
 
