@@ -1,147 +1,77 @@
 # dev-team-setup
 
-Turn an idea into a working project with a team of AI agents.
-You answer questions and approve each step, from your laptop or your phone.
+**You bring the idea. A team of AI agents brings the spec, the code, the tests and the docs,
+and checks with you before anything important.**
+
+A Claude Code plugin. Type `/setup-project <your idea>`, answer a few questions, and approve
+each step (from your laptop or your phone) while the team builds it.
 
 ![From idea to handover](docs/images/how-it-works.png)
 
----
+## Why not just ask one chat to build it?
 
-## Get started
+You can. It's great for a quick prototype. Then you start using the thing, and:
 
-**0. Check the requirements**
+| One chat says… | Then you find out… | dev-team-setup instead… |
+|---|---|---|
+| "Done! Here's your recipe app" | it never saves a backup, and "1–2 cloves" breaks the scaler | interviews you first, and a critic agent pokes holes in the plan before any code exists |
+| "I went with Postgres and a hosted API" | that was a big decision you never got to make | stops and asks, in plain words: what it means for you and what changing it later would cost |
+| "All working!" | nothing was tested, and one fix broke two other things | tests, reviews and merges every task on its own branch, and you approve it after trying it |
+| "I updated a few files" | it edited half the project, including things it shouldn't touch | gives each agent its own job and files, and a guard blocks everything else |
+| "Here's the code" | there's no README, no CI, and you're not sure it's safe to use | checks a production list for your kind of app and hands over docs plus a one-page owner guide |
+
+## What it feels like
+
+You mostly tap buttons. After each task you get a card like this:
+
+<img src="docs/images/result-card.png" width="320" alt="A task result with goals, test results and Approve / Change / Reject buttons">
+
+It says what the task was meant to do, what got done, what it cost, and how to **try it
+yourself in a minute**. Then: **Approve**, **Change** or **Reject**. Close your laptop halfway
+through and pick it up later with `/setup-project resume <repo>`.
+
+## What you need
 
 | You need | Why |
 |---|---|
-| [Claude Code](https://claude.com/claude-code) 2.1.271 or later (terminal, desktop app, IDE or claude.ai/code) | runs the plugin (older versions can't load its settings' choice lists). Not claude.ai chat: it can't run agents or hooks, so the plugin stops there. Cowork loads both but is untested |
+| [Claude Code](https://claude.com/claude-code) 2.1.271 or later (terminal, desktop app, IDE or claude.ai/code) | runs the plugin. Not claude.ai chat: it can't run agents or hooks |
 | `git` | every task is a branch with checkpoints |
-| [GitHub CLI](https://cli.github.com) `gh`, signed in (`gh auth login`) | creates the project's repo and pushes to it. Optional: pick **Try locally** to keep everything on this computer, no GitHub account needed |
-| Python 3.9 or newer (`python3`) | the guard that keeps each agent in its lane runs on it |
+| Python 3.9 or newer (`python3`) | runs the guard that keeps each agent in its lane |
+| [GitHub CLI](https://cli.github.com) `gh`, signed in (`gh auth login`) | creates the project's repo. Optional: pick **Try locally** to keep everything on your computer |
 | [uv](https://docs.astral.sh/uv/) | Python projects |
 | Node.js + npm | JavaScript projects and Mermaid diagrams |
 
-One line to check them all:
+Check them all at once:
 
 ```bash
 git --version && gh auth status && python3 --version && uv --version && npm --version
 ```
 
-Playwright and Chromium (for screenshots) are set up the first time you start a project: the
-plugin asks first, and installs them into its own private folder, not your system Python.
+**Installed for you, when you agree:** Playwright, Chromium, Pillow and Mermaid, for
+screenshots and diagrams. The plugin asks first and keeps them in its own private folder, not
+your system Python. Each project's own dependencies go into that project.
 
-**1. Install** in Claude Code
+## Install
 
-```bash
-claude plugin marketplace add AbrahamLinksus/dev-team-setup
-claude plugin install dev-team-setup@dev-team-setup
-```
+1. **Add the plugin** in Claude Code:
 
-**2. Add your details:** Claude Code asks for your name and GitHub username when the plugin is
-enabled. To change them later, run `/plugin configure dev-team-setup@dev-team-setup`, or open
-`/config`, where each option has its own row.
+   ```bash
+   claude plugin marketplace add AbrahamLinksus/dev-team-setup
+   claude plugin install dev-team-setup@dev-team-setup
+   ```
 
-**3. Start a project**
+2. **Tell it who you are.** Claude Code asks for your name, your GitHub username and a few
+   settings when the plugin is enabled. Change them any time with
+   `/plugin configure dev-team-setup@dev-team-setup`, or in `/config`.
 
-```
-/setup-project a habit tracker with daily streaks
-```
+3. **Give it an idea:**
 
-Claude checks the tools above, asks whether you write code (so it can talk to you in plain
-words), interviews you until the idea is a clear spec, sizes the project, designs it, picks a
-team of agents and builds it, several tasks at a time, in one session.
+   ```
+   /setup-project a habit tracker with daily streaks
+   ```
 
----
+To update later: `claude plugin marketplace update dev-team-setup`, then
+`claude plugin update dev-team-setup@dev-team-setup`.
 
-## What you'll do
-
-Mostly tap buttons. After every task you get a result like this:
-
-<img src="docs/images/result-card.png" width="320" alt="A task result with goals, test results and Approve / Change / Reject buttons">
-
-*Illustration: each result shows what the task was meant to do, what got done, and a screenshot.*
-
-**Approve** saves it to your repo · **Change** sends it back with your note · **Reject** throws it away.
-
-- **Try it, don't just read it.** Every result says how to try it yourself in a minute or two
-  ("Try this"), with screenshots and, for things like animations, a short GIF.
-- **Decisions come to you, in plain words.** Anything that's really your call (which database,
-  a paid service, what goes online) stops and asks, saying what it means for you and what
-  changing it later would cost. Routine tooling comes as one "standard toolkit" card.
-- **On your phone.** At each milestone you can open the build on your phone through a temporary
-  link (opt-in, closes after 30 minutes).
-- **A finished app, not a demo.** The handover checks a production list for your kind of app
-  (errors in plain words, data that survives a restart, backups, no secrets in the code…) and
-  gives you `OWNER.md`: one page on how to start it, what it can't do and what could lose data.
-
----
-
-## What this plugin runs and sends
-
-Everything runs on your machine, in your Claude Code session. The plugin has no server and
-no telemetry. It sends nothing anywhere except what is listed here.
-
-| What | When | Where it goes |
-|---|---|---|
-| Creates a GitHub repo (`gh repo create`), private or public as you choose | Once, at the start of a project (not with **Try locally**) | GitHub, under the account you set as `github_owner` |
-| Pushes commits: `main` and one `wip/<task>` branch per task, after every step | Throughout the build, so work survives a closed session | That repo |
-| Installs the project's own dependencies (`uv sync`, `npm ci`, …) | When a task starts in its own worktree | Package registries (PyPI, npm); files stay in the project folder |
-| Installs Playwright, Chromium, Pillow and `mermaid@11.4.1` for screenshots and diagrams | Only when you say yes to `capture.py doctor --install` | Into the plugin's private data folder, not your system Python |
-| Shows each working agent's task, step, time and tokens in Claude Code's agent panel (`settings.json` → `hooks/subagent_status.sh`) | While agents run | Nowhere: it formats what Claude Code passes it |
-| Starts a headless browser on `localhost` | To screenshot each result | Nowhere: local pages only |
-| Fetches web pages and searches the web | Only the researcher, rag-engineer, agent-engineer and data-acquisition agents, and only when the plan picks them | The sites they read |
-| Opens a temporary public link to the running app (`cloudflared` or `npx localtunnel`) | Only if you say yes at a milestone; closes after 30 minutes | The tunnel service; anyone with the link can use that build while it's open |
-| Reads Google Drive files | Only the data-acquisition agent, only if you connected Google Drive and point it at a file | Read-only |
-
-**The guard.** A hook (`hooks/scope_guard.sh`, which runs `hooks/scope_guard.py`) checks every
-file edit and shell command made by the plugin's own agents, and blocks anything outside that
-agent's role: for example, the tester can't edit app code, and no agent can read `.env` files,
-push to `main`, or delete outside the project. It runs locally, makes no network calls, and
-ignores tools used outside the plugin's agents. Each block is noted in `.git/devteam-guard.log` (local, never
-pushed) so the result card can tell you about it. When it can't run (no Python 3.9+), it blocks
-the agent's action rather than letting it through. The full rules are in
-[how it works](docs/how-it-works.md).
-
----
-
-## Good to know
-
-- **Take a break anytime.** Continue later, on any device:
-  ```
-  /setup-project resume <repo-name>
-  ```
-- **One session, start to finish.** Each task runs in its own background agent, so the main
-  chat stays small; at most it suggests typing `/compact` now and then. If your Claude Code
-  can't run agents inside agents, it falls back to a fresh chat per milestone.
-- **Changed your mind?** Just say it, e.g. *"make it work offline"*. The plan updates and you approve the change.
-- **After the handover:** `/setup-project fix <what went wrong, in plain words>` reproduces the
-  bug with a failing test before fixing it; `/setup-project add <feature>` plans the new feature
-  with its own size and milestone.
-- **Your code, your repo.** Each project gets its own GitHub repo. You choose private or public.
-- **You own the result.** It ends with docs that walk you through the code.
-
----
-
-## Settings
-
-Pick these when Claude Code asks after you enable the plugin, or change them later in `/config`.
-
-| Setting | Default | What it does |
-|---|---|---|
-| `approval_mode` | `every-task` | `batch-low-risk` approves small, safe tasks together. `autopilot` approves them on its own and shows you each one afterwards, with Undo: the fastest way to run |
-| `cost_mode` | `quality` | `balanced` uses cheaper models where it's safe (offered as the recommended choice on small and medium projects). `fast` uses quicker models for everything but planning and design, for the shortest runs |
-| `budget_usd` | `0` (no cap) | Spend at which it pauses and asks. Every result also shows that task's cost and the total so far. On a Pro or Max subscription nothing is billed per token, so it shows what the same work would cost at API prices |
-
----
-
-## Learn more
-
-- [How it works](docs/how-it-works.md): the agents, the guardrails, the files each project gets
-- [Guardrails](docs/guardrails.md): what each agent may and may not touch, enforced by a hook, and the
-  20 bypasses found and closed, each kept by a named test
-
-**Contributing:** run the tests before you push.
-
-```bash
-python3 -m unittest discover -s tests   # needs pyyaml (and pillow for the GIF test)
-bash tests/test_taskgit.sh
-```
+More: [how it works](docs/how-it-works.md) · [guardrails](docs/guardrails.md) ·
+[privacy: what it runs and sends](docs/PRIVACY.md)
