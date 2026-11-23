@@ -382,15 +382,17 @@ class StructureTest(unittest.TestCase):
         self.assertIn("`/config`", readme)
 
     def test_readme_discloses_what_it_runs_and_sends(self):
-        # D1: the directory's security scan expects every network, install and repo action disclosed
-        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        # D1: the directory's security scan expects every network, install and repo action disclosed.
+        # The README stays short (what it is, why, requirements, install) and links to the full list.
+        self.assertIn("docs/PRIVACY.md", (ROOT / "README.md").read_text(encoding="utf-8"))
+        readme = (ROOT / "docs" / "PRIVACY.md").read_text(encoding="utf-8")
         self.assertIn("## What this plugin runs and sends", readme)
         for must in ("gh repo create", "doctor --install", "telemetry", "scope_guard", "Google Drive"):
             self.assertIn(must, readme)
         web = {p.stem for p in (ROOT / "agents").glob("*.md")
                if re.search(r"^tools:.*(WebFetch|WebSearch)", p.read_text(encoding="utf-8"), re.M)}
         for agent in web:
-            self.assertIn(agent, readme, f"{agent} fetches the web but the README doesn't say so")
+            self.assertIn(agent, readme, f"{agent} fetches the web but docs/PRIVACY.md doesn't say so")
 
     def test_guard_prefix_matches_plugin_name(self):
         # D2: the guard only checks agents named "<plugin name>:<agent>". Renaming the plugin without
