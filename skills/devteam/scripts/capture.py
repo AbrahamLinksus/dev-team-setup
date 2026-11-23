@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Visual capture helper for /setup-project result cards.
+"""Visual capture helper for /devteam result cards.
 
 Subcommands (PNGs, flow a GIF; each prints the output paths):
   web     URL OUT_PREFIX [--mobile] [--full-page] [--wait-for SELECTOR] [--delay MS]

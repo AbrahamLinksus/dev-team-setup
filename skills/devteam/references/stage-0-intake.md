@@ -1,10 +1,10 @@
 # Stage 0 · Intake + repo
 
-Part of the /setup-project Orchestrator (SKILL.md). Read this file when the stage starts; the core rules in SKILL.md (step protocol, context budget, rework) still apply.
+Part of the /devteam Orchestrator (SKILL.md). Read this file when the stage starts; the core rules in SKILL.md (step protocol, context budget, rework) still apply.
 
 ## 0 · Intake + repo
 
-1. `/setup-project resume <repo>`, or "continue" when this folder has a setup-project STATE.md
+1. `/devteam resume <repo>`, or "continue" when this folder has a devteam STATE.md
    (or the message names the repo) → read `references/resume.md`.
 2. Check `python3 --version` (3.9 or newer). The scope guard that keeps every agent in its lane
    runs on it; without it, the guard blocks every agent call. Missing → tell the owner what to

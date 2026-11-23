@@ -3,6 +3,14 @@
 Every release raises `version` in `.claude-plugin/plugin.json`, and the top entry here must
 match it (a test checks). Claude Code only offers an update when the version changes.
 
+## 1.2.0
+
+**`/devteam` replaces `/setup-project`.** One name that reads well for every action:
+`/devteam <idea>` starts a project, `/devteam resume <repo>` picks it up again, and after
+handover `/devteam fix <what went wrong>` and `/devteam add <feature>`. `/setup-project` still
+works for now: it says it's been renamed and carries on as `/devteam`. Existing projects need no
+change (their state lives in their own files).
+
 ## 1.1.0
 
 An HLD only when the project needs one, and docs brought up to date.

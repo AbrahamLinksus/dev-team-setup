@@ -123,7 +123,7 @@ Ask (AskUserQuestion, header `M<n>`):
 - **Approve and continue (Recommended)**: the same session carries on (task runners keep it
   small, `stage-7-build.md`).
 - **Approve + continue in a fresh session**: update STATE.md "Next step", `$TASKGIT record`, then
-  tell the owner: "Start a new chat and run `/setup-project resume <repo>`". Recommended instead
+  tell the owner: "Start a new chat and run `/devteam resume <repo>`". Recommended instead
   of the first only when STATE.md says `Runners: off`.
 - **Request changes**
 

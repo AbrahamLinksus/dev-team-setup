@@ -12,6 +12,6 @@
 **What could lose your data:** {{from SPEC §13 and the production gate, e.g. "recipes live only on
 this phone: a reset or a lost phone loses them. Export them from Settings → Export now and then."}}
 
-**If something goes wrong:** {{what to try first, and how to ask for a fix: `/setup-project fix <what happened>`}}
+**If something goes wrong:** {{what to try first, and how to ask for a fix: `/devteam fix <what happened>`}}
 
 **What it costs to run:** {{hosting, API keys and their limits, or "nothing: it runs on your computer"}}

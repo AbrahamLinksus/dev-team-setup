@@ -1,6 +1,6 @@
 # After handover · fixes and new features
 
-Part of the /setup-project Orchestrator (SKILL.md). Read this file when the stage starts; the core rules in SKILL.md (step protocol, context budget, rework) still apply.
+Part of the /devteam Orchestrator (SKILL.md). Read this file when the stage starts; the core rules in SKILL.md (step protocol, context budget, rework) still apply.
 
 For a project whose STATE.md says `Status: Complete`. Find it first: the folder this session runs in,
 or the repo the owner names; with neither, ask which project (never treat the words as a new idea).
@@ -8,7 +8,7 @@ Rebuild context exactly as in `resume.md`
 steps 1–2 (folder, STATE.md, TASKS.md, DECISIONS.md), then read `OWNER.md` and STATE.md "Owner
 mode". Keep the owner's words verbatim in every brief.
 
-## `/setup-project fix <what happened, in plain words>`
+## `/devteam fix <what happened, in plain words>`
 
 A bug report. One task, `FIX-<n>` (next free number), in the normal task flow and approval mode:
 
@@ -35,7 +35,7 @@ A bug report. One task, `FIX-<n>` (next free number), in the normal task flow an
 
 ## New feature on a finished project
 
-`/setup-project add <feature>`, or a fix that turned out to be a feature. Reuse the change-request
+`/devteam add <feature>`, or a fix that turned out to be a feature. Reuse the change-request
 flow (`change-requests.md`) with these differences:
 - Set STATE.md `Status: Active` and `Stage: 7 Build` first; it goes back to `Complete` after the
   new handover.

@@ -18,7 +18,7 @@ Decision / Needs file granted / Rework: <the owner's answer or change request, v
 ```
 
 The worktree exists (`$TASKGIT start` ran) and TASK_PROGRESS.md is written. Read, from
-`<plugin>/skills/setup-project/`: `SKILL.md` sections **Step protocol**, **Modes** and **Rework
+`<plugin>/skills/devteam/`: `SKILL.md` sections **Step protocol**, **Modes** and **Rework
 continuation**; `references/stage-7-build.md` steps **2, 3 and 4** of "Per task" (and the
 **Needs file** paragraph); `references/brief-template.md`; `references/result-card.md` section
 **Per-task card**. Nothing else up front.

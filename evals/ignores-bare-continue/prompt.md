@@ -1,5 +1,5 @@
 ---
-description: A bare "continue" in a folder with no setup-project STATE.md belongs to whatever the user was doing, not to /setup-project (skill description rule).
+description: A bare "continue" in a folder with no devteam STATE.md belongs to whatever the user was doing, not to /devteam (skill description rule).
 tags: [routing]
 runs: 3
 max_turns: 4

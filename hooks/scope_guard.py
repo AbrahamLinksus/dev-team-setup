@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Scope guard for dev-team-setup agents.
 
-Two modes, one source of truth (skills/setup-project/scopes.json + optional
+Two modes, one source of truth (skills/devteam/scopes.json + optional
 <project>/.devteam/scopes.json overrides written by the Architect):
 
 1. PreToolUse hook (default): reads the hook JSON from stdin. Acts only when the tool
@@ -31,7 +31,7 @@ from pathlib import Path
 
 PLUGIN = "dev-team-setup"
 ROOT = Path(__file__).resolve().parent.parent
-DEFAULTS = ROOT / "skills" / "setup-project" / "scopes.json"
+DEFAULTS = ROOT / "skills" / "devteam" / "scopes.json"
 
 
 @cache
@@ -598,7 +598,7 @@ def git_write_in(command: str, depth: int = 0) -> bool:
     return False
 
 
-SCRIPTS = ROOT / "skills" / "setup-project" / "scripts"
+SCRIPTS = ROOT / "skills" / "devteam" / "scripts"
 # git options that run a program or write a file, even on read-only subcommands
 GIT_GLOBAL_UNSAFE = re.compile(r"^(-c.*|--config-env.*|--exec-path.*)$")
 GIT_ARG_UNSAFE = re.compile(r"^(--output|--upload-pack|--receive-pack|--exec|--ext-diff|--textconv|-O|--open-files-in-pager)(=.*)?$")

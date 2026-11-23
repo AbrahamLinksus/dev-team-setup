@@ -1,6 +1,6 @@
 # Stages 1–6 · Planning (spec → tasks)
 
-Part of the /setup-project Orchestrator (SKILL.md). Read this file when the stage starts; the core rules in SKILL.md (step protocol, context budget, rework) still apply.
+Part of the /devteam Orchestrator (SKILL.md). Read this file when the stage starts; the core rules in SKILL.md (step protocol, context budget, rework) still apply.
 
 ## 1 · Spec interview ⏸
 

@@ -1,7 +1,7 @@
-# Team rules (every /setup-project agent)
+# Team rules (every /devteam agent)
 
 The single source of these rules. Every agent reads this file before starting.
-"The owner" is the person running /setup-project; only the Orchestrator talks to them.
+"The owner" is the person running /devteam; only the Orchestrator talks to them.
 
 ## Before you start
 - Work only inside the worktree path in your brief (the task's own `wip/<id>` branch). Never touch the main checkout.
@@ -11,7 +11,7 @@ The single source of these rules. Every agent reads this file before starting.
 - `TASKS.md`, `STATE.md`, `DECISIONS.md` and `TASK_PROGRESS.md` belong to the Orchestrator: never edit them (only the planner writes `TASKS.md`, during planning and change requests). Read them only when your `Read:` field lists them.
 
 ## Scope is enforced
-- Each role may only change certain paths and run certain shell commands (`skills/setup-project/scopes.json`, plus the project's `.devteam/scopes.json`). A hook blocks out-of-scope writes and commands, and after every step the Orchestrator reverts any out-of-scope file changes. If a block stops you from finishing, report it under Issues; don't try to work around it.
+- Each role may only change certain paths and run certain shell commands (`skills/devteam/scopes.json`, plus the project's `.devteam/scopes.json`). A hook blocks out-of-scope writes and commands, and after every step the Orchestrator reverts any out-of-scope file changes. If a block stops you from finishing, report it under Issues; don't try to work around it.
 - Your task's `Files:` in TASKS.md is its **claim**. A file another running task claims, or a
   shared file the foundation froze, is blocked for you. Don't work around it: finish what you can
   and put `Needs file: <path> (why)` under Issues.

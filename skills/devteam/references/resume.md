@@ -1,10 +1,10 @@
 # Resume
 
-Part of the /setup-project Orchestrator (SKILL.md). Read this file when the stage starts; the core rules in SKILL.md (step protocol, context budget, rework) still apply.
+Part of the /devteam Orchestrator (SKILL.md). Read this file when the stage starts; the core rules in SKILL.md (step protocol, context budget, rework) still apply.
 
 ## Resume
 
-`/setup-project resume <repo>`, or "continue" in a folder with a setup-project STATE.md (details in
+`/devteam resume <repo>`, or "continue" in a folder with a devteam STATE.md (details in
 `checkpointing.md`). Rebuild everything
 from STATE.md, TASKS.md, DECISIONS.md and TASK_PROGRESS.md; take nothing from a previous chat.
 Agent IDs from earlier sessions are not continued; every step after a resume spawns fresh.

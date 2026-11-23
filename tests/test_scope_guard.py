@@ -16,7 +16,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 GUARD = ROOT / "hooks" / "scope_guard.py"
-SCRIPTS = (ROOT / "skills" / "setup-project" / "scripts").as_posix()
+SCRIPTS = (ROOT / "skills" / "devteam" / "scripts").as_posix()
 TG, CAP = f"{SCRIPTS}/taskgit.sh", f"{SCRIPTS}/capture.py"
 
 
@@ -390,7 +390,7 @@ class GuardTest(unittest.TestCase):
 
     def test_capture_rejects_abbreviated_cmd(self):
         # capture.py itself must refuse --cm (prefix of --cmd): the guard is not the only line of defence
-        cap = ROOT / "skills" / "setup-project" / "scripts" / "capture.py"
+        cap = ROOT / "skills" / "devteam" / "scripts" / "capture.py"
         p = subprocess.run([sys.executable, str(cap), "term", "/tmp/never.png", "--cm", "echo x"],
                            capture_output=True, text=True)
         self.assertEqual(p.returncode, 2)

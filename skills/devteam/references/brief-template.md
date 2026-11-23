@@ -16,8 +16,8 @@ everything task-specific comes after the `BRIEF ·` line. Never move a task-spec
 above it.
 
 ```
-TEAM_RULES:   <plugin root>/skills/setup-project/references/team-rules.md
-CAPTURE:      <plugin root>/skills/setup-project/scripts/capture.py
+TEAM_RULES:   <plugin root>/skills/devteam/references/team-rules.md
+CAPTURE:      <plugin root>/skills/devteam/scripts/capture.py
 Return:       short REPORT (≤12 lines) or DECISION NEEDED (format in TEAM_RULES)
 BRIEF · <task-id> · <agent-name> · <step>
 Worktree:     <wt>     (absolute; work only here; branch wip/<task-id>; every Bash call starts with `cd <wt> &&`)

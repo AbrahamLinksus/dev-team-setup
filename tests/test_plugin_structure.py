@@ -14,7 +14,7 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
-SKILL = ROOT / "skills" / "setup-project"
+SKILL = ROOT / "skills" / "devteam"
 # D11: SKILL.md is a core; each stage's instructions live in references/stage-*.md and are read
 # when the stage starts. Content checks look at the core plus every stage file.
 STAGE_FILES = ("stage-0-intake.md", "stage-1-6-planning.md", "stage-7-build.md", "stage-8-handover.md",
@@ -74,8 +74,8 @@ class StructureTest(unittest.TestCase):
                 self.assertIn(fm["model"], {"opus", "sonnet", "haiku", "inherit"})
                 # the Claude app rejects XML-like tags in descriptions
                 self.assertNotRegex(fm["description"], r"[<>]")
-                # K1: never picked for ordinary work outside /setup-project
-                self.assertTrue(fm["description"].startswith("Only when spawned by the /setup-project Orchestrator with a BRIEF"))
+                # K1: never picked for ordinary work outside /devteam
+                self.assertTrue(fm["description"].startswith("Only when spawned by the /devteam Orchestrator with a BRIEF"))
                 tools = fm.get("tools", [])
                 unknown = {t for t in tools if t not in KNOWN_TOOLS and not t.startswith("mcp__")}
                 self.assertFalse(unknown, unknown)
@@ -172,7 +172,7 @@ class StructureTest(unittest.TestCase):
     def test_gen_agents_removes_stale_agents(self):
         with tempfile.TemporaryDirectory() as d:
             stale = Path(d) / "old-agent.md"
-            stale.write_text("---\nname: old-agent\n---\nRead skills/setup-project/references/team-rules.md\n")
+            stale.write_text("---\nname: old-agent\n---\nRead skills/devteam/references/team-rules.md\n")
             mine = Path(d) / "my-notes.md"
             mine.write_text("not generated\n")
             subprocess.run([sys.executable, str(ROOT / "tools" / "gen_agents.py"), "--out", d], check=True, capture_output=True)
@@ -753,14 +753,14 @@ class StructureTest(unittest.TestCase):
     def test_fixes_after_handover_reproduce_first(self):
         # B-24: a bug report in plain words ends in a test that failed, a fix, and a card
         m = (SKILL / "references" / "maintenance.md").read_text(encoding="utf-8")
-        fix = m[m.index("## `/setup-project fix"):m.index("## New feature")]
+        fix = m[m.index("## `/devteam fix"):m.index("## New feature")]
         self.assertIn("**Reproduce first: tester.**", fix)
         self.assertIn("**fails because of the bug**", fix)
         self.assertLess(fix.index("Reproduce first"), fix.index("**Fix: debugger.**"))
         self.assertIn("can't reproduce it → no code\n   changes", fix)
         self.assertIn("`fix(<module>): <what> [FIX-<n>]`", fix)
         self.assertIn("it's a feature", fix)
-        self.assertIn("`/setup-project fix <bug>` or `add <feature>`", (SKILL / "SKILL.md").read_text(encoding="utf-8"))
+        self.assertIn("`/devteam fix <bug>` or `add <feature>`", (SKILL / "SKILL.md").read_text(encoding="utf-8"))
 
     def test_features_after_handover_reuse_the_change_request_flow(self):
         # B-25: a new feature on a finished project is a CR with its own size and a short handover
@@ -1168,7 +1168,7 @@ class StructureTest(unittest.TestCase):
         self.assertIn("up to\n3 running in total, longest remaining chain first", block)
         self.assertIn("run `--ready` again", block)
         self.assertIn("`Status: In progress` in TASKS.md", build)
-        self.assertIn("TASKGRAPH=<root>/skills/setup-project/scripts/taskgraph.py", (SKILL / "SKILL.md").read_text(encoding="utf-8"))
+        self.assertIn("TASKGRAPH=<root>/skills/devteam/scripts/taskgraph.py", (SKILL / "SKILL.md").read_text(encoding="utf-8"))
 
     def test_fast_mode_keeps_design_and_risky_reviews_strong(self):
         # P3: faster models for mechanical roles, never for the design or high-risk reviews

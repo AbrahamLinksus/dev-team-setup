@@ -3,7 +3,7 @@
 **You bring the idea. A team of AI agents brings the spec, the code, the tests and the docs,
 and checks with you before anything important.**
 
-A Claude Code plugin. Type `/setup-project <your idea>`, answer a few questions, and approve
+A Claude Code plugin. Type `/devteam <your idea>`, answer a few questions, and approve
 each step (from your laptop or your phone) while the team builds it.
 
 ![From idea to handover](docs/images/how-it-works.png)
@@ -28,7 +28,7 @@ You mostly tap buttons. After each task you get a card like this:
 
 It says what the task was meant to do, what got done, what it cost, and how to **try it
 yourself in a minute**. Then: **Approve**, **Change** or **Reject**. Close your laptop halfway
-through and pick it up later with `/setup-project resume <repo>`.
+through and pick it up later with `/devteam resume <repo>`.
 
 ## What you need
 
@@ -67,7 +67,7 @@ your system Python. Each project's own dependencies go into that project.
 3. **Give it an idea:**
 
    ```
-   /setup-project a habit tracker with daily streaks
+   /devteam a habit tracker with daily streaks
    ```
 
 To update later: `claude plugin marketplace update dev-team-setup`, then

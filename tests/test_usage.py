@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-SCRIPTS = Path(__file__).resolve().parent.parent / "skills" / "setup-project" / "scripts"
+SCRIPTS = Path(__file__).resolve().parent.parent / "skills" / "devteam" / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 import usage  # noqa: E402
 
@@ -55,7 +55,7 @@ class MeasureTest(unittest.TestCase):
     def test_interventions(self):
         ts = "2026-11-09T10:00:00Z"
         self.write("s.jsonl", [
-            {"type": "user", "timestamp": ts, "message": {"content": "/setup-project build it"}},       # launch: not counted
+            {"type": "user", "timestamp": ts, "message": {"content": "/devteam build it"}},       # launch: not counted
             {"type": "user", "timestamp": ts, "isMeta": True, "message": {"content": "meta"}},
             {"type": "user", "timestamp": ts, "message": {"content": "<command-name>/cost</command-name>"}},
             {"type": "assistant", "timestamp": ts, "message": {"id": "a", "model": "m", "usage": usage_of(1, 1, 1, 1),

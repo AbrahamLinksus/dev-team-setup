@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Task graph for /setup-project: reads TASKS.md and says what can run at the same time.
+"""Task graph for /devteam: reads TASKS.md and says what can run at the same time.
 
     taskgraph.py TASKS.md                     waves, critical path, parallel factor, warnings
     taskgraph.py TASKS.md --json              the same as JSON (the build loop schedules from it)

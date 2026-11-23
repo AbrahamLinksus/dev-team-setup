@@ -35,7 +35,7 @@ offline", "add login", "drop the export feature", "use Postgres instead".
              STATE.md in the main checkout, then $TASKGIT record.
 8 Resume     offer "Continue here (Recommended)" / "Continue in a fresh session" (the fresh one is
              Recommended only with STATE.md `Runners: off`; fresh session:
-             update STATE.md "Next step", record, tell the owner to run /setup-project resume <repo>).
+             update STATE.md "Next step", record, tell the owner to run /devteam resume <repo>).
              approvals unblock. Queued cards: re-sync each task ($TASKGIT sync) and re-show
              the card if the CR affected it. Open task branches affected by the CR: sync them
              and brief their owner agent with the doc changes. Unaffected ones continue.
