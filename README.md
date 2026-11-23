@@ -1,30 +1,36 @@
 # dev-team-setup
 
-A Claude Code plugin that turns an idea into a working project with a team of AI agents.
-You type `/setup-project <your idea>`, answer a short interview, and approve each step while
-the agents design, build, test and document it.
+**You bring the idea. A team of AI agents brings the spec, the code, the tests and the docs,
+and checks with you before anything important.**
+
+A Claude Code plugin. Type `/setup-project <your idea>`, answer a few questions, and approve
+each step (from your laptop or your phone) while the team builds it.
 
 ![From idea to handover](docs/images/how-it-works.png)
 
-## What problem it solves
+## Why not just ask one chat to build it?
 
-Asking an AI to "build me an app" in one chat works for a quick prototype, but it falls apart
-for anything you want to keep:
+You can. It's great for a quick prototype. Then you start using the thing, and:
 
-- **Nobody pins down what to build.** Gaps (backups, edge cases, what happens on errors) show
-  up only once you use the app. Here an interview and a critic agent turn the idea into a clear
-  spec first.
-- **Big decisions get made silently.** Databases, paid services, what goes online: here every
-  one of those stops and asks you, in plain words, with what it means and what changing it
-  later would cost.
-- **Nothing checks the work.** Here every task is tested, reviewed and merged on its own
-  branch, and you approve it after trying it ("Try this" steps and screenshots).
-- **One agent can touch anything.** Here each agent is limited to its own role and files by a
-  guard, and the project survives a closed laptop (`/setup-project resume <repo>`).
-- **"Done" means a demo.** Here the handover checks a production list for your kind of app and
-  gives you as-built docs and a one-page owner guide.
+| One chat says… | Then you find out… | dev-team-setup instead… |
+|---|---|---|
+| "Done! Here's your recipe app" | it never saves a backup, and "1–2 cloves" breaks the scaler | interviews you first, and a critic agent pokes holes in the plan before any code exists |
+| "I went with Postgres and a hosted API" | that was a big decision you never got to make | stops and asks, in plain words: what it means for you and what changing it later would cost |
+| "All working!" | nothing was tested, and one fix broke two other things | tests, reviews and merges every task on its own branch, and you approve it after trying it |
+| "I updated a few files" | it edited half the project, including things it shouldn't touch | gives each agent its own job and files, and a guard blocks everything else |
+| "Here's the code" | there's no README, no CI, and you're not sure it's safe to use | checks a production list for your kind of app and hands over docs plus a one-page owner guide |
 
-## Requirements
+## What it feels like
+
+You mostly tap buttons. After each task you get a card like this:
+
+<img src="docs/images/result-card.png" width="320" alt="A task result with goals, test results and Approve / Change / Reject buttons">
+
+It says what the task was meant to do, what got done, what it cost, and how to **try it
+yourself in a minute**. Then: **Approve**, **Change** or **Reject**. Close your laptop halfway
+through and pick it up later with `/setup-project resume <repo>`.
+
+## What you need
 
 | You need | Why |
 |---|---|
@@ -42,9 +48,8 @@ git --version && gh auth status && python3 --version && uv --version && npm --ve
 ```
 
 **Installed for you, when you agree:** Playwright, Chromium, Pillow and Mermaid, for
-screenshots and diagrams. The plugin asks the first time and puts them in its own private
-folder, not your system Python. Each project's own dependencies are installed into that
-project as it's built.
+screenshots and diagrams. The plugin asks first and keeps them in its own private folder, not
+your system Python. Each project's own dependencies go into that project.
 
 ## Install
 
@@ -55,11 +60,11 @@ project as it's built.
    claude plugin install dev-team-setup@dev-team-setup
    ```
 
-2. **Add your details.** Claude Code asks for your name, your GitHub username and a few settings
-   when the plugin is enabled. To change them later, run
-   `/plugin configure dev-team-setup@dev-team-setup`, or open `/config`.
+2. **Tell it who you are.** Claude Code asks for your name, your GitHub username and a few
+   settings when the plugin is enabled. Change them any time with
+   `/plugin configure dev-team-setup@dev-team-setup`, or in `/config`.
 
-3. **Start a project:**
+3. **Give it an idea:**
 
    ```
    /setup-project a habit tracker with daily streaks
